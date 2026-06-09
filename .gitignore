@@ -1,0 +1,17 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+
+# Node
+node_modules/
+Frontend/dist/
+Frontend/.vite/
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
