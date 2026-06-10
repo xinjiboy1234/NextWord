@@ -41,7 +41,7 @@ Backend/
 │       ├── AssessmentEngine.cs         # 新增：测评流程引擎
 │       ├── LevelUpgradeEngine.cs       # 新增：等级升降引擎实现
 │       ├── ChallengePackGenerator.cs   # 新增：挑战包生成
-│       └── AssessmentScoringService.cs # 新增：测评评分聚合
+│       └── AssessmentScoringService.cs # 新增：基于 ILLMProvider 的测评评分聚合
 ├── NextWord.Infrastructure/
 │   └── Data/
 │       └── ApplicationDbContext.cs     # 新增测评相关集合
@@ -119,6 +119,17 @@ Step 5: 定级计算
 ```
 
 ## 等级升降引擎
+
+### LLM 测评评分边界
+
+测评系统中的造句评分、挑战包难度校验、阅读材料分级复用全局 `ILLMProvider`，底层仍由 Microsoft.Extensions.AI `IChatClient` 承载真实 Provider 调用。
+
+设计约束：
+- 测评流程编排由 `AssessmentEngine`、`ChallengePackGenerator`、`LevelUpgradeEngine` 这些确定性服务完成，不交给 Agent 自主规划。
+- LLM 只负责结构化评分、难度标注和解释文本生成；最终定级、升级、回退规则由本地算法决定。
+- Agent/skills/plugins 可以辅助生成候选题、解释评分原因、推荐薄弱项练习，但不能覆盖挑战通过标准。
+- 正式测评题目优先使用内置题库和高置信度分级数据，LLM 调用失败时不得中断已开始的测评流程。
+- 暂不引入 Microsoft Agent Framework，除非后续需要跨多轮、多工具、长时间运行的人机协同测评工作流。
 
 ### 初始定级算法
 
@@ -226,3 +237,5 @@ UserProgress:
 4. **连续 3 天升级规则**：防止单日表现波动导致的误升级，需要持续稳定表现才升级
 5. **确认挑战防误升**：需求明确指出"不是考过一次就升级"，确认挑战是最后的门槛
 6. **测评步骤明细用 JSON 存**：每步的题目和答案结构差异大，用 JSON 字段存比拆多表更灵活，EF Core 支持 JSON 列映射
+7. **LLM 评分不接管测评编排**：Microsoft.Extensions.AI 负责统一模型调用，测评规则仍由确定性本地服务掌控，保证结果可解释、可测试、可复现
+8. **Agent 只做辅助解释与候选建议**：测评属于高影响功能，Agent 不直接决定等级变化，只能提供解释、候选题建议和学习建议

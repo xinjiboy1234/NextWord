@@ -14,7 +14,7 @@
 - 项目初始化与架构搭建
 - 数据库设计与迁移
 - 背单词模块（翻译识别模式）
-- LLM分级抽象接口（模拟实现）
+- 基于 Microsoft.Extensions.AI 的 LLM 分级抽象接口（模拟实现）
 - 基础学习日志
 
 ## 关键交付物
@@ -22,7 +22,7 @@
 1. 可运行的 ASP.NET Core Web API + React 前后端项目
 2. 数据库迁移脚本（Code First 自动生成）
 3. 背单词翻译识别模式端到端可用
-4. LLM Provider 抽象层 + 模拟实现
+4. Microsoft.Extensions.AI 接入骨架 + LLM Provider 抽象层 + 模拟实现
 5. 学习日志记录（熟练度、反应时间、错误次数）
 
 ## 技术层面需要创建的文件/模块
@@ -52,7 +52,8 @@ Backend/
 │   │   ├── AssessmentResult.cs       # 记录/模糊/不会
 │   │   └── RecommendedAction.cs      # learn_now/review_later/challenge_only
 │   ├── Interfaces/
-│   │   ├── ILLMProvider.cs           # LLM服务抽象接口
+│   │   ├── ILLMProvider.cs           # 应用层 LLM 服务门面
+│   │   ├── IModelProfileResolver.cs  # 模型配置档解析
 │   │   ├── ISm2Service.cs            # SM-2算法接口
 │   │   ├── IWordRepository.cs        # 仓储接口
 │   │   ├── IUserRepository.cs        # 仓储接口
@@ -60,6 +61,9 @@ Backend/
 │   └── Services/
 │       ├── Sm2Service.cs             # SM-2算法实现
 │       ├── LlmMockProvider.cs        # 模拟LLM Provider
+│       ├── ModelProfileResolver.cs   # 模型配置档选择与默认值合并
+│       ├── LlmPromptFactory.cs       # LLM 提示词与结构化请求构建
+│       ├── LlmResponseParser.cs      # LLM 结构化响应解析与校验
 │       └── ReviewQueueService.cs     # 复习队列计算
 ├── NextWord.Infrastructure/
 │   ├── Data/
@@ -176,6 +180,23 @@ Words (1) ── (0..1) WordDifficultyAnnotations
 
 ## LLM 服务接口抽象设计
 
+### AI 调度库选择
+
+本项目在 MVP 阶段选择 **Microsoft.Extensions.AI** 作为 LLM 调度基础库，业务层继续保留 `ILLMProvider` 门面接口。
+
+架构原则：
+- `ILLMProvider` 面向业务用例，暴露分级、释义、造句评分等稳定方法。
+- 底层真实模型调用通过 Microsoft.Extensions.AI 的 `IChatClient` 完成，便于统一接入 OpenAI、Azure OpenAI、Ollama 或其他 Provider。
+- MockProvider 不依赖真实模型，保证 Phase 0 可以端到端运行；Phase 1 再替换为真实 `IChatClient` 实现。
+- LLM 请求携带 `ModelProfileId`，由 `IModelProfileResolver` 解析 Provider、模型名、通用参数和 Provider 特有扩展参数。
+- 缓存、重试、超时、日志、OpenTelemetry 等横切能力优先用 Microsoft.Extensions.AI 和 ASP.NET Core DI 装饰器组合实现。
+
+Phase 0 不实现完整 Agent，但需要预留 skills/plugins 扩展边界：
+- 当前 MVP 的 LLM 任务边界清晰，属于“服务调用 + 结构化输出”，不需要 Agent 自主规划或多 Agent 协作。
+- `ILLMProvider` 的实现应避免写死具体模型 SDK，为后续 tool/function calling、skills/plugins 注册表留出扩展点。
+- Agent 只适合开放式辅导和工具组合，不接管 SM-2、测评定级、升级判定等确定性规则。
+- 首个 Agent 化落点放到 Phase 2 阅读辅助；Microsoft Agent Framework 暂作为长流程、多 Agent、人机协同场景的后续候选。
+
 ### ILLMProvider 接口定义
 
 ```
@@ -200,6 +221,38 @@ Words (1) ── (0..1) WordDifficultyAnnotations
   )
   // 返回句子语法/自然度/词汇评分及修改建议
 ```
+
+### 模型配置档与扩展参数
+
+Phase 0 先定义模型配置结构，不接入真实模型：
+
+```
+ModelProfile:
+  Id: string                         // grading-stable / reading-agent / local-dev
+  Provider: string                   // OpenAI / AzureOpenAI / Ollama / Anthropic / Mock
+  Model: string                      // 模型名或部署名
+  Endpoint: string                   // 可选，真实值从配置读取
+  ApiKeyName: string                 // 密钥引用名，不直接保存密钥
+  Temperature: float?
+  MaxOutputTokens: int?
+  TimeoutSeconds: int?
+  EnableToolCalling: bool
+  EnableStructuredOutput: bool
+  ProviderOptions: object            // Provider 特有扩展参数
+
+LlmRequestOptions:
+  ModelProfileId: string
+  Purpose: difficulty_rating | definition | sentence_rating | reading_agent
+  OverrideCommonOptions: object      // 仅允许后端服务传入
+  ProviderOptionsOverride: object    // 仅允许白名单字段
+```
+
+约束：
+- 业务服务只选择 `ModelProfileId`，不直接拼 Provider 参数。
+- 通用参数用强类型字段表达，Provider 特有参数进入 `ProviderOptions`。
+- 每个 Provider Adapter 必须维护允许的扩展参数白名单，拒绝未知或类型错误的字段。
+- 前端请求不能直接传 `ProviderOptions`，避免用户绕过成本、模型和安全限制。
+- MockProvider 忽略真实 API 参数，但要记录收到的 `ModelProfileId`，方便后续测试切换逻辑。
 
 ### 请求/响应模型
 
@@ -246,8 +299,9 @@ Meaning:
 
 1. **Code First EF Core**：需求文档没有指定数据库 schema，Code First 允许先设计领域模型，快速迭代
 2. **SQLite 开发 / PostgreSQL 生产**：零配置开发体验，生产环境切换只需改连接字符串和 NuGet 包
-3. **策略模式做 LLM 抽象**：需求明确说 LLM Provider 未定，抽象层让后续切换 OpenAI/Anthropic/本地模型成本为 0
-4. **MVP 只保留翻译识别模式**：拼写模式涉及音频播放和差异比对，复杂度更高，可作为 Phase 1 的增量
-5. **SM-2 自实现而非第三方库**：需求算法明确（SM-2），自实现便于与用户评分（记住/模糊/不会）定制对齐
-6. **Repository 模式**：为未来单元测试隔离 EF Core 依赖，也方便后续替换存储后端
-7. **MAUI 桌面端预留**：后端设计为纯 API，无 UI 绑定，后续 MAUI 桌面端直接复用
+3. **Microsoft.Extensions.AI + 应用层门面做 LLM 抽象**：底层复用 .NET 官方 `IChatClient`、DI、中间件、缓存和遥测能力；业务层通过 `ILLMProvider` 保持分级、释义、评分接口稳定，让后续切换 OpenAI/Azure OpenAI/Ollama/本地模型的成本保持可控
+4. **模型配置档 + ProviderOptions 承载模型差异**：通用参数强类型化，Provider 特有参数通过白名单扩展字段控制，避免业务层出现大量 Provider 分支
+5. **MVP 只保留翻译识别模式**：拼写模式涉及音频播放和差异比对，复杂度更高，可作为 Phase 1 的增量
+6. **SM-2 自实现而非第三方库**：需求算法明确（SM-2），自实现便于与用户评分（记住/模糊/不会）定制对齐
+7. **Repository 模式**：为未来单元测试隔离 EF Core 依赖，也方便后续替换存储后端
+8. **MAUI 桌面端预留**：后端设计为纯 API，无 UI 绑定，后续 MAUI 桌面端直接复用

@@ -11,6 +11,7 @@
 - 点击单词查释义（缓存 + LLM 按需生成）
 - LLM 重点词汇提取
 - 段落评论系统
+- 阅读辅助 Agent（首个 skills/plugins 组合能力）
 
 ## 关键交付物
 
@@ -19,6 +20,7 @@
 3. 评论系统（段落评论 + AI 回复）
 4. 内置短题库（至少 20 篇不同等级的短文）
 5. 阅读日志（用时、查词次数、评论数）
+6. 阅读辅助 Agent：可动态组合查词、释义、重点词提取、例句生成、评论回复等工具
 
 ## 技术层面需要创建的文件/模块
 
@@ -35,16 +37,20 @@ Backend/
 │   ├── Interfaces/
 │   │   ├── IArticleService.cs          # 新增：短文服务
 │   │   ├── IArticleVocabService.cs     # 新增：重点词汇提取服务
-│   │   └── ICommentService.cs          # 新增：评论服务
+│   │   ├── ICommentService.cs          # 新增：评论服务
+│   │   └── IReadingAgentService.cs     # 新增：阅读辅助 Agent 服务
 │   └── Services/
-│       ├── LlmVocabExtractor.cs        # 新增：LLM 重点词汇提取
-│       └── CommentAiResponder.cs       # 可选：AI 回复评论
+│       ├── LlmVocabExtractor.cs        # 新增：基于 ILLMProvider 的重点词汇提取
+│       ├── CommentAiResponder.cs       # 可选：基于 ILLMProvider 的 AI 回复评论
+│       ├── ReadingAssistantAgent.cs    # 新增：阅读辅助 Agent 编排
+│       └── ReadingSkillRegistry.cs     # 新增：阅读 skills/plugins 注册表
 ├── NextWord.Infrastructure/
 │   └── Data/
 │       └── ApplicationDbContext.cs     # 新增 Article 等集合
 └── NextWord.Api.Endpoints/
     ├── ArticleEndpoints.cs             # 新增：短文 CRUD、阅读管理
     ├── VocabExtractEndpoints.cs        # 新增：重点词汇提取
+    ├── ReadingAgentEndpoints.cs        # 新增：阅读辅助 Agent 入口
     ├── CommentEndpoints.cs             # 新增：评论 CRUD + AI 回复
     └── ReadingLogEndpoints.cs          # 新增：阅读日志
 ```
@@ -96,6 +102,38 @@ Words ──< (N) ArticleVocabMappings ──> (N) Articles  # 词-文多对多
 ```
 
 ## LLM 重点词汇提取
+
+## 阅读辅助 Agent
+
+阅读模块是第一批引入 Agent/skills/plugins 的落点。它面对的是开放式学习场景：用户可能点击查词、追问文中含义、要求例句、让系统提取重点词、评论某一段，也可能让系统判断某个词是否值得加入生词本。相比写死多个 `switch case`，这里更适合让 LLM 在受控工具集合中动态选择。
+
+### Skills / Plugins 范围
+
+首批阅读 skills/plugins：
+- `LookupWordSkill`：读取本地词库、缓存释义、上下文释义。
+- `ExplainInContextSkill`：结合段落解释词义、短语、句法或隐含含义。
+- `ExtractKeyVocabSkill`：提取当前等级值得学习的重点词。
+- `GenerateExamplesSkill`：为选中词生成适合当前等级的例句。
+- `CommentReplySkill`：针对用户段落评论生成解释性回复。
+- `AddToVocabularySkill`：给出加入生词本建议，并在用户确认后写入关系表。
+
+### Agent 边界
+
+- Agent 可以决定调用哪些 skills/plugins，以及调用顺序。
+- Agent 不能直接修改等级、复习间隔、测评结果；涉及写入操作必须通过受控服务接口。
+- 默认只允许读取文章、词汇、用户当前等级和近期学习摘要；更敏感的历史数据需要显式传入。
+- 所有 Agent 输出都需要结构化记录：调用了哪些工具、输入摘要、输出摘要、耗时、失败原因。
+- 如果 Agent 调用失败，阅读主流程保持可用，回退到普通查词、缓存结果或提示稍后重试。
+
+### LLM 调用边界
+
+阅读模块不直接依赖具体模型 SDK，统一通过 Phase 0/1 建立的 `ILLMProvider` 调用底层 Microsoft.Extensions.AI `IChatClient`：
+
+- `ReadingAssistantAgent` 负责在阅读场景中选择和组合 skills/plugins。
+- `LlmVocabExtractor` 只负责重点词提取的提示词、结构化输出校验和结果持久化。
+- 点击查词、重点词汇提取、短文生成、AI 评论回复都共用统一的缓存、超时、降级和遥测策略。
+- 如果 Provider 不可用，阅读主流程仍可使用内置题库和本地词库，LLM 能力降级为“稍后重试/返回缓存结果”。
+- 本 Phase 优先用 Microsoft.Extensions.AI 的 function/tool calling 与本地注册表实现；只有当阅读辅助演进为长流程、多 Agent 或人机协同工作流时，再评估 Microsoft Agent Framework。
 
 ### API 流程
 
@@ -182,3 +220,5 @@ Rules:
 4. **AI 回复评论可选**：需求说"AI 可回复解释（可选）"，实现为独立端点，默认不开启，降低 LLM 调用量
 5. **阅读日志不存逐题结果**：因为阅读测评（选择题）在 Phase 3，本 Phase 的阅读日志只记录行为数据（用时、查词次数）
 6. **ArticleVocabMappings 独立表**：词汇在文章中的用法是上下文相关的，不能复用 Word 表的通用释义
+7. **LLM 调用统一走 Microsoft.Extensions.AI 管道**：阅读场景复用全局 `ILLMProvider`，保持 Provider 切换、缓存、超时和遥测策略一致
+8. **阅读辅助 Agent 作为首个 Agent 落点**：阅读场景最需要动态工具组合，风险低于测评和等级系统，适合作为 skills/plugins 能力的第一阶段验证
