@@ -49,7 +49,55 @@ public sealed class LlmMockProvider(IModelProfileResolver modelProfileResolver) 
 
     public Task<SentenceRatingResponse> RateSentenceAsync(SentenceRatingRequest request, CancellationToken cancellationToken)
     {
-        return Task.FromResult(new SentenceRatingResponse(80, 78, 75, ["Mock provider keeps sentence scoring as a placeholder."]));
+        var sentence = request.UserSentence.Trim();
+        var target = request.TargetWord.Trim();
+        var isFreeExpression = string.Equals(target, "free expression", StringComparison.OrdinalIgnoreCase);
+        var usesTarget = isFreeExpression || sentence.Contains(target, StringComparison.OrdinalIgnoreCase);
+        var hasSentenceShape = sentence.Length >= 12 && (sentence.EndsWith('.') || sentence.EndsWith('!') || sentence.EndsWith('?'));
+        var grammar = hasSentenceShape ? 4 : 3;
+        var natural = sentence.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length >= 5 ? 4 : 3;
+        var vocabulary = usesTarget ? 4 : 2;
+        var relevance = usesTarget ? 4 : 2;
+        var average = (grammar + natural + vocabulary + relevance) / 4.0;
+        var grade = average >= 4.5 ? "A" : average >= 3.8 ? "B" : average >= 2.8 ? "C" : "D";
+        var revision = hasSentenceShape ? sentence : ToCompleteSentence(sentence);
+        var analysis = new List<string>();
+        if (!usesTarget)
+        {
+            analysis.Add($"Try to use the target word \"{target}\" directly.");
+        }
+
+        if (!hasSentenceShape)
+        {
+            analysis.Add("Write a complete sentence with clear punctuation.");
+        }
+
+        if (analysis.Count == 0)
+        {
+            analysis.Add("Clear expression with usable sentence structure.");
+        }
+
+        return Task.FromResult(new SentenceRatingResponse(
+            grammar,
+            natural,
+            vocabulary,
+            relevance,
+            grade,
+            revision,
+            analysis,
+            average >= 4 ? DifficultyLevel.Intermediate : DifficultyLevel.Basic,
+            usesTarget ? "Add one detail to make the sentence more specific." : "Make the target meaning explicit in your sentence."));
+    }
+
+    private static string ToCompleteSentence(string sentence)
+    {
+        if (string.IsNullOrWhiteSpace(sentence))
+        {
+            return "I can write a complete sentence.";
+        }
+
+        var trimmed = sentence.Trim().TrimEnd('.', '!', '?');
+        return $"{char.ToUpperInvariant(trimmed[0])}{trimmed[1..]}.";
     }
 
     private static Dictionary<string, (DifficultyLevel, CefrLevel, RecommendedAction)> BuildRatings()

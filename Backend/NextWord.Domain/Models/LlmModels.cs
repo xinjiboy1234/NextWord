@@ -41,14 +41,22 @@ public sealed record Meaning(
     string Context);
 
 public sealed record SentenceRatingRequest(
-    string Sentence,
+    string UserSentence,
+    string TargetWord,
+    string Scene,
+    string UserLevel,
     LlmRequestOptions? Options = null);
 
 public sealed record SentenceRatingResponse(
     int GrammarScore,
-    int NaturalnessScore,
+    int NaturalScore,
     int VocabularyScore,
-    IReadOnlyList<string> Suggestions);
+    int RelevanceScore,
+    string OverallGrade,
+    string AiRevision,
+    IReadOnlyList<string> ErrorAnalysis,
+    DifficultyLevel DifficultyLevel,
+    string Suggestion);
 
 public sealed class ModelProfile
 {

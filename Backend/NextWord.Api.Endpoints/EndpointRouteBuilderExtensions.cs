@@ -8,6 +8,10 @@ public static class EndpointRouteBuilderExtensions
         LearningEndpoints.Map(app);
         ProgressEndpoints.Map(app);
         LlmEndpoints.Map(app);
+        SentenceEndpoints.Map(app);
+        FreeExpressionEndpoints.Map(app);
+        SpellingEndpoints.Map(app);
+        LogEndpoints.Map(app);
         return app;
     }
 }

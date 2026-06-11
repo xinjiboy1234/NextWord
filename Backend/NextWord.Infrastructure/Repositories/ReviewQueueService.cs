@@ -18,7 +18,8 @@ public sealed class ReviewQueueService(ApplicationDbContext db) : IReviewQueueSe
 
         return relationships
             .Where(relationship => relationship.NextReviewDue <= now)
-            .OrderBy(relationship => relationship.NextReviewDue)
+            .OrderBy(relationship => relationship.EaseFactor)
+            .ThenBy(relationship => relationship.NextReviewDue)
             .Take(count)
             .ToList();
     }

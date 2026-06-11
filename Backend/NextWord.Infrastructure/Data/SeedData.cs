@@ -30,6 +30,11 @@ public static class SeedData
             db.Words.AddRange(CreateWords());
         }
 
+        if (!await db.Sentences.AnyAsync(cancellationToken))
+        {
+            db.Sentences.AddRange(CreateSentences());
+        }
+
         await db.SaveChangesAsync(cancellationToken);
     }
 
@@ -62,6 +67,32 @@ public static class SeedData
             DifficultyLevel = difficulty,
             CefrLevel = cefr,
             IsCore = true
+        };
+    }
+
+    private static IEnumerable<Sentence> CreateSentences()
+    {
+        yield return CreateSentence("I eat an apple after lunch.", "apple", "life", DifficultyLevel.Basic, CefrLevel.A1);
+        yield return CreateSentence("A good friend listens when you need help.", "friend", "life", DifficultyLevel.Basic, CefrLevel.A1);
+        yield return CreateSentence("Regular practice makes speaking feel easier.", "practice", "school", DifficultyLevel.Intermediate, CefrLevel.B1);
+        yield return CreateSentence("This memory helps me understand the story.", "memory", "life", DifficultyLevel.Intermediate, CefrLevel.B1);
+        yield return CreateSentence("The teacher gave an ambiguous answer.", "ambiguous", "academic", DifficultyLevel.Advanced, CefrLevel.C1);
+        yield return CreateSentence("Writers synthesize facts into a clear argument.", "synthesize", "academic", DifficultyLevel.Advanced, CefrLevel.C1);
+        yield return CreateSentence("We compare two ideas before making a decision.", "decision", "work", DifficultyLevel.Intermediate, CefrLevel.B1);
+        yield return CreateSentence("A healthy habit can improve your daily energy.", "habit", "life", DifficultyLevel.Intermediate, CefrLevel.B1);
+        yield return CreateSentence("The new feature saves time for the whole team.", "feature", "work", DifficultyLevel.Intermediate, CefrLevel.B1);
+        yield return CreateSentence("The report should validate the main hypothesis.", "validate", "academic", DifficultyLevel.Advanced, CefrLevel.C1);
+    }
+
+    private static Sentence CreateSentence(string content, string targetWord, string scene, DifficultyLevel difficulty, CefrLevel cefr)
+    {
+        return new Sentence
+        {
+            Content = content,
+            TargetWord = targetWord,
+            Scene = scene,
+            DifficultyLevel = difficulty,
+            CefrLevel = cefr
         };
     }
 }

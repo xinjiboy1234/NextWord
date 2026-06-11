@@ -18,4 +18,7 @@ public sealed class Word
     public WordDifficultyAnnotation? LlmAnnotation { get; set; }
     public List<UserWordRelationship> UserRelationships { get; set; } = [];
     public List<WordLearningLog> LearningLogs { get; set; } = [];
+    public List<Sentence> Sentences { get; set; } = [];
+    public List<SentenceLog> SentenceLogs { get; set; } = [];
+    public List<SpellingLog> SpellingLogs { get; set; } = [];
 }

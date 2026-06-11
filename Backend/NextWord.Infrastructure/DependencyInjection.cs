@@ -1,10 +1,13 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.AI;
 using NextWord.Domain.Interfaces;
 using NextWord.Domain.Services;
 using NextWord.Infrastructure.Data;
 using NextWord.Infrastructure.Repositories;
+using NextWord.Infrastructure.Services;
+using OpenAI.Chat;
 
 namespace NextWord.Infrastructure;
 
@@ -30,9 +33,31 @@ public static class DependencyInjection
         services.AddScoped<IWordRepository, WordRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IReviewQueueService, ReviewQueueService>();
+        services.AddScoped<ISentenceService, SentenceService>();
+        services.AddScoped<IFreeExpressionService, FreeExpressionService>();
+        services.AddScoped<ISpellingService, SpellingService>();
         services.AddSingleton<ISm2Service, Sm2Service>();
         services.AddSingleton<IModelProfileResolver, ModelProfileResolver>();
-        services.AddSingleton<ILLMProvider, LlmMockProvider>();
+        services.AddSingleton<LlmMockProvider>();
+
+        var openAiOptions = new LlmOpenAiOptions
+        {
+            Enabled = bool.TryParse(configuration["Llm:OpenAI:Enabled"], out var enabled) && enabled,
+            Model = configuration["Llm:OpenAI:Model"] ?? "gpt-4o-mini",
+            ApiKey = configuration["Llm:OpenAI:ApiKey"],
+            ApiKeyEnvironmentVariable = configuration["Llm:OpenAI:ApiKeyEnvironmentVariable"] ?? "OPENAI_API_KEY"
+        };
+        openAiOptions.ApiKey ??= configuration[openAiOptions.ApiKeyEnvironmentVariable];
+        openAiOptions.ApiKey ??= Environment.GetEnvironmentVariable(openAiOptions.ApiKeyEnvironmentVariable);
+        if (openAiOptions.Enabled && !string.IsNullOrWhiteSpace(openAiOptions.ApiKey))
+        {
+            services.AddSingleton<IChatClient>(_ => new ChatClient(openAiOptions.Model, openAiOptions.ApiKey).AsIChatClient());
+            services.AddSingleton<ILLMProvider, LlmChatClientProvider>();
+        }
+        else
+        {
+            services.AddSingleton<ILLMProvider>(sp => sp.GetRequiredService<LlmMockProvider>());
+        }
 
         return services;
     }

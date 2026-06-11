@@ -9,4 +9,7 @@ public sealed class User
     public List<UserProgress> ProgressRecords { get; set; } = [];
     public List<UserWordRelationship> WordRelationships { get; set; } = [];
     public List<WordLearningLog> LearningLogs { get; set; } = [];
+    public List<SentenceLog> SentenceLogs { get; set; } = [];
+    public List<FreeExpressionLog> FreeExpressionLogs { get; set; } = [];
+    public List<SpellingLog> SpellingLogs { get; set; } = [];
 }
