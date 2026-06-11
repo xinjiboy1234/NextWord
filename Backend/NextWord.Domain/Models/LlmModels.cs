@@ -1,0 +1,66 @@
+using NextWord.Domain.Enums;
+
+namespace NextWord.Domain.Models;
+
+public sealed record LlmRequestOptions(
+    string ModelProfileId = "local-dev",
+    string Purpose = "difficulty_rating");
+
+public sealed record ItemRatingRequest(
+    ItemType ItemType,
+    string Text,
+    LlmRequestOptions? Options = null);
+
+public sealed record DifficultyRating(
+    ItemType ItemType,
+    DifficultyLevel DifficultyLevel,
+    CefrLevel CefrLevel,
+    string Reason,
+    RecommendedAction RecommendedAction,
+    double Confidence,
+    string ModelProfileId);
+
+public sealed record DefinitionRequest(
+    string Word,
+    string? Context = null,
+    LlmRequestOptions? Options = null);
+
+public sealed record DefinitionResponse(
+    string Word,
+    string Phonetics,
+    IReadOnlyList<Meaning> Meanings,
+    IReadOnlyList<string> Collocations,
+    IReadOnlyList<string> ExampleSentences,
+    string SpecialUsage,
+    DifficultyLevel DifficultyLevel,
+    CefrLevel CefrLevel);
+
+public sealed record Meaning(
+    string Definition,
+    bool IsContextual,
+    string Context);
+
+public sealed record SentenceRatingRequest(
+    string Sentence,
+    LlmRequestOptions? Options = null);
+
+public sealed record SentenceRatingResponse(
+    int GrammarScore,
+    int NaturalnessScore,
+    int VocabularyScore,
+    IReadOnlyList<string> Suggestions);
+
+public sealed class ModelProfile
+{
+    public string Id { get; set; } = "local-dev";
+    public string Provider { get; set; } = "Mock";
+    public string Model { get; set; } = "mock-hardcoded-v1";
+    public string? Endpoint { get; set; }
+    public string? ApiKeyName { get; set; }
+    public float? Temperature { get; set; }
+    public int? MaxOutputTokens { get; set; }
+    public int? TimeoutSeconds { get; set; }
+    public bool EnableToolCalling { get; set; }
+    public bool EnableStructuredOutput { get; set; } = true;
+    public Dictionary<string, object?> ProviderOptions { get; set; } = [];
+}
