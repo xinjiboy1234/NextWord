@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="NextWord.Api.Endpoints/NextWord.Api.Endpoints.csproj" />
+  <Project Path="NextWord.Api/NextWord.Api.csproj" />
+  <Project Path="NextWord.Domain/NextWord.Domain.csproj" />
+  <Project Path="NextWord.Infrastructure/NextWord.Infrastructure.csproj" />
+</Solution>

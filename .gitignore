@@ -10,6 +10,12 @@ node_modules/
 Frontend/dist/
 Frontend/.vite/
 
+# Runtime files
+*.db
+*.db-shm
+*.db-wal
+*.log
+
 # IDE
 .idea/
 *.swp
