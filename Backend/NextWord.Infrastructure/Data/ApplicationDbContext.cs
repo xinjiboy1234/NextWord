@@ -28,6 +28,10 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<SentenceLog> SentenceLogs => Set<SentenceLog>();
     public DbSet<FreeExpressionLog> FreeExpressionLogs => Set<FreeExpressionLog>();
     public DbSet<SpellingLog> SpellingLogs => Set<SpellingLog>();
+    public DbSet<Article> Articles => Set<Article>();
+    public DbSet<ReadingLog> ReadingLogs => Set<ReadingLog>();
+    public DbSet<ArticleComment> ArticleComments => Set<ArticleComment>();
+    public DbSet<ArticleVocabMapping> ArticleVocabMappings => Set<ArticleVocabMapping>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -212,6 +216,69 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
                 .WithMany(word => word.SpellingLogs)
                 .HasForeignKey(log => log.WordId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Article>(entity =>
+        {
+            entity.HasKey(article => article.Id);
+            entity.Property(article => article.Title).HasMaxLength(200).IsRequired();
+            entity.Property(article => article.Content).HasMaxLength(8000).IsRequired();
+            entity.Property(article => article.DifficultyLevel).HasConversion<string>().HasMaxLength(32);
+            entity.Property(article => article.CefrLevel).HasConversion<string>().HasMaxLength(8);
+            entity.Property(article => article.Source).HasConversion<string>().HasMaxLength(16);
+            entity.Property(article => article.TopicTag).HasMaxLength(80);
+            entity.HasOne(article => article.Annotation)
+                .WithMany()
+                .HasForeignKey(article => article.AnnotationId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<ReadingLog>(entity =>
+        {
+            entity.HasKey(log => log.Id);
+            entity.HasOne(log => log.User)
+                .WithMany(user => user.ReadingLogs)
+                .HasForeignKey(log => log.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(log => log.Article)
+                .WithMany(article => article.ReadingLogs)
+                .HasForeignKey(log => log.ArticleId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ArticleComment>(entity =>
+        {
+            entity.HasKey(comment => comment.Id);
+            entity.Property(comment => comment.ParagraphText).HasMaxLength(2000).IsRequired();
+            entity.Property(comment => comment.CommentText).HasMaxLength(2000).IsRequired();
+            entity.Property(comment => comment.AiReply).HasMaxLength(4000);
+            entity.HasOne(comment => comment.User)
+                .WithMany(user => user.ArticleComments)
+                .HasForeignKey(comment => comment.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(comment => comment.Article)
+                .WithMany(article => article.Comments)
+                .HasForeignKey(comment => comment.ArticleId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ArticleVocabMapping>(entity =>
+        {
+            entity.HasKey(mapping => mapping.Id);
+            entity.HasIndex(mapping => new { mapping.ArticleId, mapping.WordLemma }).IsUnique();
+            entity.Property(mapping => mapping.WordLemma).HasMaxLength(80).IsRequired();
+            entity.Property(mapping => mapping.ContextMeaning).HasMaxLength(500).IsRequired();
+            entity.Property(mapping => mapping.SpecialUsage).HasMaxLength(500);
+            entity.Property(mapping => mapping.DifficultyInContext).HasConversion<string>().HasMaxLength(32);
+            entity.Property(mapping => mapping.RecommendedAction).HasConversion<string>().HasMaxLength(32);
+            entity.HasOne(mapping => mapping.Article)
+                .WithMany(article => article.VocabMappings)
+                .HasForeignKey(mapping => mapping.ArticleId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(mapping => mapping.Word)
+                .WithMany(word => word.ArticleVocabMappings)
+                .HasForeignKey(mapping => mapping.WordId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
     }
 }

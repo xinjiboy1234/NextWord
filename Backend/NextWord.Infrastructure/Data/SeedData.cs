@@ -35,6 +35,11 @@ public static class SeedData
             db.Sentences.AddRange(CreateSentences());
         }
 
+        if (!await db.Articles.AnyAsync(cancellationToken))
+        {
+            db.Articles.AddRange(ArticleSeedData.CreateArticles());
+        }
+
         await db.SaveChangesAsync(cancellationToken);
     }
 

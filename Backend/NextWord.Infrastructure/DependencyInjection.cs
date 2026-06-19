@@ -36,6 +36,10 @@ public static class DependencyInjection
         services.AddScoped<ISentenceService, SentenceService>();
         services.AddScoped<IFreeExpressionService, FreeExpressionService>();
         services.AddScoped<ISpellingService, SpellingService>();
+        services.AddScoped<IArticleService, ArticleService>();
+        services.AddScoped<IArticleVocabService, ArticleVocabService>();
+        services.AddScoped<ICommentService, CommentService>();
+        services.AddScoped<IReadingAgentService, ReadingAssistantAgent>();
         services.AddSingleton<ISm2Service, Sm2Service>();
         services.AddSingleton<IModelProfileResolver, ModelProfileResolver>();
         services.AddSingleton<LlmMockProvider>();

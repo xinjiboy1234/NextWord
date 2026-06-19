@@ -12,6 +12,10 @@ public static class EndpointRouteBuilderExtensions
         FreeExpressionEndpoints.Map(app);
         SpellingEndpoints.Map(app);
         LogEndpoints.Map(app);
+        ArticleEndpoints.Map(app);
+        ReadingLogEndpoints.Map(app);
+        CommentEndpoints.Map(app);
+        ReadingAgentEndpoints.Map(app);
         return app;
     }
 }

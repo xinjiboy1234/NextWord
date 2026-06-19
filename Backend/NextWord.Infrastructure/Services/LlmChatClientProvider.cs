@@ -40,4 +40,42 @@ public sealed class LlmChatClientProvider(IChatClient chatClient, LlmMockProvide
             return await fallback.RateSentenceAsync(request, cancellationToken);
         }
     }
+
+    public async Task<VocabExtractResponse> ExtractVocabAsync(VocabExtractRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var response = await chatClient.GetResponseAsync(
+                [
+                    new ChatMessage(ChatRole.System, "You return compact, valid JSON for vocabulary extraction."),
+                    new ChatMessage(ChatRole.User, LlmPromptFactory.BuildVocabExtractPrompt(request))
+                ],
+                new ChatOptions { Temperature = 0.1f, MaxOutputTokens = 1200 },
+                cancellationToken);
+            return LlmResponseParser.ParseVocabExtract(response.Text);
+        }
+        catch
+        {
+            return await fallback.ExtractVocabAsync(request, cancellationToken);
+        }
+    }
+
+    public async Task<CommentReplyResponse> ReplyToCommentAsync(CommentReplyRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var response = await chatClient.GetResponseAsync(
+                [
+                    new ChatMessage(ChatRole.System, "You are a helpful English reading tutor."),
+                    new ChatMessage(ChatRole.User, LlmPromptFactory.BuildCommentReplyPrompt(request))
+                ],
+                new ChatOptions { Temperature = 0.3f, MaxOutputTokens = 400 },
+                cancellationToken);
+            return new CommentReplyResponse(response.Text.Trim());
+        }
+        catch
+        {
+            return await fallback.ReplyToCommentAsync(request, cancellationToken);
+        }
+    }
 }

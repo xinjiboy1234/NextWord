@@ -58,6 +58,53 @@ public sealed record SentenceRatingResponse(
     DifficultyLevel DifficultyLevel,
     string Suggestion);
 
+public sealed record VocabExtractRequest(
+    string ArticleTitle,
+    string ArticleContent,
+    string ArticleLevel,
+    string UserLevel,
+    LlmRequestOptions? Options = null);
+
+public sealed record KeyVocabItem(
+    string Word,
+    string ContextMeaning,
+    string SpecialUsage,
+    DifficultyLevel Difficulty,
+    RecommendedAction Action);
+
+public sealed record VocabExtractResponse(
+    IReadOnlyList<KeyVocabItem> KeyVocab,
+    IReadOnlyList<string> SkippedBasic,
+    IReadOnlyList<string> SkippedRare);
+
+public sealed record CommentReplyRequest(
+    string ParagraphText,
+    string CommentText,
+    string ArticleTitle,
+    LlmRequestOptions? Options = null);
+
+public sealed record CommentReplyResponse(string Reply);
+
+public sealed record ReadingAgentRequest(
+    string Intent,
+    string ArticleTitle,
+    string ArticleContent,
+    string? SelectedWord,
+    string? ParagraphText,
+    string UserLevel,
+    LlmRequestOptions? Options = null);
+
+public sealed record ReadingAgentSkillCall(
+    string SkillName,
+    string Summary);
+
+public sealed record ReadingAgentResponse(
+    string Message,
+    IReadOnlyList<ReadingAgentSkillCall> SkillCalls,
+    DefinitionResponse? Definition,
+    VocabExtractResponse? VocabExtract,
+    CommentReplyResponse? CommentReply);
+
 public sealed class ModelProfile
 {
     public string Id { get; set; } = "local-dev";

@@ -21,4 +21,5 @@ public sealed class Word
     public List<Sentence> Sentences { get; set; } = [];
     public List<SentenceLog> SentenceLogs { get; set; } = [];
     public List<SpellingLog> SpellingLogs { get; set; } = [];
+    public List<ArticleVocabMapping> ArticleVocabMappings { get; set; } = [];
 }

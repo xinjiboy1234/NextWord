@@ -89,6 +89,44 @@ public sealed class LlmMockProvider(IModelProfileResolver modelProfileResolver) 
             usesTarget ? "Add one detail to make the sentence more specific." : "Make the target meaning explicit in your sentence."));
     }
 
+    public Task<VocabExtractResponse> ExtractVocabAsync(VocabExtractRequest request, CancellationToken cancellationToken)
+    {
+        var words = request.ArticleContent
+            .Split([' ', '\n', '\r', '\t', '.', ',', ';', ':', '!', '?', '"', '(', ')'], StringSplitOptions.RemoveEmptyEntries)
+            .Select(word => word.Trim().Trim('"', '\'', '—', '-').ToLowerInvariant())
+            .Where(word => word.Length >= 4 && char.IsLetter(word[0]))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Take(40)
+            .ToList();
+
+        var keyVocab = words
+            .Where(word => !Ratings.TryGetValue(word, out var rating) || rating.Difficulty != DifficultyLevel.Basic)
+            .Take(8)
+            .Select(word =>
+            {
+                var rating = Ratings.GetValueOrDefault(word, (DifficultyLevel.Intermediate, CefrLevel.B1, RecommendedAction.LearnNow));
+                return new KeyVocabItem(
+                    word,
+                    $"Contextual meaning of \"{word}\" in this article.",
+                    "Mock special usage note.",
+                    rating.Item1,
+                    rating.Item3);
+            })
+            .ToList();
+
+        var skippedBasic = words.Where(word => Ratings.TryGetValue(word, out var rating) && rating.Difficulty == DifficultyLevel.Basic).Take(5).ToList();
+        var skippedRare = words.Where(word => word.Length >= 10).Take(3).ToList();
+
+        return Task.FromResult(new VocabExtractResponse(keyVocab, skippedBasic, skippedRare));
+    }
+
+    public Task<CommentReplyResponse> ReplyToCommentAsync(CommentReplyRequest request, CancellationToken cancellationToken)
+    {
+        var reply = $"This paragraph discusses \"{request.ParagraphText[..Math.Min(40, request.ParagraphText.Length)]}...\". " +
+                    $"Regarding your comment: {request.CommentText.Trim()} — consider how the author uses context to clarify meaning.";
+        return Task.FromResult(new CommentReplyResponse(reply));
+    }
+
     private static string ToCompleteSentence(string sentence)
     {
         if (string.IsNullOrWhiteSpace(sentence))

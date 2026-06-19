@@ -39,4 +39,53 @@ public static class LlmPromptFactory
         - If this is free expression, evaluate the whole passage.
         """;
     }
+
+    public static string BuildVocabExtractPrompt(VocabExtractRequest request)
+    {
+        return $$"""
+        You are a vocabulary extraction assistant for English learners.
+
+        Article Level: {{request.ArticleLevel}}
+        User Level: {{request.UserLevel}}
+
+        Article Title: {{request.ArticleTitle}}
+
+        Article:
+        {{request.ArticleContent}}
+
+        Extract vocabulary worth learning for a {{request.UserLevel}} student.
+        Return only JSON:
+        {
+          "keyVocab": [
+            {
+              "word": "string",
+              "contextMeaning": "string",
+              "specialUsage": "string",
+              "difficulty": "basic|intermediate|advanced",
+              "action": "learn_now|review_later|challenge_only"
+            }
+          ],
+          "skippedBasic": ["string"],
+          "skippedRare": ["string"]
+        }
+
+        Rules:
+        - Max 10 key vocabulary items.
+        - Evaluate each word IN CONTEXT.
+        - Do not include very basic words.
+        """;
+    }
+
+    public static string BuildCommentReplyPrompt(CommentReplyRequest request)
+    {
+        return $$"""
+        You are a reading tutor. Reply helpfully to the learner's paragraph comment.
+
+        Article: {{request.ArticleTitle}}
+        Paragraph: {{request.ParagraphText}}
+        Learner Comment: {{request.CommentText}}
+
+        Return plain text only, 2-4 sentences, encouraging and explanatory.
+        """;
+    }
 }

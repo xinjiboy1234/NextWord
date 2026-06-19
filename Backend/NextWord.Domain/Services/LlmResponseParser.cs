@@ -1,3 +1,4 @@
+using NextWord.Domain.Enums;
 using NextWord.Domain.Models;
 using System.Text.Json;
 
@@ -22,6 +23,38 @@ public static class LlmResponseParser
             ?? throw new InvalidOperationException("LLM returned empty sentence rating.");
         return parsed.ToResponse();
     }
+
+    public static VocabExtractResponse ParseVocabExtract(string content)
+    {
+        var json = ExtractJson(content);
+        var parsed = JsonSerializer.Deserialize<VocabExtractJson>(json, new JsonSerializerOptions(JsonSerializerDefaults.Web))
+            ?? throw new InvalidOperationException("LLM returned empty vocab extraction.");
+        return new VocabExtractResponse(
+            parsed.KeyVocab.Select(item => new KeyVocabItem(
+                item.Word,
+                item.ContextMeaning,
+                item.SpecialUsage,
+                ParseDifficulty(item.Difficulty),
+                ParseAction(item.Action))).ToList(),
+            parsed.SkippedBasic,
+            parsed.SkippedRare);
+    }
+
+    private static DifficultyLevel ParseDifficulty(string value) =>
+        value.Trim().ToLowerInvariant() switch
+        {
+            "intermediate" => DifficultyLevel.Intermediate,
+            "advanced" => DifficultyLevel.Advanced,
+            _ => DifficultyLevel.Basic
+        };
+
+    private static RecommendedAction ParseAction(string value) =>
+        value.Trim().ToLowerInvariant() switch
+        {
+            "review_later" => RecommendedAction.ReviewLater,
+            "challenge_only" => RecommendedAction.ChallengeOnly,
+            _ => RecommendedAction.LearnNow
+        };
 
     private static string ExtractJson(string content)
     {

@@ -1,5 +1,7 @@
-import { BookOpen, Keyboard, Layers, LineChart, PenLine, Repeat, Sparkles } from 'lucide-react'
+import { BookOpen, BookOpenText, Keyboard, Layers, LineChart, PenLine, Repeat, Sparkles } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import { ArticleLibrary } from './pages/ArticleLibrary'
+import { ArticleReader } from './pages/ArticleReader'
 import { Home } from './pages/Home'
 import { Progress } from './pages/Progress'
 import { ReviewQueue } from './pages/ReviewQueue'
@@ -7,16 +9,18 @@ import { SentenceStudio } from './pages/SentenceStudio'
 import { SpellingMode } from './pages/SpellingMode'
 import { WordCard } from './pages/WordCard'
 
-type View = 'learn' | 'spelling' | 'sentence' | 'review' | 'home' | 'progress'
+type View = 'learn' | 'spelling' | 'sentence' | 'reading' | 'review' | 'home' | 'progress'
 
 function App() {
   const [view, setView] = useState<View>('learn')
+  const [readingArticleId, setReadingArticleId] = useState<string | null>(null)
 
   const navItems = useMemo(
     () => [
       { id: 'learn' as const, label: '学习', icon: BookOpen },
       { id: 'spelling' as const, label: '拼写', icon: Keyboard },
       { id: 'sentence' as const, label: '造句', icon: PenLine },
+      { id: 'reading' as const, label: '阅读', icon: BookOpenText },
       { id: 'review' as const, label: '复习', icon: Repeat },
       { id: 'home' as const, label: '词库', icon: Layers },
       { id: 'progress' as const, label: '进度', icon: LineChart },
@@ -34,7 +38,7 @@ function App() {
             </div>
             <div>
               <h1 className="text-xl font-semibold leading-tight">NextWord</h1>
-              <p className="text-sm text-neutral-600">翻译、拼写与造句训练</p>
+              <p className="text-sm text-neutral-600">翻译、拼写、造句与阅读训练</p>
             </div>
           </div>
 
@@ -66,6 +70,22 @@ function App() {
         {view === 'learn' && <WordCard />}
         {view === 'spelling' && <SpellingMode />}
         {view === 'sentence' && <SentenceStudio />}
+        {view === 'reading' && (
+          readingArticleId ? (
+            <ArticleReader
+              articleId={readingArticleId}
+              onBack={() => {
+                setReadingArticleId(null)
+              }}
+            />
+          ) : (
+            <ArticleLibrary
+              onOpen={(articleId) => {
+                setReadingArticleId(articleId)
+              }}
+            />
+          )
+        )}
         {view === 'review' && <ReviewQueue />}
         {view === 'home' && <Home onStart={() => setView('learn')} />}
         {view === 'progress' && <Progress />}
