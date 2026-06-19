@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.AI;
 using NextWord.Domain.Interfaces;
 using NextWord.Domain.Services;
+using NextWord.Infrastructure.Caching;
 using NextWord.Infrastructure.Data;
 using NextWord.Infrastructure.Repositories;
 using NextWord.Infrastructure.Services;
@@ -47,6 +48,7 @@ public static class DependencyInjection
         services.AddScoped<IChallengeService, ChallengeService>();
         services.AddScoped<LevelDashboardService>();
         services.AddSingleton<ISm2Service, Sm2Service>();
+        services.AddSingleton<ICacheService, MemoryCacheService>();
         services.AddSingleton<IModelProfileResolver, ModelProfileResolver>();
         services.AddSingleton<LlmMockProvider>();
 
@@ -62,11 +64,12 @@ public static class DependencyInjection
         if (openAiOptions.Enabled && !string.IsNullOrWhiteSpace(openAiOptions.ApiKey))
         {
             services.AddSingleton<IChatClient>(_ => new ChatClient(openAiOptions.Model, openAiOptions.ApiKey).AsIChatClient());
-            services.AddSingleton<ILLMProvider, LlmChatClientProvider>();
+            services.AddSingleton<LlmChatClientProvider>();
+            services.AddSingleton<ILLMProvider>(sp => new LlmRetryProvider(sp.GetRequiredService<LlmChatClientProvider>()));
         }
         else
         {
-            services.AddSingleton<ILLMProvider>(sp => sp.GetRequiredService<LlmMockProvider>());
+            services.AddSingleton<ILLMProvider>(sp => new LlmRetryProvider(sp.GetRequiredService<LlmMockProvider>()));
         }
 
         return services;

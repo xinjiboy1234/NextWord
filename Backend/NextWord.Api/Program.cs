@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json.Serialization;
 using NextWord.Api.Endpoints;
+using NextWord.Api.HealthChecks;
 using NextWord.Infrastructure;
 using NextWord.Infrastructure.Data;
 
@@ -8,6 +9,9 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
 builder.Services.AddMemoryCache();
+builder.Services.AddHealthChecks()
+    .AddCheck<DbHealthCheck>("database")
+    .AddCheck<LlmHealthCheck>("llm");
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
@@ -35,6 +39,7 @@ app.UseCors("Frontend");
 
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok", name = "NextWord.Api" }))
     .WithTags("Health");
+app.MapHealthChecks("/api/health/details");
 app.MapNextWordEndpoints();
 
 using (var scope = app.Services.CreateScope())

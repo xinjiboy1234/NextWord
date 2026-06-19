@@ -1,0 +1,16 @@
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: Backend/NextWord.Api/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Sqlite: Data Source=/data/nextword.db
+      Database__Provider: Sqlite
+    volumes:
+      - nextword-data:/data
+
+volumes:
+  nextword-data:

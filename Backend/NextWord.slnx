@@ -3,4 +3,5 @@
   <Project Path="NextWord.Api/NextWord.Api.csproj" />
   <Project Path="NextWord.Domain/NextWord.Domain.csproj" />
   <Project Path="NextWord.Infrastructure/NextWord.Infrastructure.csproj" />
+  <Project Path="NextWord.UnitTests/NextWord.UnitTests.csproj" />
 </Solution>
