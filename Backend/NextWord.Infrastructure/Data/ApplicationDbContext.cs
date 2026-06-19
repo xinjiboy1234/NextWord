@@ -103,6 +103,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.Property(progress => progress.LevelStartDate);
             entity.Property(progress => progress.IsLevelLocked);
             entity.Property(progress => progress.HasCompletedInitialAssessment);
+            entity.Property(progress => progress.PendingReviewCount);
+            entity.Property(progress => progress.IsUpgradeCandidate);
             entity.HasOne(progress => progress.User)
                 .WithMany(user => user.ProgressRecords)
                 .HasForeignKey(progress => progress.UserId)

@@ -1,5 +1,8 @@
 import { BookOpen, BookOpenText, ClipboardCheck, GraduationCap, Keyboard, Layers, LineChart, PenLine, Repeat, Sparkles, Trophy } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { api } from './api/client'
+import { endpoints } from './api/endpoints'
+import { OnboardingBanner } from './components/OnboardingBanner'
 import { ArticleLibrary } from './pages/ArticleLibrary'
 import { ArticleReader } from './pages/ArticleReader'
 import { ChallengeMode } from './pages/ChallengeMode'
@@ -11,12 +14,36 @@ import { ReviewQueue } from './pages/ReviewQueue'
 import { SentenceStudio } from './pages/SentenceStudio'
 import { SpellingMode } from './pages/SpellingMode'
 import { WordCard } from './pages/WordCard'
+import type { ProgressSummary } from './types/models'
 
 type View = 'learn' | 'spelling' | 'sentence' | 'reading' | 'assessment' | 'challenge' | 'level' | 'review' | 'home' | 'progress'
+
+const ONBOARDING_DISMISS_KEY = 'nextword.onboarding.dismissed'
 
 function App() {
   const [view, setView] = useState<View>('learn')
   const [readingArticleId, setReadingArticleId] = useState<string | null>(null)
+  const [progress, setProgress] = useState<ProgressSummary | null>(null)
+  const [onboardingDismissed, setOnboardingDismissed] = useState(
+    () => localStorage.getItem(ONBOARDING_DISMISS_KEY) === '1',
+  )
+
+  useEffect(() => {
+    async function loadProgress() {
+      try {
+        const response = await api.get<ProgressSummary>(endpoints.progress)
+        setProgress(response.data)
+      } catch {
+        setProgress(null)
+      }
+    }
+
+    void loadProgress()
+  }, [view])
+
+  const showOnboarding = progress !== null
+    && !progress.hasCompletedInitialAssessment
+    && !onboardingDismissed
 
   const navItems = useMemo(
     () => [
@@ -73,6 +100,15 @@ function App() {
       </header>
 
       <main className="mx-auto grid max-w-6xl gap-5 px-4 py-6">
+        {showOnboarding && (
+          <OnboardingBanner
+            onStartAssessment={() => setView('assessment')}
+            onDismiss={() => {
+              localStorage.setItem(ONBOARDING_DISMISS_KEY, '1')
+              setOnboardingDismissed(true)
+            }}
+          />
+        )}
         {view === 'learn' && <WordCard />}
         {view === 'spelling' && <SpellingMode />}
         {view === 'sentence' && <SentenceStudio />}

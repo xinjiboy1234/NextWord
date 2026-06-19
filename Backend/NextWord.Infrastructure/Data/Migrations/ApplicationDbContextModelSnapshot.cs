@@ -507,6 +507,12 @@ namespace NextWord.Infrastructure.Data.Migrations
                     b.Property<bool>("IsLevelLocked")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("IsUpgradeCandidate")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("PendingReviewCount")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("OverallLevel")
                         .IsRequired()
                         .HasMaxLength(8)

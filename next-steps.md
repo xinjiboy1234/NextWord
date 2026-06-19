@@ -2,15 +2,14 @@
 
 按优先级排序，可执行、可验证。
 
-## P0 — 可选后续增强
-1. RedisCacheService 生产缓存（替换 MemoryCache）
-2. PostgreSQL 迁移与 docker-compose 扩展
-3. 集成测试项目（Assessment / Article API）
-4. LLM 遥测与成本统计装饰器
-5. 后台 LevelCheckWorker / ReviewReminderWorker
-6. 首次登录引导至 InitialAssessment
+## P0 — 生产增强
+1. RedisCacheService + Cache:Provider 配置切换
+2. docker-compose 增加 PostgreSQL + Redis 服务
+3. LLM 遥测装饰器（耗时/ProfileId 日志）
+4. 完善 EF snapshot（Assessment 实体与 Phase3 迁移对齐）
+5. Playwright E2E：阅读 + 初测主路径
 
 ## P1 — 质量与运维
-1. 修复 SQLitePCLRaw 安全告警（升级依赖）
-2. 完善 EF snapshot 与 Assessment 实体快照一致性
-3. E2E 测试（Playwright）覆盖阅读与测评主路径
+1. 修复 SQLitePCLRaw NU1903 安全告警
+2. 升级候选用户前端通知（IsUpgradeCandidate 横幅）
+3. ReviewReminderWorker 推送/邮件（可选）

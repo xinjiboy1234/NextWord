@@ -32,6 +32,9 @@ export interface ProgressSummary {
   lastStudyDate: string | null
   totalLearned: number
   dueReviews: number
+  pendingReviewCount: number
   totalLogs: number
   accuracyPercent: number
+  hasCompletedInitialAssessment: boolean
+  isUpgradeCandidate: boolean
 }

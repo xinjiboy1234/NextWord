@@ -4,4 +4,5 @@
   <Project Path="NextWord.Domain/NextWord.Domain.csproj" />
   <Project Path="NextWord.Infrastructure/NextWord.Infrastructure.csproj" />
   <Project Path="NextWord.UnitTests/NextWord.UnitTests.csproj" />
+  <Project Path="NextWord.IntegrationTests/NextWord.IntegrationTests.csproj" />
 </Solution>

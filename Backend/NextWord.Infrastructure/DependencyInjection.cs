@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.AI;
 using NextWord.Domain.Interfaces;
 using NextWord.Domain.Services;
+using NextWord.Infrastructure.Background;
 using NextWord.Infrastructure.Caching;
 using NextWord.Infrastructure.Data;
 using NextWord.Infrastructure.Repositories;
@@ -71,6 +72,9 @@ public static class DependencyInjection
         {
             services.AddSingleton<ILLMProvider>(sp => new LlmRetryProvider(sp.GetRequiredService<LlmMockProvider>()));
         }
+
+        services.AddHostedService<ReviewReminderWorker>();
+        services.AddHostedService<LevelCheckWorker>();
 
         return services;
     }

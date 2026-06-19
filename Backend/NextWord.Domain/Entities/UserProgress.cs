@@ -16,6 +16,8 @@ public sealed class UserProgress
     public DateOnly? LevelStartDate { get; set; }
     public bool IsLevelLocked { get; set; }
     public bool HasCompletedInitialAssessment { get; set; }
+    public int PendingReviewCount { get; set; }
+    public bool IsUpgradeCandidate { get; set; }
 
     public User? User { get; set; }
 }

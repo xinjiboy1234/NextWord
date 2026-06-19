@@ -38,8 +38,11 @@ public static class ProgressEndpoints
                 progress.VocabLevel.ToString(),
                 progress.StreakDays,
                 progress.LastStudyDate,
+                progress.HasCompletedInitialAssessment,
+                progress.IsUpgradeCandidate,
                 totalLearned,
                 dueReviews,
+                progress.PendingReviewCount,
                 totalLogs,
                 totalLogs == 0 ? 0 : Math.Round((double)correctLogs / totalLogs * 100, 1)));
         });
@@ -53,7 +56,10 @@ public sealed record ProgressDto(
     string VocabLevel,
     int StreakDays,
     DateOnly? LastStudyDate,
+    bool HasCompletedInitialAssessment,
+    bool IsUpgradeCandidate,
     int TotalLearned,
     int DueReviews,
+    int PendingReviewCount,
     int TotalLogs,
     double AccuracyPercent);

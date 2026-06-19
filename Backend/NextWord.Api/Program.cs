@@ -42,11 +42,16 @@ app.MapGet("/api/health", () => Results.Ok(new { status = "ok", name = "NextWord
 app.MapHealthChecks("/api/health/details");
 app.MapNextWordEndpoints();
 
-using (var scope = app.Services.CreateScope())
+if (!app.Environment.IsEnvironment("Testing"))
 {
-    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    await db.Database.MigrateAsync();
-    await SeedData.InitializeAsync(db);
+    using (var scope = app.Services.CreateScope())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        await db.Database.MigrateAsync();
+        await SeedData.InitializeAsync(db);
+    }
 }
 
 app.Run();
+
+public partial class Program;
