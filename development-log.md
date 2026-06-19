@@ -65,3 +65,21 @@
 - [x] dotnet test 9/9 通过
 - [x] dotnet build 通过
 - [x] npm run build 通过
+
+---
+
+## 2026-06-19 — Phase 5 集成测试 + 引导 + 后台任务
+
+### 需求
+落实 next-steps P0：集成测试、首次测评引导、复习/等级后台 Worker。
+
+### 实现
+- UserProgress 增加 PendingReviewCount、IsUpgradeCandidate
+- ReviewReminderWorker（6h）、LevelCheckWorker（24h）
+- Progress API 返回 hasCompletedInitialAssessment / isUpgradeCandidate / pendingReviewCount
+- NextWord.IntegrationTests：Article + Assessment 共 3 用例
+- 前端 OnboardingBanner 引导未完成初测用户
+
+### 验收
+- [x] dotnet test 12/12 通过（单元 9 + 集成 3）
+- [x] npm run build 通过
