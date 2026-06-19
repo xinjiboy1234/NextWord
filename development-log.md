@@ -45,3 +45,23 @@
 ### 验收
 - [x] dotnet build 通过
 - [x] npm run build 通过
+
+---
+
+## 2026-06-19 — Phase 4 完善与优化
+
+### 需求
+缓存层、LLM 重试、单元测试、Docker 部署、HealthChecks、前端错误边界。
+
+### 实现
+- ICacheService + MemoryCacheService（开发环境）
+- LlmRetryProvider 装饰 ILLMProvider（指数退避 3 次）
+- NextWord.UnitTests：Sm2、AssessmentScoring、LevelUpgrade（9 用例通过）
+- Dockerfile + docker-compose.yml
+- /api/health/details HealthChecks
+- ErrorBoundary、LoadingSkeleton 组件
+
+### 验收
+- [x] dotnet test 9/9 通过
+- [x] dotnet build 通过
+- [x] npm run build 通过
