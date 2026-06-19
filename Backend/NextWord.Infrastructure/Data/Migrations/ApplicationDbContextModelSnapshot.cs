@@ -498,6 +498,15 @@ namespace NextWord.Infrastructure.Data.Migrations
                     b.Property<DateOnly?>("LastStudyDate")
                         .HasColumnType("TEXT");
 
+                    b.Property<DateOnly?>("LevelStartDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("HasCompletedInitialAssessment")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsLevelLocked")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("OverallLevel")
                         .IsRequired()
                         .HasMaxLength(8)

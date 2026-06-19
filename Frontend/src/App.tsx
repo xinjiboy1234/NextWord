@@ -1,15 +1,18 @@
-import { BookOpen, BookOpenText, Keyboard, Layers, LineChart, PenLine, Repeat, Sparkles } from 'lucide-react'
+import { BookOpen, BookOpenText, ClipboardCheck, GraduationCap, Keyboard, Layers, LineChart, PenLine, Repeat, Sparkles, Trophy } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { ArticleLibrary } from './pages/ArticleLibrary'
 import { ArticleReader } from './pages/ArticleReader'
+import { ChallengeMode } from './pages/ChallengeMode'
 import { Home } from './pages/Home'
+import { InitialAssessment } from './pages/InitialAssessment'
+import { LevelDashboardPage } from './pages/LevelDashboard'
 import { Progress } from './pages/Progress'
 import { ReviewQueue } from './pages/ReviewQueue'
 import { SentenceStudio } from './pages/SentenceStudio'
 import { SpellingMode } from './pages/SpellingMode'
 import { WordCard } from './pages/WordCard'
 
-type View = 'learn' | 'spelling' | 'sentence' | 'reading' | 'review' | 'home' | 'progress'
+type View = 'learn' | 'spelling' | 'sentence' | 'reading' | 'assessment' | 'challenge' | 'level' | 'review' | 'home' | 'progress'
 
 function App() {
   const [view, setView] = useState<View>('learn')
@@ -21,6 +24,9 @@ function App() {
       { id: 'spelling' as const, label: '拼写', icon: Keyboard },
       { id: 'sentence' as const, label: '造句', icon: PenLine },
       { id: 'reading' as const, label: '阅读', icon: BookOpenText },
+      { id: 'assessment' as const, label: '测评', icon: ClipboardCheck },
+      { id: 'challenge' as const, label: '挑战', icon: Trophy },
+      { id: 'level' as const, label: '等级', icon: GraduationCap },
       { id: 'review' as const, label: '复习', icon: Repeat },
       { id: 'home' as const, label: '词库', icon: Layers },
       { id: 'progress' as const, label: '进度', icon: LineChart },
@@ -86,6 +92,9 @@ function App() {
             />
           )
         )}
+        {view === 'assessment' && <InitialAssessment />}
+        {view === 'challenge' && <ChallengeMode />}
+        {view === 'level' && <LevelDashboardPage />}
         {view === 'review' && <ReviewQueue />}
         {view === 'home' && <Home onStart={() => setView('learn')} />}
         {view === 'progress' && <Progress />}

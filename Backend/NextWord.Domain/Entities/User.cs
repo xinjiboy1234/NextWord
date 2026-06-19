@@ -14,4 +14,7 @@ public sealed class User
     public List<SpellingLog> SpellingLogs { get; set; } = [];
     public List<ReadingLog> ReadingLogs { get; set; } = [];
     public List<ArticleComment> ArticleComments { get; set; } = [];
+    public List<Assessment> Assessments { get; set; } = [];
+    public List<ChallengeRecord> ChallengeRecords { get; set; } = [];
+    public List<LevelHistory> LevelHistories { get; set; } = [];
 }

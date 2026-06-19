@@ -21,4 +21,13 @@ export const endpoints = {
   readingLogFinish: (logId: string) => `/api/reading-logs/${logId}/finish`,
   readingLogLookup: (logId: string) => `/api/reading-logs/${logId}/lookup`,
   readingAgent: '/api/reading/agent',
+  assessmentStart: '/api/assessment/initial/start',
+  assessmentStep: (id: string, step: number) => `/api/assessment/${id}/step/${step}`,
+  assessmentSubmit: (id: string, step: number) => `/api/assessment/${id}/step/${step}`,
+  assessmentComplete: (id: string) => `/api/assessment/${id}/complete`,
+  challengeStart: '/api/challenge/start',
+  challengeSubmit: '/api/challenge/submit',
+  challengeRecent: '/api/challenge/recent',
+  levelDashboard: '/api/level/dashboard',
+  levelHistory: '/api/level/history',
 } as const

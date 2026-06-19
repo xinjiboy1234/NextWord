@@ -40,6 +40,12 @@ public static class DependencyInjection
         services.AddScoped<IArticleVocabService, ArticleVocabService>();
         services.AddScoped<ICommentService, CommentService>();
         services.AddScoped<IReadingAgentService, ReadingAssistantAgent>();
+        services.AddSingleton<IAssessmentScoringService, AssessmentScoringService>();
+        services.AddSingleton<ILevelEngine, LevelUpgradeEngine>();
+        services.AddScoped<IChallengePackGenerator, ChallengePackGenerator>();
+        services.AddScoped<IAssessmentService, AssessmentService>();
+        services.AddScoped<IChallengeService, ChallengeService>();
+        services.AddScoped<LevelDashboardService>();
         services.AddSingleton<ISm2Service, Sm2Service>();
         services.AddSingleton<IModelProfileResolver, ModelProfileResolver>();
         services.AddSingleton<LlmMockProvider>();

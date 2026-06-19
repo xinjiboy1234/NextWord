@@ -13,6 +13,9 @@ public sealed class UserProgress
     public CefrLevel ReadingLevel { get; set; } = CefrLevel.A1;
     public int StreakDays { get; set; }
     public DateOnly? LastStudyDate { get; set; }
+    public DateOnly? LevelStartDate { get; set; }
+    public bool IsLevelLocked { get; set; }
+    public bool HasCompletedInitialAssessment { get; set; }
 
     public User? User { get; set; }
 }

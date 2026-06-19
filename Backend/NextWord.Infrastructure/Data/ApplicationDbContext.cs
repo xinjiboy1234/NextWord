@@ -32,6 +32,10 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<ReadingLog> ReadingLogs => Set<ReadingLog>();
     public DbSet<ArticleComment> ArticleComments => Set<ArticleComment>();
     public DbSet<ArticleVocabMapping> ArticleVocabMappings => Set<ArticleVocabMapping>();
+    public DbSet<Assessment> Assessments => Set<Assessment>();
+    public DbSet<AssessmentRecord> AssessmentRecords => Set<AssessmentRecord>();
+    public DbSet<ChallengeRecord> ChallengeRecords => Set<ChallengeRecord>();
+    public DbSet<LevelHistory> LevelHistories => Set<LevelHistory>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -96,6 +100,9 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.Property(progress => progress.SpellingLevel).HasConversion<string>().HasMaxLength(8);
             entity.Property(progress => progress.SentenceLevel).HasConversion<string>().HasMaxLength(8);
             entity.Property(progress => progress.ReadingLevel).HasConversion<string>().HasMaxLength(8);
+            entity.Property(progress => progress.LevelStartDate);
+            entity.Property(progress => progress.IsLevelLocked);
+            entity.Property(progress => progress.HasCompletedInitialAssessment);
             entity.HasOne(progress => progress.User)
                 .WithMany(user => user.ProgressRecords)
                 .HasForeignKey(progress => progress.UserId)
@@ -279,6 +286,55 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
                 .WithMany(word => word.ArticleVocabMappings)
                 .HasForeignKey(mapping => mapping.WordId)
                 .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<Assessment>(entity =>
+        {
+            entity.HasKey(item => item.Id);
+            entity.Property(item => item.Type).HasConversion<string>().HasMaxLength(16);
+            entity.Property(item => item.Status).HasConversion<string>().HasMaxLength(16);
+            entity.Property(item => item.FinalLevel).HasConversion<string>().HasMaxLength(8);
+            entity.HasOne(item => item.User)
+                .WithMany(user => user.Assessments)
+                .HasForeignKey(item => item.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AssessmentRecord>(entity =>
+        {
+            entity.HasKey(record => record.Id);
+            entity.Property(record => record.Step).HasConversion<string>().HasMaxLength(16);
+            entity.Property(record => record.QuestionType).HasMaxLength(32);
+            entity.Property(record => record.QuestionsJson).HasMaxLength(16000);
+            entity.Property(record => record.AnswersJson).HasMaxLength(8000);
+            entity.Property(record => record.ScoresJson).HasMaxLength(4000);
+            entity.HasOne(record => record.Assessment)
+                .WithMany(assessment => assessment.Records)
+                .HasForeignKey(record => record.AssessmentId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ChallengeRecord>(entity =>
+        {
+            entity.HasKey(record => record.Id);
+            entity.Property(record => record.ChallengeType).HasConversion<string>().HasMaxLength(32);
+            entity.Property(record => record.AttemptedLevel).HasConversion<string>().HasMaxLength(8);
+            entity.HasOne(record => record.User)
+                .WithMany(user => user.ChallengeRecords)
+                .HasForeignKey(record => record.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<LevelHistory>(entity =>
+        {
+            entity.HasKey(history => history.Id);
+            entity.Property(history => history.FromLevel).HasConversion<string>().HasMaxLength(8);
+            entity.Property(history => history.ToLevel).HasConversion<string>().HasMaxLength(8);
+            entity.Property(history => history.Reason).HasConversion<string>().HasMaxLength(16);
+            entity.HasOne(history => history.User)
+                .WithMany(user => user.LevelHistories)
+                .HasForeignKey(history => history.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

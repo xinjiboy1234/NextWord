@@ -16,6 +16,9 @@ public static class EndpointRouteBuilderExtensions
         ReadingLogEndpoints.Map(app);
         CommentEndpoints.Map(app);
         ReadingAgentEndpoints.Map(app);
+        AssessmentEndpoints.Map(app);
+        ChallengeEndpoints.Map(app);
+        LevelEndpoints.Map(app);
         return app;
     }
 }

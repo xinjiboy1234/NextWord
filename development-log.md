@@ -22,3 +22,26 @@
 - [x] npm run build 通过
 - [x] 21 篇内置短文
 - [x] 阅读主流程不依赖真实 LLM（Mock 降级）
+
+---
+
+## 2026-06-19 — Phase 3 测评与挑战
+
+### 需求
+5 步初测、挑战测评、等级升降、等级历史与前端测评流程。
+
+### 决策
+- 测评编排由确定性 AssessmentService 完成，LLM 仅用于造句（复用既有能力）
+- 短板定级：overall = min(vocab, sentence, reading)
+- 挑战包预生成（ChallengePackGenerator）
+- AssessmentRecord 用 JSON 存题目/答案/分数
+
+### 实现
+- Assessment / AssessmentRecord / ChallengeRecord / LevelHistory 实体与迁移
+- AssessmentScoringService、LevelUpgradeEngine、ChallengePackGenerator
+- API：/api/assessment、/api/challenge、/api/level
+- 前端：InitialAssessment、ChallengeMode、LevelDashboard
+
+### 验收
+- [x] dotnet build 通过
+- [x] npm run build 通过
