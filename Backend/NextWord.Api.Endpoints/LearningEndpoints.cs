@@ -11,18 +11,17 @@ public static class LearningEndpoints
         var group = app.MapGroup("/api/learning").WithTags("Learning");
 
         group.MapPost("/submit", async (
+            HttpContext http,
             SubmitLearningRequest request,
             IUserRepository users,
             IWordRepository words,
             ISm2Service sm2,
             CancellationToken ct) =>
         {
-            var user = request.UserId.HasValue
-                ? await users.GetByIdAsync(request.UserId.Value, ct)
-                : await users.GetOrCreateDefaultUserAsync(ct);
+            var user = await UserResolver.ResolveAsync(http, request.UserId, users, ct);
             if (user is null)
             {
-                return Results.NotFound(new { message = "User not found." });
+                return Results.Unauthorized();
             }
 
             var word = await words.GetByIdAsync(request.WordId, ct);

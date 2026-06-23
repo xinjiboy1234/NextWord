@@ -113,3 +113,22 @@ Redis 缓存、docker-compose 生产栈、LLM 遥测、EF snapshot/迁移对齐�
 - [x] dotnet test 15/15 通过（单元 12 + 集成 3）
 - [x] npm run build 通过
 - [x] npm run test:e2e 2/2 通过
+
+---
+
+## 2026-06-24 — 主导航重构与首次测评自动引导
+
+### 需求
+1. 测评、挑战、词库移至「我的」菜单
+2. 其余功能以卡片形式展示在主界面（登录后默认首页）
+3. 未完成首次测评时自动进入测评流程（取代黄色引导横幅）
+
+### 实现
+- 新增 `Dashboard.tsx` 卡片首页（学习、拼写、造句、阅读、等级、复习、进度）
+- `App.tsx` 精简顶栏为「返回首页」+「我的」；默认视图改为 dashboard
+- `ProfilePage` 增加「更多功能」区块（测评、挑战、词库）
+- `InitialAssessment` 支持 `autoStart` 与 `onComplete` 回调
+- 移除 `OnboardingBanner` 使用；进度加载完成前显示加载态避免首页闪烁
+
+### 验收
+- [x] npm run build 通过

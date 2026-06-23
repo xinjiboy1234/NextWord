@@ -10,19 +10,17 @@ public static class SpellingEndpoints
         var group = app.MapGroup("/api/spelling").WithTags("Spelling");
 
         group.MapGet("/queue", async (
-            Guid? userId,
+            HttpContext http,
             int? count,
             IUserRepository users,
             IReviewQueueService reviews,
             IWordRepository words,
             CancellationToken ct) =>
         {
-            var user = userId.HasValue
-                ? await users.GetByIdAsync(userId.Value, ct)
-                : await users.GetOrCreateDefaultUserAsync(ct);
+            var user = await UserResolver.ResolveAsync(http, null, users, ct);
             if (user is null)
             {
-                return Results.NotFound(new { message = "User not found." });
+                return Results.Unauthorized();
             }
 
             var due = await reviews.GetDueReviewsAsync(user.Id, Math.Clamp(count ?? 8, 1, 20), ct);
@@ -36,6 +34,7 @@ public static class SpellingEndpoints
         });
 
         group.MapPost("/submit", async (
+            HttpContext http,
             SubmitSpellingRequest request,
             IUserRepository users,
             ISpellingService spelling,
@@ -46,12 +45,10 @@ public static class SpellingEndpoints
                 return Results.BadRequest(new { message = "Spelling answer is required." });
             }
 
-            var user = request.UserId.HasValue
-                ? await users.GetByIdAsync(request.UserId.Value, ct)
-                : await users.GetOrCreateDefaultUserAsync(ct);
+            var user = await UserResolver.ResolveAsync(http, request.UserId, users, ct);
             if (user is null)
             {
-                return Results.NotFound(new { message = "User not found." });
+                return Results.Unauthorized();
             }
 
             try

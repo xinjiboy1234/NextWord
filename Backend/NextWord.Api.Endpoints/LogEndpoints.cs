@@ -9,9 +9,14 @@ public static class LogEndpoints
     {
         var group = app.MapGroup("/api/logs").WithTags("Logs");
 
-        group.MapGet("/summary", async (Guid? userId, ApplicationDbContext db, CancellationToken ct) =>
+        group.MapGet("/summary", async (HttpContext http, ApplicationDbContext db, CancellationToken ct) =>
         {
-            var resolvedUserId = userId ?? SeedData.DefaultUserId;
+            var resolvedUserId = UserResolver.GetAuthenticatedUserId(http);
+            if (!resolvedUserId.HasValue)
+            {
+                return Results.Unauthorized();
+            }
+
             var sentenceCount = await db.SentenceLogs.CountAsync(log => log.UserId == resolvedUserId, ct);
             var freeExpressionCount = await db.FreeExpressionLogs.CountAsync(log => log.UserId == resolvedUserId, ct);
             var spellingCount = await db.SpellingLogs.CountAsync(log => log.UserId == resolvedUserId, ct);
@@ -32,9 +37,14 @@ public static class LogEndpoints
                 dueReviews));
         });
 
-        group.MapGet("/recent", async (Guid? userId, int? count, ApplicationDbContext db, CancellationToken ct) =>
+        group.MapGet("/recent", async (HttpContext http, int? count, ApplicationDbContext db, CancellationToken ct) =>
         {
-            var resolvedUserId = userId ?? SeedData.DefaultUserId;
+            var resolvedUserId = UserResolver.GetAuthenticatedUserId(http);
+            if (!resolvedUserId.HasValue)
+            {
+                return Results.Unauthorized();
+            }
+
             var take = Math.Clamp(count ?? 12, 1, 30);
             var sentenceLogs = await db.SentenceLogs
                 .AsNoTracking()

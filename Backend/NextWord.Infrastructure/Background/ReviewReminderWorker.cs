@@ -2,7 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using NextWord.Domain.Interfaces;
 using NextWord.Infrastructure.Data;
 
 namespace NextWord.Infrastructure.Background;

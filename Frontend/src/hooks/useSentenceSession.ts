@@ -57,6 +57,11 @@ export function useSentenceSession() {
     setIndex((value) => Math.min(value + 1, Math.max(prompts.length - 1, 0)))
   }
 
+  function prev() {
+    setRating(null)
+    setIndex((value) => Math.max(0, value - 1))
+  }
+
   return useMemo(
     () => ({
       prompts,
@@ -70,6 +75,7 @@ export function useSentenceSession() {
       reload: load,
       submit,
       next,
+      prev,
     }),
     [prompts, current, index, rating, loading, submitting, error],
   )

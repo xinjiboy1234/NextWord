@@ -16,15 +16,12 @@ public static class WordEndpoints
             return Results.Ok(result.Select(WordDto.FromEntity));
         });
 
-        group.MapGet("/daily", async (Guid? userId, int? count, IUserRepository users, IWordRepository words, CancellationToken ct) =>
+        group.MapGet("/daily", async (HttpContext http, int? count, IUserRepository users, IWordRepository words, CancellationToken ct) =>
         {
-            var user = userId.HasValue
-                ? await users.GetByIdAsync(userId.Value, ct)
-                : await users.GetOrCreateDefaultUserAsync(ct);
-
+            var user = await UserResolver.ResolveAsync(http, null, users, ct);
             if (user is null)
             {
-                return Results.NotFound(new { message = "User not found." });
+                return Results.Unauthorized();
             }
 
             var result = await words.GetDailyWordsAsync(user.Id, Math.Clamp(count ?? 5, 1, 20), ct);

@@ -1,4 +1,3 @@
-using NextWord.Domain.Entities;
 using NextWord.Domain.Enums;
 using NextWord.Domain.Services;
 

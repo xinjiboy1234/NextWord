@@ -1,7 +1,7 @@
-using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using NextWord.Domain.Interfaces;
 using NextWord.Domain.Models;
+using System.Diagnostics;
 
 namespace NextWord.Infrastructure.Services;
 

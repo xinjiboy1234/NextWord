@@ -1,9 +1,10 @@
-import { ArrowRight, RotateCcw } from 'lucide-react'
+import { RotateCcw } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { AiRevision } from '../components/AiRevision'
 import { ErrorAnalysis } from '../components/ErrorAnalysis'
 import { SceneSelector } from '../components/SceneSelector'
 import { ScoreCard } from '../components/ScoreCard'
+import { StepNavigator } from '../components/StepNavigator'
 import { useScoreDisplay } from '../hooks/useScoreDisplay'
 import { useSentenceSession } from '../hooks/useSentenceSession'
 
@@ -70,12 +71,18 @@ export function SentenceCard() {
             className="inline-flex h-11 items-center gap-2 rounded-md bg-emerald-700 px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-neutral-300"
           >
             提交评分
-            <ArrowRight size={18} aria-hidden="true" />
           </button>
           {session.rating && (
-            <button type="button" onClick={session.next} className="h-11 rounded-md bg-neutral-950 px-4 text-sm font-semibold text-white">
-              下一题
-            </button>
+            <StepNavigator
+              index={session.index}
+              total={session.total}
+              onPrevious={session.prev}
+              onNext={session.next}
+              canPrevious={session.index > 0}
+              canNext={session.index < session.total - 1}
+              nextLabel="下一题"
+              showProgress={false}
+            />
           )}
         </div>
       </section>

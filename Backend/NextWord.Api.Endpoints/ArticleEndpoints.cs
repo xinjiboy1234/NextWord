@@ -24,17 +24,16 @@ public static class ArticleEndpoints
 
         group.MapPost("/{id:guid}/reading/start", async (
             Guid id,
+            HttpContext http,
             StartReadingRequest request,
             IUserRepository users,
             IArticleService articles,
             CancellationToken ct) =>
         {
-            var user = request.UserId.HasValue
-                ? await users.GetByIdAsync(request.UserId.Value, ct)
-                : await users.GetOrCreateDefaultUserAsync(ct);
+            var user = await UserResolver.ResolveAsync(http, request.UserId, users, ct);
             if (user is null)
             {
-                return Results.NotFound(new { message = "User not found." });
+                return Results.Unauthorized();
             }
 
             try
@@ -50,17 +49,16 @@ public static class ArticleEndpoints
 
         group.MapPost("/{id:guid}/vocab-extract", async (
             Guid id,
+            HttpContext http,
             VocabExtractRequestBody request,
             IUserRepository users,
             IArticleVocabService vocab,
             CancellationToken ct) =>
         {
-            var user = request.UserId.HasValue
-                ? await users.GetByIdAsync(request.UserId.Value, ct)
-                : await users.GetOrCreateDefaultUserAsync(ct);
+            var user = await UserResolver.ResolveAsync(http, request.UserId, users, ct);
             if (user is null)
             {
-                return Results.NotFound(new { message = "User not found." });
+                return Results.Unauthorized();
             }
 
             try
@@ -135,6 +133,7 @@ public static class CommentEndpoints
 
         group.MapPost("/", async (
             Guid articleId,
+            HttpContext http,
             AddCommentRequest request,
             IUserRepository users,
             ICommentService comments,
@@ -145,12 +144,10 @@ public static class CommentEndpoints
                 return Results.BadRequest(new { message = "Comment text is required." });
             }
 
-            var user = request.UserId.HasValue
-                ? await users.GetByIdAsync(request.UserId.Value, ct)
-                : await users.GetOrCreateDefaultUserAsync(ct);
+            var user = await UserResolver.ResolveAsync(http, request.UserId, users, ct);
             if (user is null)
             {
-                return Results.NotFound(new { message = "User not found." });
+                return Results.Unauthorized();
             }
 
             try

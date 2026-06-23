@@ -5,10 +5,11 @@ using NextWord.Infrastructure.Data;
 
 namespace NextWord.Infrastructure.Services;
 
-public sealed class FreeExpressionService(ApplicationDbContext db, ILLMProvider llm) : IFreeExpressionService
+public sealed class FreeExpressionService(ApplicationDbContext db, IUserLlmProviderFactory llmFactory) : IFreeExpressionService
 {
     public async Task<FreeExpressionLog> RateAsync(Guid userId, string userText, string userLevel, CancellationToken cancellationToken)
     {
+        var llm = await llmFactory.GetForUserAsync(userId, cancellationToken);
         var rating = await llm.RateSentenceAsync(new SentenceRatingRequest(
             userText.Trim(),
             "free expression",

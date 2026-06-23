@@ -7,7 +7,11 @@ using NextWord.Infrastructure.Data;
 
 namespace NextWord.Infrastructure.Services;
 
-public sealed class ArticleVocabService(ApplicationDbContext db, ILLMProvider llm, IUserRepository users) : IArticleVocabService
+public sealed class ArticleVocabService(
+    ApplicationDbContext db,
+    IUserLlmProviderFactory llmFactory,
+    ILLMProvider globalLlm,
+    IUserRepository users) : IArticleVocabService
 {
     public async Task<IReadOnlyList<ArticleVocabMapping>> GetMappingsAsync(Guid articleId, CancellationToken cancellationToken)
     {
@@ -31,6 +35,7 @@ public sealed class ArticleVocabService(ApplicationDbContext db, ILLMProvider ll
             return existing;
         }
 
+        var llm = await llmFactory.GetForUserAsync(userId, cancellationToken);
         var extraction = await llm.ExtractVocabAsync(new VocabExtractRequest(
             article.Title,
             article.Content,
@@ -81,7 +86,7 @@ public sealed class ArticleVocabService(ApplicationDbContext db, ILLMProvider ll
                 CefrLevel.A2);
         }
 
-        return await llm.GetDefinitionAsync(new DefinitionRequest(
+        return await globalLlm.GetDefinitionAsync(new DefinitionRequest(
             lemma,
             context,
             new LlmRequestOptions("reading-agent", "word_lookup")), cancellationToken);

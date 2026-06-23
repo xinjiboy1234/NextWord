@@ -1,10 +1,8 @@
 import { expect, test } from '@playwright/test'
-import { dismissOnboarding } from './helpers'
 
 test.describe('阅读模块', () => {
   test('短文库加载并打开文章', async ({ page }) => {
     await page.goto('/')
-    await dismissOnboarding(page)
     await page.getByRole('button', { name: '阅读' }).click()
 
     await expect(page.getByRole('heading', { name: '短文库' })).toBeVisible()

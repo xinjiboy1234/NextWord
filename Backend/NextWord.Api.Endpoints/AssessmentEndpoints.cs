@@ -1,7 +1,6 @@
 using NextWord.Domain.Enums;
 using NextWord.Domain.Interfaces;
 using NextWord.Infrastructure.Services;
-using NextWord.Domain.Models;
 
 namespace NextWord.Api.Endpoints;
 
@@ -11,10 +10,10 @@ public static class AssessmentEndpoints
     {
         var group = app.MapGroup("/api/assessment").WithTags("Assessment");
 
-        group.MapPost("/initial/start", async (AssessmentUserRequest request, IUserRepository users, IAssessmentService assessment, CancellationToken ct) =>
+        group.MapPost("/initial/start", async (HttpContext http, AssessmentUserRequest request, IUserRepository users, IAssessmentService assessment, CancellationToken ct) =>
         {
-            var user = await ResolveUserAsync(request.UserId, users, ct);
-            if (user is null) return Results.NotFound();
+            var user = await ResolveUserAsync(http, request.UserId, users, ct);
+            if (user is null) return Results.Unauthorized();
             var item = await assessment.StartInitialAsync(user.Id, ct);
             return Results.Ok(new { assessmentId = item.Id, status = item.Status.ToString() });
         });
@@ -59,8 +58,8 @@ public static class AssessmentEndpoints
         });
     }
 
-    private static async Task<Domain.Entities.User?> ResolveUserAsync(Guid? userId, IUserRepository users, CancellationToken ct)
-        => userId.HasValue ? await users.GetByIdAsync(userId.Value, ct) : await users.GetOrCreateDefaultUserAsync(ct);
+    private static Task<Domain.Entities.User?> ResolveUserAsync(HttpContext http, Guid? userId, IUserRepository users, CancellationToken ct)
+        => UserResolver.ResolveAsync(http, userId, users, ct);
 }
 
 public static class ChallengeEndpoints
@@ -69,21 +68,18 @@ public static class ChallengeEndpoints
     {
         var group = app.MapGroup("/api/challenge").WithTags("Challenge");
 
-        group.MapPost("/start", async (ChallengeStartRequest request, IUserRepository users, IChallengeService challenge, CancellationToken ct) =>
+        group.MapPost("/start", async (HttpContext http, ChallengeStartRequest request, IUserRepository users, IChallengeService challenge, CancellationToken ct) =>
         {
-            var user = userId(request.UserId, users, ct);
-            var resolved = await user;
-            if (resolved is null) return Results.NotFound();
+            var resolved = await UserResolver.ResolveAsync(http, request.UserId, users, ct);
+            if (resolved is null) return Results.Unauthorized();
             var pack = await challenge.StartChallengeAsync(resolved.Id, request.ConfirmationChallenge, ct);
             return Results.Ok(pack);
         });
 
-        group.MapPost("/submit", async (ChallengeSubmitRequest request, IUserRepository users, IChallengeService challenge, CancellationToken ct) =>
+        group.MapPost("/submit", async (HttpContext http, ChallengeSubmitRequest request, IUserRepository users, IChallengeService challenge, CancellationToken ct) =>
         {
-            var resolved = await (request.UserId.HasValue
-                ? users.GetByIdAsync(request.UserId.Value, ct)
-                : users.GetOrCreateDefaultUserAsync(ct));
-            if (resolved is null) return Results.NotFound();
+            var resolved = await UserResolver.ResolveAsync(http, request.UserId, users, ct);
+            if (resolved is null) return Results.Unauthorized();
             var record = await challenge.SubmitChallengeAsync(
                 resolved.Id,
                 request.ChallengeType,
@@ -95,19 +91,14 @@ public static class ChallengeEndpoints
             return Results.Ok(record);
         });
 
-        group.MapGet("/recent", async (Guid? userId, IUserRepository users, IChallengeService challenge, CancellationToken ct) =>
+        group.MapGet("/recent", async (HttpContext http, Guid? userId, IUserRepository users, IChallengeService challenge, CancellationToken ct) =>
         {
-            var resolved = await (userId.HasValue
-                ? users.GetByIdAsync(userId.Value, ct)
-                : users.GetOrCreateDefaultUserAsync(ct));
-            if (resolved is null) return Results.NotFound();
+            var resolved = await UserResolver.ResolveAsync(http, userId, users, ct);
+            if (resolved is null) return Results.Unauthorized();
             var records = await challenge.GetRecentAsync(resolved.Id, 10, ct);
             return Results.Ok(records);
         });
     }
-
-    private static Task<Domain.Entities.User?> userId(Guid? id, IUserRepository users, CancellationToken ct)
-        => id.HasValue ? users.GetByIdAsync(id.Value, ct) : users.GetOrCreateDefaultUserAsync(ct);
 }
 
 public static class LevelEndpoints
@@ -116,22 +107,18 @@ public static class LevelEndpoints
     {
         var group = app.MapGroup("/api/level").WithTags("Level");
 
-        group.MapGet("/dashboard", async (Guid? userId, IUserRepository users, LevelDashboardService dashboard, CancellationToken ct) =>
+        group.MapGet("/dashboard", async (HttpContext http, Guid? userId, IUserRepository users, LevelDashboardService dashboard, CancellationToken ct) =>
         {
-            var resolved = await (userId.HasValue
-                ? users.GetByIdAsync(userId.Value, ct)
-                : users.GetOrCreateDefaultUserAsync(ct));
-            if (resolved is null) return Results.NotFound();
+            var resolved = await UserResolver.ResolveAsync(http, userId, users, ct);
+            if (resolved is null) return Results.Unauthorized();
             var data = await dashboard.GetDashboardAsync(resolved.Id, ct);
             return Results.Ok(data);
         });
 
-        group.MapGet("/history", async (Guid? userId, IUserRepository users, LevelDashboardService dashboard, CancellationToken ct) =>
+        group.MapGet("/history", async (HttpContext http, Guid? userId, IUserRepository users, LevelDashboardService dashboard, CancellationToken ct) =>
         {
-            var resolved = await (userId.HasValue
-                ? users.GetByIdAsync(userId.Value, ct)
-                : users.GetOrCreateDefaultUserAsync(ct));
-            if (resolved is null) return Results.NotFound();
+            var resolved = await UserResolver.ResolveAsync(http, userId, users, ct);
+            if (resolved is null) return Results.Unauthorized();
             var data = await dashboard.GetHistoryAsync(resolved.Id, ct);
             return Results.Ok(data);
         });

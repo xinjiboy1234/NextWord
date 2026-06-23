@@ -4,8 +4,11 @@ public sealed class User
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public string DisplayName { get; set; } = string.Empty;
+    public string? Email { get; set; }
+    public string? PasswordHash { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
+    public UserLlmSettings? LlmSettings { get; set; }
     public List<UserProgress> ProgressRecords { get; set; } = [];
     public List<UserWordRelationship> WordRelationships { get; set; } = [];
     public List<WordLearningLog> LearningLogs { get; set; } = [];

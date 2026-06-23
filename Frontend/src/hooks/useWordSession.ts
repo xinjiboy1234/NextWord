@@ -37,6 +37,10 @@ export function useWordSession() {
     setIndex((value) => Math.min(value + 1, words.length))
   }, [words.length])
 
+  const prev = useCallback(() => {
+    setIndex((value) => Math.max(0, value - 1))
+  }, [])
+
   return {
     words,
     currentWord,
@@ -47,6 +51,7 @@ export function useWordSession() {
     error,
     reload: load,
     next,
+    prev,
     completed: words.length > 0 && index >= words.length,
   }
 }

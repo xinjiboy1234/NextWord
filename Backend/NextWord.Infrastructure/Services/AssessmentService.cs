@@ -1,10 +1,10 @@
-using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using NextWord.Domain.Entities;
 using NextWord.Domain.Enums;
 using NextWord.Domain.Interfaces;
 using NextWord.Domain.Models;
 using NextWord.Infrastructure.Data;
+using System.Text.Json;
 
 namespace NextWord.Infrastructure.Services;
 

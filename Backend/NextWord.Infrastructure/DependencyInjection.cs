@@ -1,11 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using NextWord.Domain.Interfaces;
 using NextWord.Domain.Services;
+using NextWord.Infrastructure.Auth;
 using NextWord.Infrastructure.Background;
 using NextWord.Infrastructure.Caching;
 using NextWord.Infrastructure.Data;
@@ -38,6 +39,10 @@ public static class DependencyInjection
 
         services.AddScoped<IWordRepository, WordRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IAuthService, AuthService>();
+        services.AddSingleton<IJwtTokenService, JwtTokenService>();
+        services.Configure<AuthOptions>(configuration.GetSection("Auth"));
+        services.AddScoped<IUserLlmProviderFactory, UserLlmProviderFactory>();
         services.AddScoped<IReviewQueueService, ReviewQueueService>();
         services.AddScoped<ISentenceService, SentenceService>();
         services.AddScoped<IFreeExpressionService, FreeExpressionService>();

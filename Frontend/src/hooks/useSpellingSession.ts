@@ -56,6 +56,11 @@ export function useSpellingSession() {
     setIndex((value) => Math.min(value + 1, Math.max(words.length - 1, 0)))
   }
 
+  function prev() {
+    setResult(null)
+    setIndex((value) => Math.max(0, value - 1))
+  }
+
   return useMemo(
     () => ({
       words,
@@ -69,6 +74,7 @@ export function useSpellingSession() {
       reload: load,
       submit,
       next,
+      prev,
     }),
     [words, currentWord, index, result, loading, submitting, error],
   )

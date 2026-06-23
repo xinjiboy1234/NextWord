@@ -4,6 +4,7 @@ import { AnswerInput } from '../components/AnswerInput'
 import { FeedbackArea } from '../components/FeedbackArea'
 import { ProgressBar } from '../components/ProgressBar'
 import { RatingButtons } from '../components/RatingButtons'
+import { StepNavigator } from '../components/StepNavigator'
 import { WordDisplay } from '../components/WordDisplay'
 import { useLearningLog } from '../hooks/useLearningLog'
 import { useWordSession } from '../hooks/useWordSession'
@@ -86,13 +87,15 @@ export function WordCard() {
           </div>
         ) : (
           <div className="rounded-md border border-neutral-200 bg-white p-5">
-            <button
-              type="button"
-              onClick={nextWord}
-              className="h-11 rounded-md bg-neutral-950 px-4 text-sm font-semibold text-white"
-            >
-              下一个
-            </button>
+            <StepNavigator
+              index={session.index}
+              total={session.total}
+              onPrevious={session.prev}
+              onNext={nextWord}
+              canPrevious={session.index > 0}
+              canNext={session.index < session.total - 1}
+              nextLabel="下一个"
+            />
           </div>
         )}
       </div>

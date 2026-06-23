@@ -1,5 +1,4 @@
 using System.Text.Json.Serialization;
-using NextWord.Domain.Enums;
 
 namespace NextWord.Domain.Services;
 

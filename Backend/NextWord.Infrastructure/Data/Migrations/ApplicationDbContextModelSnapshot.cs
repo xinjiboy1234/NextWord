@@ -650,9 +650,52 @@ namespace NextWord.Infrastructure.Data.Migrations
                         .HasMaxLength(80)
                         .HasColumnType("character varying(80)");
 
+                    b.Property<string>("Email")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("PasswordHash")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
                     b.HasKey("Id");
 
+                    b.HasIndex("Email")
+                        .IsUnique();
+
                     b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("NextWord.Domain.Entities.UserLlmSettings", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ApiKey")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<string>("BaseUrl")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("Model")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("UserLlmSettings");
                 });
 
             modelBuilder.Entity("NextWord.Domain.Entities.UserProgress", b =>
@@ -1087,6 +1130,17 @@ namespace NextWord.Infrastructure.Data.Migrations
                     b.Navigation("Word");
                 });
 
+            modelBuilder.Entity("NextWord.Domain.Entities.UserLlmSettings", b =>
+                {
+                    b.HasOne("NextWord.Domain.Entities.User", "User")
+                        .WithOne("LlmSettings")
+                        .HasForeignKey("NextWord.Domain.Entities.UserLlmSettings", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("NextWord.Domain.Entities.UserProgress", b =>
                 {
                     b.HasOne("NextWord.Domain.Entities.User", "User")
@@ -1174,6 +1228,8 @@ namespace NextWord.Infrastructure.Data.Migrations
                     b.Navigation("LearningLogs");
 
                     b.Navigation("LevelHistories");
+
+                    b.Navigation("LlmSettings");
 
                     b.Navigation("ProgressRecords");
 

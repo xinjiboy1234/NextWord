@@ -1,124 +1,174 @@
-import { BookOpen, BookOpenText, ClipboardCheck, GraduationCap, Keyboard, Layers, LineChart, PenLine, Repeat, Sparkles, Trophy } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { ArrowLeft, Sparkles } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
 import { api } from './api/client'
 import { endpoints } from './api/endpoints'
-import { OnboardingBanner } from './components/OnboardingBanner'
 import { UpgradeCandidateBanner } from './components/UpgradeCandidateBanner'
+import { UserAvatar } from './components/UserAvatar'
+import { useAuth } from './contexts/AuthContext'
+import { LoginPage } from './pages/LoginPage'
+
+import type { ProgressSummary } from './types/models'
 import { ArticleLibrary } from './pages/ArticleLibrary'
 import { ArticleReader } from './pages/ArticleReader'
 import { ChallengeMode } from './pages/ChallengeMode'
+import { Dashboard } from './pages/Dashboard'
 import { Home } from './pages/Home'
 import { InitialAssessment } from './pages/InitialAssessment'
 import { LevelDashboardPage } from './pages/LevelDashboard'
+import { ProfilePage } from './pages/ProfilePage'
 import { Progress } from './pages/Progress'
 import { ReviewQueue } from './pages/ReviewQueue'
 import { SentenceStudio } from './pages/SentenceStudio'
 import { SpellingMode } from './pages/SpellingMode'
 import { WordCard } from './pages/WordCard'
-import type { ProgressSummary } from './types/models'
 
-type View = 'learn' | 'spelling' | 'sentence' | 'reading' | 'assessment' | 'challenge' | 'level' | 'review' | 'home' | 'progress'
+type View =
+  | 'dashboard'
+  | 'learn'
+  | 'spelling'
+  | 'sentence'
+  | 'reading'
+  | 'assessment'
+  | 'challenge'
+  | 'level'
+  | 'review'
+  | 'home'
+  | 'progress'
+  | 'profile'
 
-const ONBOARDING_DISMISS_KEY = 'nextword.onboarding.dismissed'
 const UPGRADE_DISMISS_KEY = 'nextword.upgrade.dismissed'
 
 function App() {
-  const [view, setView] = useState<View>('learn')
+  const { isAuthenticated, user, loading } = useAuth()
+  const [view, setView] = useState<View>('dashboard')
   const [readingArticleId, setReadingArticleId] = useState<string | null>(null)
   const [progress, setProgress] = useState<ProgressSummary | null>(null)
-  const [onboardingDismissed, setOnboardingDismissed] = useState(
-    () => localStorage.getItem(ONBOARDING_DISMISS_KEY) === '1',
-  )
   const [upgradeDismissed, setUpgradeDismissed] = useState(
     () => localStorage.getItem(UPGRADE_DISMISS_KEY) === '1',
   )
 
+  const loadProgress = useCallback(async () => {
+    try {
+      const response = await api.get<ProgressSummary>(endpoints.progress)
+      setProgress(response.data)
+      return response.data
+    } catch {
+      setProgress(null)
+      return null
+    }
+  }, [])
+
   useEffect(() => {
-    async function loadProgress() {
-      try {
-        const response = await api.get<ProgressSummary>(endpoints.progress)
-        setProgress(response.data)
-      } catch {
-        setProgress(null)
-      }
+    if (!isAuthenticated) {
+      setProgress(null)
+      return
     }
 
     void loadProgress()
-  }, [view])
+  }, [isAuthenticated, loadProgress])
 
-  const showOnboarding = progress !== null
-    && !progress.hasCompletedInitialAssessment
-    && !onboardingDismissed
+  // 未完成首次测评时自动进入测评流程
+  useEffect(() => {
+    if (progress && !progress.hasCompletedInitialAssessment) {
+      setView('assessment')
+    }
+  }, [progress])
+
+  const handleAssessmentComplete = useCallback(() => {
+    void loadProgress().then((data) => {
+      if (data?.hasCompletedInitialAssessment) {
+        setView('dashboard')
+      }
+    })
+  }, [loadProgress])
+
+  const goHome = useCallback(() => {
+    setReadingArticleId(null)
+    if (progress && !progress.hasCompletedInitialAssessment) {
+      setView('assessment')
+      return
+    }
+    setView('dashboard')
+  }, [progress])
 
   const showUpgradeCandidate = progress !== null
     && progress.hasCompletedInitialAssessment
     && progress.isUpgradeCandidate
     && !upgradeDismissed
+    && view === 'dashboard'
 
-  const navItems = useMemo(
-    () => [
-      { id: 'learn' as const, label: '学习', icon: BookOpen },
-      { id: 'spelling' as const, label: '拼写', icon: Keyboard },
-      { id: 'sentence' as const, label: '造句', icon: PenLine },
-      { id: 'reading' as const, label: '阅读', icon: BookOpenText },
-      { id: 'assessment' as const, label: '测评', icon: ClipboardCheck },
-      { id: 'challenge' as const, label: '挑战', icon: Trophy },
-      { id: 'level' as const, label: '等级', icon: GraduationCap },
-      { id: 'review' as const, label: '复习', icon: Repeat },
-      { id: 'home' as const, label: '词库', icon: Layers },
-      { id: 'progress' as const, label: '进度', icon: LineChart },
-    ],
-    [],
-  )
+  const needsAssessment = progress !== null && !progress.hasCompletedInitialAssessment
+  const showBackButton = view !== 'dashboard' && !(needsAssessment && view === 'assessment')
+  const awaitingProgress = isAuthenticated && progress === null
+
+  if (loading) {
+    return (
+      <div className="grid min-h-dvh place-items-center bg-stone-50 text-neutral-600">
+        加载中...
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-dvh bg-stone-50 text-neutral-950">
+        <header className="border-b border-neutral-200 bg-white">
+          <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-4">
+            <div className="grid h-11 w-11 place-items-center rounded-md bg-emerald-700 text-white">
+              <Sparkles size={22} aria-hidden="true" />
+            </div>
+            <div>
+              <h1 className="text-xl font-semibold leading-tight">NextWord</h1>
+              <p className="text-sm text-neutral-600">请登录后使用学习功能</p>
+            </div>
+          </div>
+        </header>
+        <main className="mx-auto max-w-6xl px-4 py-8">
+          <LoginPage />
+        </main>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-dvh bg-stone-50 text-neutral-950">
       <header className="border-b border-neutral-200 bg-white">
-        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4">
           <div className="flex items-center gap-3">
             <div className="grid h-11 w-11 place-items-center rounded-md bg-emerald-700 text-white">
               <Sparkles size={22} aria-hidden="true" />
             </div>
             <div>
               <h1 className="text-xl font-semibold leading-tight">NextWord</h1>
-              <p className="text-sm text-neutral-600">翻译、拼写、造句与阅读训练</p>
+              <p className="text-sm text-neutral-600">你好，{user?.displayName}</p>
             </div>
           </div>
 
-          <nav aria-label="Primary navigation" className="flex flex-wrap gap-2">
-            {navItems.map((item) => {
-              const Icon = item.icon
-              const active = view === item.id
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => setView(item.id)}
-                  className={`inline-flex h-11 items-center gap-2 rounded-md border px-3 text-sm font-medium transition ${
-                    active
-                      ? 'border-emerald-700 bg-emerald-700 text-white'
-                      : 'border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-100'
-                  }`}
-                >
-                  <Icon size={18} aria-hidden="true" />
-                  {item.label}
-                </button>
-              )
-            })}
-          </nav>
+          <div className="flex items-center gap-2">
+            {showBackButton && (
+              <button
+                type="button"
+                onClick={goHome}
+                className="inline-flex h-11 items-center gap-2 rounded-md border border-neutral-200 bg-white px-3 text-sm font-medium text-neutral-700 hover:bg-neutral-100"
+              >
+                <ArrowLeft size={18} aria-hidden="true" />
+                返回首页
+              </button>
+            )}
+            <UserAvatar
+              displayName={user?.displayName ?? '用户'}
+              active={view === 'profile'}
+              onClick={() => setView('profile')}
+            />
+          </div>
         </div>
       </header>
 
       <main className="mx-auto grid max-w-6xl gap-5 px-4 py-6">
-        {showOnboarding && (
-          <OnboardingBanner
-            onStartAssessment={() => setView('assessment')}
-            onDismiss={() => {
-              localStorage.setItem(ONBOARDING_DISMISS_KEY, '1')
-              setOnboardingDismissed(true)
-            }}
-          />
-        )}
+        {awaitingProgress ? (
+          <p className="text-sm text-neutral-600">加载中...</p>
+        ) : (
+          <>
         {showUpgradeCandidate && (
           <UpgradeCandidateBanner
             onOpenLevel={() => setView('level')}
@@ -128,6 +178,7 @@ function App() {
             }}
           />
         )}
+        {view === 'dashboard' && <Dashboard onNavigate={setView} />}
         {view === 'learn' && <WordCard />}
         {view === 'spelling' && <SpellingMode />}
         {view === 'sentence' && <SentenceStudio />}
@@ -147,12 +198,24 @@ function App() {
             />
           )
         )}
-        {view === 'assessment' && <InitialAssessment />}
+        {view === 'assessment' && (
+          <InitialAssessment
+            autoStart={needsAssessment}
+            onComplete={handleAssessmentComplete}
+          />
+        )}
         {view === 'challenge' && <ChallengeMode />}
         {view === 'level' && <LevelDashboardPage />}
         {view === 'review' && <ReviewQueue />}
         {view === 'home' && <Home onStart={() => setView('learn')} />}
         {view === 'progress' && <Progress />}
+        {view === 'profile' && (
+          <ProfilePage
+            onNavigate={(target) => setView(target)}
+          />
+        )}
+          </>
+        )}
       </main>
     </div>
   )

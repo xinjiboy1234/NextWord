@@ -1,4 +1,10 @@
 export const endpoints = {
+  authRegister: '/api/auth/register',
+  authLogin: '/api/auth/login',
+  authMe: '/api/auth/me',
+  profile: '/api/profile',
+  profileLlm: '/api/profile/llm',
+  llmPresets: '/api/profile/llm/presets',
   words: '/api/words',
   dailyWords: '/api/words/daily',
   learningSubmit: '/api/learning/submit',

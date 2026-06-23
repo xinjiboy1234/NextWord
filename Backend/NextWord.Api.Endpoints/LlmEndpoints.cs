@@ -1,9 +1,9 @@
-using System.Security.Cryptography;
-using System.Text;
 using Microsoft.Extensions.Caching.Memory;
 using NextWord.Domain.Enums;
 using NextWord.Domain.Interfaces;
 using NextWord.Domain.Models;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace NextWord.Api.Endpoints;
 

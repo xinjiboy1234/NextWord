@@ -92,6 +92,7 @@ public sealed record ReadingAgentRequest(
     string? SelectedWord,
     string? ParagraphText,
     string UserLevel,
+    Guid? UserId = null,
     LlmRequestOptions? Options = null);
 
 public sealed record ReadingAgentSkillCall(

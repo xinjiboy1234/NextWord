@@ -6,7 +6,7 @@ using NextWord.Infrastructure.Data;
 
 namespace NextWord.Infrastructure.Services;
 
-public sealed class CommentService(ApplicationDbContext db, ILLMProvider llm) : ICommentService
+public sealed class CommentService(ApplicationDbContext db, IUserLlmProviderFactory llmFactory) : ICommentService
 {
     public async Task<IReadOnlyList<ArticleComment>> ListAsync(Guid articleId, CancellationToken cancellationToken)
     {
@@ -44,6 +44,7 @@ public sealed class CommentService(ApplicationDbContext db, ILLMProvider llm) : 
 
         if (requestAiReply)
         {
+            var llm = await llmFactory.GetForUserAsync(userId, cancellationToken);
             var reply = await llm.ReplyToCommentAsync(new CommentReplyRequest(
                 comment.ParagraphText,
                 comment.CommentText,

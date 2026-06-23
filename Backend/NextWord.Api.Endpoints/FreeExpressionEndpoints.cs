@@ -11,6 +11,7 @@ public static class FreeExpressionEndpoints
         var group = app.MapGroup("/api/free-expression").WithTags("Free Expression");
 
         group.MapPost("/rate", async (
+            HttpContext http,
             RateFreeExpressionRequest request,
             IUserRepository users,
             IFreeExpressionService expressions,
@@ -21,12 +22,10 @@ public static class FreeExpressionEndpoints
                 return Results.BadRequest(new { message = "Text is required." });
             }
 
-            var user = request.UserId.HasValue
-                ? await users.GetByIdAsync(request.UserId.Value, ct)
-                : await users.GetOrCreateDefaultUserAsync(ct);
+            var user = await UserResolver.ResolveAsync(http, request.UserId, users, ct);
             if (user is null)
             {
-                return Results.NotFound(new { message = "User not found." });
+                return Results.Unauthorized();
             }
 
             var log = await expressions.RateAsync(user.Id, request.UserText, request.UserLevel ?? "A2", ct);

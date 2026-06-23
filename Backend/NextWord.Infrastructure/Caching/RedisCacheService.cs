@@ -1,6 +1,6 @@
-using System.Text.Json;
 using Microsoft.Extensions.Caching.Distributed;
 using NextWord.Domain.Interfaces;
+using System.Text.Json;
 
 namespace NextWord.Infrastructure.Caching;
 

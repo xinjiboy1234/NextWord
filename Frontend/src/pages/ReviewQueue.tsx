@@ -2,6 +2,7 @@ import { RefreshCw } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { api } from '../api/client'
 import { endpoints } from '../api/endpoints'
+import { StepNavigator } from '../components/StepNavigator'
 import type { Word } from '../types/models'
 import type { LogSummary, RecentLog } from '../types/sentence'
 
@@ -10,6 +11,8 @@ export function ReviewQueue() {
   const [words, setWords] = useState<Word[]>([])
   const [logs, setLogs] = useState<RecentLog[]>([])
   const [loading, setLoading] = useState(true)
+  const [index, setIndex] = useState(0)
+  const [revealed, setRevealed] = useState(false)
 
   async function load() {
     setLoading(true)
@@ -21,6 +24,8 @@ export function ReviewQueue() {
     setSummary(summaryResponse.data)
     setWords(wordsResponse.data)
     setLogs(logsResponse.data)
+    setIndex(0)
+    setRevealed(false)
     setLoading(false)
   }
 
@@ -28,9 +33,15 @@ export function ReviewQueue() {
     void load()
   }, [])
 
+  useEffect(() => {
+    setRevealed(false)
+  }, [index])
+
   if (loading) {
     return <div className="rounded-md border border-neutral-200 bg-white p-6 text-sm text-neutral-600">正在加载复习队列...</div>
   }
+
+  const currentWord = words[index] ?? null
 
   return (
     <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
@@ -38,24 +49,45 @@ export function ReviewQueue() {
         <div className="flex items-center justify-between gap-3">
           <div>
             <h2 className="text-2xl font-semibold">今日复习</h2>
-            <p className="mt-1 text-sm text-neutral-600">{summary?.dueReviews ?? 0} 个词到期，按难度优先排列。</p>
+            <p className="mt-1 text-sm text-neutral-600">{summary?.dueReviews ?? 0} 个词到期，逐词复习。</p>
           </div>
           <button type="button" onClick={() => void load()} title="刷新" className="grid h-10 w-10 place-items-center rounded-md border border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-100">
             <RefreshCw size={18} aria-hidden="true" />
           </button>
         </div>
 
-        <div className="mt-5 grid gap-3">
-          {words.map((word) => (
-            <article key={word.id} className="rounded-md border border-neutral-200 p-4">
+        {!currentWord ? (
+          <p className="mt-5 text-sm text-neutral-600">暂无到期复习词。</p>
+        ) : (
+          <div className="mt-5 space-y-4">
+            <article className="rounded-md border border-neutral-200 p-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <h3 className="text-lg font-semibold">{word.lemma}</h3>
-                <span className="rounded-md bg-neutral-100 px-2 py-1 text-xs font-medium text-neutral-600">{word.cefrLevel}</span>
+                <h3 className="text-2xl font-semibold">{currentWord.lemma}</h3>
+                <span className="rounded-md bg-neutral-100 px-2 py-1 text-xs font-medium text-neutral-600">{currentWord.cefrLevel}</span>
               </div>
-              <p className="mt-2 text-sm text-neutral-700">{word.meanings.join('；')}</p>
+              <p className="mt-2 text-sm text-neutral-500">{currentWord.partOfSpeech} · {currentWord.phonetics}</p>
+              {revealed ? (
+                <p className="mt-4 text-base text-neutral-800">{currentWord.meanings.join('；')}</p>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setRevealed(true)}
+                  className="mt-4 inline-flex h-10 items-center rounded-md border border-neutral-200 bg-white px-4 text-sm font-medium text-neutral-700 hover:bg-neutral-100"
+                >
+                  显示释义
+                </button>
+              )}
             </article>
-          ))}
-        </div>
+            <StepNavigator
+              index={index}
+              total={words.length}
+              onPrevious={() => setIndex((value) => Math.max(0, value - 1))}
+              onNext={() => setIndex((value) => Math.min(value + 1, words.length - 1))}
+              canPrevious={index > 0}
+              canNext={index < words.length - 1}
+            />
+          </div>
+        )}
       </section>
 
       <aside className="grid content-start gap-4">

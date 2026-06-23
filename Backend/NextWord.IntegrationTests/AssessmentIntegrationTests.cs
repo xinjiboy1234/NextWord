@@ -9,9 +9,17 @@ public class AssessmentIntegrationTests(NextWordWebApplicationFactory factory)
     private readonly HttpClient _client = factory.CreateClient();
 
     [Fact]
-    public async Task Start_initial_assessment_returns_assessment_id()
+    public async Task Start_initial_assessment_requires_authentication()
     {
         var response = await _client.PostAsJsonAsync("/api/assessment/initial/start", new { });
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Start_initial_assessment_returns_assessment_id_when_authenticated()
+    {
+        var client = await IntegrationTestAuth.CreateAuthenticatedClientAsync(factory);
+        var response = await client.PostAsJsonAsync("/api/assessment/initial/start", new { });
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         var payload = await response.Content.ReadFromJsonAsync<StartAssessmentResponse>();
@@ -20,9 +28,17 @@ public class AssessmentIntegrationTests(NextWordWebApplicationFactory factory)
     }
 
     [Fact]
-    public async Task Get_progress_includes_assessment_flag()
+    public async Task Get_progress_requires_authentication()
     {
         var response = await _client.GetAsync("/api/progress");
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Get_progress_includes_assessment_flag_when_authenticated()
+    {
+        var client = await IntegrationTestAuth.CreateAuthenticatedClientAsync(factory);
+        var response = await client.GetAsync("/api/progress");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         var progress = await response.Content.ReadFromJsonAsync<ProgressResponse>();

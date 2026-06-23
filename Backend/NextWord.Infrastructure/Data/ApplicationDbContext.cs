@@ -1,7 +1,7 @@
-using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using NextWord.Domain.Entities;
+using System.Text.Json;
 
 namespace NextWord.Infrastructure.Data;
 
@@ -18,6 +18,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
         value => value.ToList());
 
     public DbSet<User> Users => Set<User>();
+    public DbSet<UserLlmSettings> UserLlmSettings => Set<UserLlmSettings>();
     public DbSet<Word> Words => Set<Word>();
     public DbSet<WordDifficultyAnnotation> WordDifficultyAnnotations => Set<WordDifficultyAnnotation>();
     public DbSet<DifficultyAnnotation> DifficultyAnnotations => Set<DifficultyAnnotation>();
@@ -43,6 +44,22 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
         {
             entity.HasKey(user => user.Id);
             entity.Property(user => user.DisplayName).HasMaxLength(80).IsRequired();
+            entity.Property(user => user.Email).HasMaxLength(120);
+            entity.HasIndex(user => user.Email).IsUnique();
+            entity.Property(user => user.PasswordHash).HasMaxLength(256);
+            entity.HasOne(user => user.LlmSettings)
+                .WithOne(settings => settings.User)
+                .HasForeignKey<UserLlmSettings>(settings => settings.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<UserLlmSettings>(entity =>
+        {
+            entity.HasKey(settings => settings.UserId);
+            entity.Property(settings => settings.Provider).HasConversion<string>().HasMaxLength(32);
+            entity.Property(settings => settings.BaseUrl).HasMaxLength(256).IsRequired();
+            entity.Property(settings => settings.Model).HasMaxLength(120).IsRequired();
+            entity.Property(settings => settings.ApiKey).HasMaxLength(512);
         });
 
         modelBuilder.Entity<Word>(entity =>

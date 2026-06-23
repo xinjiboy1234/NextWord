@@ -1,5 +1,4 @@
 using NextWord.Domain.Entities;
-using NextWord.Domain.Models;
 
 namespace NextWord.Domain.Interfaces;
 

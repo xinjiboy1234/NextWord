@@ -6,7 +6,7 @@ using NextWord.Infrastructure.Data;
 
 namespace NextWord.Infrastructure.Services;
 
-public sealed class SentenceService(ApplicationDbContext db, ILLMProvider llm) : ISentenceService
+public sealed class SentenceService(ApplicationDbContext db, IUserLlmProviderFactory llmFactory) : ISentenceService
 {
     public async Task<IReadOnlyList<Sentence>> GetPromptsAsync(int count, CancellationToken cancellationToken)
     {
@@ -28,6 +28,7 @@ public sealed class SentenceService(ApplicationDbContext db, ILLMProvider llm) :
         string userLevel,
         CancellationToken cancellationToken)
     {
+        var llm = await llmFactory.GetForUserAsync(userId, cancellationToken);
         var rating = await llm.RateSentenceAsync(new SentenceRatingRequest(
             userSentence.Trim(),
             targetWord.Trim(),

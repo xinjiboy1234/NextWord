@@ -45,7 +45,7 @@ export function LevelDashboardPage() {
           {dashboard.upgradeCandidate ? ' · 已达升级候选' : ''}
         </p>
         {!dashboard.hasCompletedInitialAssessment && (
-          <p className="mt-2 rounded-md bg-amber-50 p-2 text-sm text-amber-900">尚未完成首次测评，请前往「测评」页。</p>
+          <p className="mt-2 rounded-md bg-amber-50 p-2 text-sm text-amber-900">尚未完成首次测评，登录后将自动进入测评流程。</p>
         )}
       </section>
 

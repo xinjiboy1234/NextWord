@@ -17,6 +17,7 @@ public static class SentenceEndpoints
         });
 
         group.MapPost("/rate", async (
+            HttpContext http,
             RateSentenceRequest request,
             IUserRepository users,
             ISentenceService sentences,
@@ -27,12 +28,10 @@ public static class SentenceEndpoints
                 return Results.BadRequest(new { message = "Target word and sentence are required." });
             }
 
-            var user = request.UserId.HasValue
-                ? await users.GetByIdAsync(request.UserId.Value, ct)
-                : await users.GetOrCreateDefaultUserAsync(ct);
+            var user = await UserResolver.ResolveAsync(http, request.UserId, users, ct);
             if (user is null)
             {
-                return Results.NotFound(new { message = "User not found." });
+                return Results.Unauthorized();
             }
 
             var log = await sentences.RateAsync(

@@ -1,8 +1,9 @@
-import { ArrowRight, RotateCcw } from 'lucide-react'
+import { RotateCcw } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { AudioPlayer } from '../components/AudioPlayer'
 import { ErrorHighlight } from '../components/ErrorHighlight'
 import { SpellingInput } from '../components/SpellingInput'
+import { StepNavigator } from '../components/StepNavigator'
 import { useSpellingSession } from '../hooks/useSpellingSession'
 
 export function SpellingMode() {
@@ -67,10 +68,15 @@ export function SpellingMode() {
             </button>
           )}
           {session.result && (
-            <button type="button" onClick={session.next} className="inline-flex h-11 items-center gap-2 rounded-md bg-neutral-950 px-4 text-sm font-semibold text-white">
-              下一个
-              <ArrowRight size={18} aria-hidden="true" />
-            </button>
+            <StepNavigator
+              index={session.index}
+              total={session.total}
+              onPrevious={session.prev}
+              onNext={session.next}
+              canPrevious={session.index > 0}
+              canNext={session.index < session.total - 1}
+              nextLabel="下一个"
+            />
           )}
         </div>
       </section>

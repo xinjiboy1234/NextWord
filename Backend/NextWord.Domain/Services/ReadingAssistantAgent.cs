@@ -6,10 +6,13 @@ namespace NextWord.Domain.Services;
 /// <summary>
 /// 阅读辅助 Agent：根据 intent 选择并组合 skills，失败时回退到 Mock 能力。
 /// </summary>
-public sealed class ReadingAssistantAgent(ILLMProvider llm) : IReadingAgentService
+public sealed class ReadingAssistantAgent(IUserLlmProviderFactory llmFactory, ILLMProvider globalLlm) : IReadingAgentService
 {
     public async Task<ReadingAgentResponse> AssistAsync(ReadingAgentRequest request, CancellationToken cancellationToken)
     {
+        var llm = request.UserId.HasValue
+            ? await llmFactory.GetForUserAsync(request.UserId.Value, cancellationToken)
+            : globalLlm;
         var intent = request.Intent.Trim().ToLowerInvariant();
         var calls = new List<ReadingAgentSkillCall>();
         DefinitionResponse? definition = null;

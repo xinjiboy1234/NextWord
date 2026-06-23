@@ -1,6 +1,6 @@
+using Microsoft.EntityFrameworkCore;
 using NextWord.Domain.Interfaces;
 using NextWord.Infrastructure.Data;
-using Microsoft.EntityFrameworkCore;
 
 namespace NextWord.Api.Endpoints;
 
@@ -10,14 +10,12 @@ public static class ProgressEndpoints
     {
         var group = app.MapGroup("/api/progress").WithTags("Progress");
 
-        group.MapGet("/", async (Guid? userId, IUserRepository users, ApplicationDbContext db, CancellationToken ct) =>
+        group.MapGet("/", async (HttpContext http, Guid? userId, IUserRepository users, ApplicationDbContext db, CancellationToken ct) =>
         {
-            var user = userId.HasValue
-                ? await users.GetByIdAsync(userId.Value, ct)
-                : await users.GetOrCreateDefaultUserAsync(ct);
+            var user = await UserResolver.ResolveAsync(http, userId, users, ct);
             if (user is null)
             {
-                return Results.NotFound(new { message = "User not found." });
+                return Results.Unauthorized();
             }
 
             var progress = await users.GetOrCreateProgressAsync(user.Id, ct);

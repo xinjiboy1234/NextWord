@@ -1,6 +1,6 @@
-using System.Text.Json.Serialization;
 using NextWord.Domain.Enums;
 using NextWord.Domain.Models;
+using System.Text.Json.Serialization;
 
 namespace NextWord.Domain.Services;
 
