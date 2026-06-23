@@ -37,11 +37,21 @@ public sealed class ReviewReminderWorker(IServiceScopeFactory scopeFactory, ILog
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         var now = DateTimeOffset.UtcNow;
         var progressList = await db.UserProgress.ToListAsync(cancellationToken);
+        if (progressList.Count == 0)
+        {
+            return;
+        }
+
+        var userIds = progressList.Select(progress => progress.UserId).ToList();
+        var relationships = await db.UserWordRelationships
+            .AsNoTracking()
+            .Where(item => userIds.Contains(item.UserId))
+            .ToListAsync(cancellationToken);
 
         foreach (var progress in progressList)
         {
-            progress.PendingReviewCount = await db.UserWordRelationships
-                .CountAsync(item => item.UserId == progress.UserId && item.NextReviewDue <= now, cancellationToken);
+            progress.PendingReviewCount = relationships.Count(
+                item => item.UserId == progress.UserId && item.NextReviewDue <= now);
         }
 
         await db.SaveChangesAsync(cancellationToken);

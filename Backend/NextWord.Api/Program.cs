@@ -9,6 +9,11 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
 builder.Services.AddMemoryCache();
+builder.Services.Configure<HostOptions>(options =>
+{
+    // Worker 异常不应拖垮 API 进程（SQLite 开发环境尤其常见）
+    options.BackgroundServiceExceptionBehavior = BackgroundServiceExceptionBehavior.Ignore;
+});
 builder.Services.AddHealthChecks()
     .AddCheck<DbHealthCheck>("database")
     .AddCheck<LlmHealthCheck>("llm");

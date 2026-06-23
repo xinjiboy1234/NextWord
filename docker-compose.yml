@@ -1,16 +1,51 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: nextword
+      POSTGRES_USER: nextword
+      POSTGRES_PASSWORD: nextword
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nextword -d nextword"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   api:
     build:
-      context: ..
+      context: .
       dockerfile: Backend/NextWord.Api/Dockerfile
     ports:
       - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       ASPNETCORE_ENVIRONMENT: Production
-      ConnectionStrings__Sqlite: Data Source=/data/nextword.db
-      Database__Provider: Sqlite
+      Database__Provider: PostgreSql
+      ConnectionStrings__PostgreSql: Host=postgres;Port=5432;Database=nextword;Username=nextword;Password=nextword
+      Cache__Provider: Redis
+      ConnectionStrings__Redis: redis:6379
+      Cache__Redis__InstanceName: nextword
     volumes:
       - nextword-data:/data
 
 volumes:
   nextword-data:
+  postgres-data:

@@ -1,7 +1,9 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Logging;
 using NextWord.Domain.Interfaces;
 using NextWord.Domain.Services;
 using NextWord.Infrastructure.Background;
@@ -29,6 +31,8 @@ public static class DependencyInjection
             else
             {
                 options.UseSqlite(connectionString);
+                // 迁移快照按 PostgreSQL 设计；SQLite 开发库跳过 pending model 严格校验。
+                options.ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning));
             }
         });
 
@@ -49,7 +53,7 @@ public static class DependencyInjection
         services.AddScoped<IChallengeService, ChallengeService>();
         services.AddScoped<LevelDashboardService>();
         services.AddSingleton<ISm2Service, Sm2Service>();
-        services.AddSingleton<ICacheService, MemoryCacheService>();
+        RegisterCache(services, configuration);
         services.AddSingleton<IModelProfileResolver, ModelProfileResolver>();
         services.AddSingleton<LlmMockProvider>();
 
@@ -66,16 +70,42 @@ public static class DependencyInjection
         {
             services.AddSingleton<IChatClient>(_ => new ChatClient(openAiOptions.Model, openAiOptions.ApiKey).AsIChatClient());
             services.AddSingleton<LlmChatClientProvider>();
-            services.AddSingleton<ILLMProvider>(sp => new LlmRetryProvider(sp.GetRequiredService<LlmChatClientProvider>()));
+            services.AddSingleton<ILLMProvider>(sp => WrapLlmProvider(sp, sp.GetRequiredService<LlmChatClientProvider>()));
         }
         else
         {
-            services.AddSingleton<ILLMProvider>(sp => new LlmRetryProvider(sp.GetRequiredService<LlmMockProvider>()));
+            services.AddSingleton<ILLMProvider>(sp => WrapLlmProvider(sp, sp.GetRequiredService<LlmMockProvider>()));
         }
 
         services.AddHostedService<ReviewReminderWorker>();
         services.AddHostedService<LevelCheckWorker>();
 
         return services;
+    }
+
+    private static void RegisterCache(IServiceCollection services, IConfiguration configuration)
+    {
+        var cacheProvider = configuration["Cache:Provider"] ?? "Memory";
+        if (string.Equals(cacheProvider, "Redis", StringComparison.OrdinalIgnoreCase))
+        {
+            var redisConnection = configuration.GetConnectionString("Redis")
+                ?? configuration["Cache:Redis:ConnectionString"]
+                ?? "localhost:6379";
+            services.AddStackExchangeRedisCache(options =>
+            {
+                options.Configuration = redisConnection;
+                options.InstanceName = configuration["Cache:Redis:InstanceName"] ?? "nextword:";
+            });
+            services.AddSingleton<ICacheService, RedisCacheService>();
+            return;
+        }
+
+        services.AddSingleton<ICacheService, MemoryCacheService>();
+    }
+
+    private static ILLMProvider WrapLlmProvider(IServiceProvider sp, ILLMProvider inner)
+    {
+        var retried = new LlmRetryProvider(inner);
+        return new LlmTelemetryProvider(retried, sp.GetRequiredService<ILogger<LlmTelemetryProvider>>());
     }
 }

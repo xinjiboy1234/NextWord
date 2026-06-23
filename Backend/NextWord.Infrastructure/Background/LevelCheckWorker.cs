@@ -16,11 +16,7 @@ public sealed class LevelCheckWorker(IServiceScopeFactory scopeFactory, ILogger<
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        // 启动后先跑一次，便于开发验证
-        await RunLevelCheckAsync(stoppingToken);
-
-        using var timer = new PeriodicTimer(Interval);
-        while (await timer.WaitForNextTickAsync(stoppingToken))
+        while (!stoppingToken.IsCancellationRequested)
         {
             try
             {
@@ -30,6 +26,8 @@ public sealed class LevelCheckWorker(IServiceScopeFactory scopeFactory, ILogger<
             {
                 logger.LogError(ex, "Level check worker failed.");
             }
+
+            await Task.Delay(Interval, stoppingToken);
         }
     }
 
@@ -42,11 +40,12 @@ public sealed class LevelCheckWorker(IServiceScopeFactory scopeFactory, ILogger<
 
         foreach (var progress in progressList)
         {
-            var recentChallenges = await db.ChallengeRecords.AsNoTracking()
+            var recentChallenges = (await db.ChallengeRecords.AsNoTracking()
                 .Where(record => record.UserId == progress.UserId)
+                .ToListAsync(cancellationToken))
                 .OrderByDescending(record => record.Timestamp)
                 .Take(5)
-                .ToListAsync(cancellationToken);
+                .ToList();
 
             var check = levelEngine.EvaluateUpgradeCandidate(progress, recentChallenges);
             progress.IsUpgradeCandidate = check.IsCandidate;

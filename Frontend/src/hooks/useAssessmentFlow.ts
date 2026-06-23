@@ -20,7 +20,7 @@ export function useAssessmentFlow() {
     setLoading(true)
     setError(null)
     try {
-      const response = await api.post<{ assessmentId: string }>(endpoints.assessmentStart)
+      const response = await api.post<{ assessmentId: string }>(endpoints.assessmentStart, {})
       setAssessmentId(response.data.assessmentId)
       setStep(1)
       setFinalResult(null)

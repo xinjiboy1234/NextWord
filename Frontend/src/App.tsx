@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { api } from './api/client'
 import { endpoints } from './api/endpoints'
 import { OnboardingBanner } from './components/OnboardingBanner'
+import { UpgradeCandidateBanner } from './components/UpgradeCandidateBanner'
 import { ArticleLibrary } from './pages/ArticleLibrary'
 import { ArticleReader } from './pages/ArticleReader'
 import { ChallengeMode } from './pages/ChallengeMode'
@@ -19,6 +20,7 @@ import type { ProgressSummary } from './types/models'
 type View = 'learn' | 'spelling' | 'sentence' | 'reading' | 'assessment' | 'challenge' | 'level' | 'review' | 'home' | 'progress'
 
 const ONBOARDING_DISMISS_KEY = 'nextword.onboarding.dismissed'
+const UPGRADE_DISMISS_KEY = 'nextword.upgrade.dismissed'
 
 function App() {
   const [view, setView] = useState<View>('learn')
@@ -26,6 +28,9 @@ function App() {
   const [progress, setProgress] = useState<ProgressSummary | null>(null)
   const [onboardingDismissed, setOnboardingDismissed] = useState(
     () => localStorage.getItem(ONBOARDING_DISMISS_KEY) === '1',
+  )
+  const [upgradeDismissed, setUpgradeDismissed] = useState(
+    () => localStorage.getItem(UPGRADE_DISMISS_KEY) === '1',
   )
 
   useEffect(() => {
@@ -44,6 +49,11 @@ function App() {
   const showOnboarding = progress !== null
     && !progress.hasCompletedInitialAssessment
     && !onboardingDismissed
+
+  const showUpgradeCandidate = progress !== null
+    && progress.hasCompletedInitialAssessment
+    && progress.isUpgradeCandidate
+    && !upgradeDismissed
 
   const navItems = useMemo(
     () => [
@@ -106,6 +116,15 @@ function App() {
             onDismiss={() => {
               localStorage.setItem(ONBOARDING_DISMISS_KEY, '1')
               setOnboardingDismissed(true)
+            }}
+          />
+        )}
+        {showUpgradeCandidate && (
+          <UpgradeCandidateBanner
+            onOpenLevel={() => setView('level')}
+            onDismiss={() => {
+              localStorage.setItem(UPGRADE_DISMISS_KEY, '1')
+              setUpgradeDismissed(true)
             }}
           />
         )}

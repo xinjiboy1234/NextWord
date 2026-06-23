@@ -158,7 +158,10 @@ public sealed class AssessmentService(
 
     private async Task<IReadOnlyList<VocabQuizQuestion>> BuildVocabQuestionsAsync(CancellationToken cancellationToken)
     {
-        var words = await db.Words.AsNoTracking().OrderBy(_ => Guid.NewGuid()).Take(12).ToListAsync(cancellationToken);
+        var words = (await db.Words.AsNoTracking().ToListAsync(cancellationToken))
+            .OrderBy(_ => Random.Shared.Next())
+            .Take(12)
+            .ToList();
         return words.Select(word =>
         {
             var correct = word.Meanings.FirstOrDefault() ?? word.Lemma;
@@ -178,7 +181,10 @@ public sealed class AssessmentService(
 
     private async Task<IReadOnlyList<SpellingQuizQuestion>> BuildSpellingQuestionsAsync(CancellationToken cancellationToken)
     {
-        var words = await db.Words.AsNoTracking().OrderBy(_ => Guid.NewGuid()).Take(10).ToListAsync(cancellationToken);
+        var words = (await db.Words.AsNoTracking().ToListAsync(cancellationToken))
+            .OrderBy(_ => Random.Shared.Next())
+            .Take(10)
+            .ToList();
         return words.Select(word => new SpellingQuizQuestion(
             word.Meanings.FirstOrDefault() ?? word.Lemma,
             word.Lemma,
@@ -193,7 +199,8 @@ public sealed class AssessmentService(
 
     private async Task<ReadingStepPayload> BuildReadingQuestionAsync(CancellationToken cancellationToken)
     {
-        var article = await db.Articles.AsNoTracking().OrderBy(_ => Guid.NewGuid()).FirstAsync(cancellationToken);
+        var articles = await db.Articles.AsNoTracking().ToListAsync(cancellationToken);
+        var article = articles.OrderBy(_ => Random.Shared.Next()).First();
         return new ReadingStepPayload(
             article.Id,
             article.Title,

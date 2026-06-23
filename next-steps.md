@@ -2,14 +2,18 @@
 
 按优先级排序，可执行、可验证。
 
-## P0 — 生产增强
-1. RedisCacheService + Cache:Provider 配置切换
-2. docker-compose 增加 PostgreSQL + Redis 服务
-3. LLM 遥测装饰器（耗时/ProfileId 日志）
-4. 完善 EF snapshot（Assessment 实体与 Phase3 迁移对齐）
-5. Playwright E2E：阅读 + 初测主路径
+## P0 — 生产部署验证
+1. docker-compose up 全栈验证（PostgreSQL + Redis + API 迁移）
+2. 生产环境 Cache:Provider=Redis 压测与缓存命中率观测
+3. CI 流水线加入 `npm run test:e2e`（需预装 Playwright Chromium）
 
 ## P1 — 质量与运维
 1. 修复 SQLitePCLRaw NU1903 安全告警
-2. 升级候选用户前端通知（IsUpgradeCandidate 横幅）
+2. ChallengeService / SpellingService 等剩余 SQLite DateTimeOffset OrderBy 统一内存排序
 3. ReviewReminderWorker 推送/邮件（可选）
+4. PostgreSQL 专用集成测试（当前集成测试仍用 EnsureCreated + SQLite 内存库）
+
+## P2 — 功能迭代
+1. 初测 E2E 扩展至完整 5 步提交
+2. LLM 遥测接入 OpenTelemetry / 结构化日志聚合
+3. Redis 缓存失效策略与词库/文章列表缓存接入

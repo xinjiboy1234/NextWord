@@ -10,12 +10,15 @@ public sealed class CommentService(ApplicationDbContext db, ILLMProvider llm) : 
 {
     public async Task<IReadOnlyList<ArticleComment>> ListAsync(Guid articleId, CancellationToken cancellationToken)
     {
-        return await db.ArticleComments
+        var comments = await db.ArticleComments
             .AsNoTracking()
             .Where(comment => comment.ArticleId == articleId)
+            .ToListAsync(cancellationToken);
+
+        return comments
             .OrderBy(comment => comment.ParagraphIndex)
             .ThenBy(comment => comment.Timestamp)
-            .ToListAsync(cancellationToken);
+            .ToList();
     }
 
     public async Task<ArticleComment> AddAsync(

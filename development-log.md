@@ -83,3 +83,33 @@
 ### 验收
 - [x] dotnet test 12/12 通过（单元 9 + 集成 3）
 - [x] npm run build 通过
+
+---
+
+## 2026-06-19 — Phase 6 生产增强
+
+### 需求
+Redis 缓存、docker-compose 生产栈、LLM 遥测、EF snapshot/迁移对齐、Playwright E2E、升级候选横幅。
+
+### 决策
+- Cache:Provider 切换 Memory / Redis，应用层仍用 ICacheService
+- LLM 链：Inner → LlmRetryProvider → LlmTelemetryProvider
+- 合并 hand-written Phase3/5 迁移为正式 EF 链 `Phase6AssessmentAndWorkersSync`
+- SQLite 不兼容的 OrderBy(DateTimeOffset/Guid.NewGuid) 改为内存排序
+
+### 实现
+- RedisCacheService + StackExchangeRedis DI
+- LlmTelemetryProvider（耗时 + ProfileId 日志）
+- docker-compose：postgres + redis + api（PostgreSql + Redis 缓存）
+- ApplicationDbContextModelSnapshot 补齐 Assessment 实体
+- Playwright：reading + assessment E2E（2 用例通过）
+- UpgradeCandidateBanner 前端
+- Worker SQLite 修复；Host BackgroundServiceExceptionBehavior=Ignore
+- CommentService / AssessmentService SQLite 查询修复
+- useAssessmentFlow POST 补 `{}` body
+- 单元测试 +3（RedisCache、LlmTelemetry）
+
+### 验收
+- [x] dotnet test 15/15 通过（单元 12 + 集成 3）
+- [x] npm run build 通过
+- [x] npm run test:e2e 2/2 通过
