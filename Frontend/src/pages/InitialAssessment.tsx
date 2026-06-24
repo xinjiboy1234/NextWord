@@ -16,7 +16,9 @@ function denseAnswers<T>(count: number, answers: T[], isFilled: (value: T | unde
 export function InitialAssessment({ autoStart = false, onComplete }: InitialAssessmentProps) {
   const flow = useAssessmentFlow()
   const autoStarted = useRef(false)
-  const [questionIndex, setQuestionIndex] = useState(0)
+  const [vocabIndex, setVocabIndex] = useState(0)
+  const [spellingIndex, setSpellingIndex] = useState(0)
+  const [sentenceIndex, setSentenceIndex] = useState(0)
   const [vocabAnswers, setVocabAnswers] = useState<number[]>([])
   const [spellingAnswers, setSpellingAnswers] = useState<string[]>([])
   const [sentenceAnswers, setSentenceAnswers] = useState<string[]>([])
@@ -44,20 +46,15 @@ export function InitialAssessment({ autoStart = false, onComplete }: InitialAsse
     }
   }, [flow.step, flow.finalResult, onComplete])
 
-  useEffect(() => {
-    setQuestionIndex(0)
-    setLocalError(null)
-  }, [flow.step])
-
   function currentAnswerFilled(): boolean {
     if (flow.step === 1) {
-      return vocabAnswers[questionIndex] !== undefined
+      return vocabAnswers[vocabIndex] !== undefined
     }
     if (flow.step === 2) {
-      return (spellingAnswers[questionIndex] ?? '').trim().length > 0
+      return (spellingAnswers[spellingIndex] ?? '').trim().length > 0
     }
     if (flow.step === 3) {
-      return (sentenceAnswers[questionIndex] ?? '').trim().length > 0
+      return (sentenceAnswers[sentenceIndex] ?? '').trim().length > 0
     }
     if (flow.step === 4) {
       return readingIndex >= 0
@@ -67,7 +64,9 @@ export function InitialAssessment({ autoStart = false, onComplete }: InitialAsse
 
   function handlePrevious() {
     setLocalError(null)
-    setQuestionIndex((value) => Math.max(0, value - 1))
+    if (flow.step === 1) setVocabIndex((value) => Math.max(0, value - 1))
+    if (flow.step === 2) setSpellingIndex((value) => Math.max(0, value - 1))
+    if (flow.step === 3) setSentenceIndex((value) => Math.max(0, value - 1))
   }
 
   async function handleNext() {
@@ -75,8 +74,8 @@ export function InitialAssessment({ autoStart = false, onComplete }: InitialAsse
 
     if (flow.step === 1) {
       const total = flow.vocabQuestions.length
-      if (questionIndex < total - 1) {
-        setQuestionIndex((value) => value + 1)
+      if (vocabIndex < total - 1) {
+        setVocabIndex((value) => value + 1)
         return
       }
       const answers = vocabAnswersRef.current
@@ -90,8 +89,8 @@ export function InitialAssessment({ autoStart = false, onComplete }: InitialAsse
 
     if (flow.step === 2) {
       const total = flow.spellingQuestions.length
-      if (questionIndex < total - 1) {
-        setQuestionIndex((value) => value + 1)
+      if (spellingIndex < total - 1) {
+        setSpellingIndex((value) => value + 1)
         return
       }
       const answers = spellingAnswersRef.current
@@ -105,8 +104,8 @@ export function InitialAssessment({ autoStart = false, onComplete }: InitialAsse
 
     if (flow.step === 3) {
       const total = flow.sentenceQuestions.length
-      if (questionIndex < total - 1) {
-        setQuestionIndex((value) => value + 1)
+      if (sentenceIndex < total - 1) {
+        setSentenceIndex((value) => value + 1)
         return
       }
       const answers = sentenceAnswersRef.current
@@ -128,13 +127,17 @@ export function InitialAssessment({ autoStart = false, onComplete }: InitialAsse
     const totals = [flow.vocabQuestions.length, flow.spellingQuestions.length, flow.sentenceQuestions.length]
     const total = totals[flow.step - 1] ?? 1
     if (flow.submitting) return '提交中...'
-    return questionIndex < total - 1 ? '下一个' : '下一步'
+    const indices = [vocabIndex, spellingIndex, sentenceIndex]
+    const index = indices[flow.step - 1] ?? 0
+    return index < total - 1 ? '下一个' : '下一步'
   }
 
-  function handleTimelineClick(targetStep: number) {
-    if (targetStep === flow.step) return
-    setLocalError(null)
-    flow.goToStep(targetStep)
+  function canGoPrevious(): boolean {
+    if (flow.submitting) return false
+    if (flow.step === 1) return vocabIndex > 0
+    if (flow.step === 2) return spellingIndex > 0
+    if (flow.step === 3) return sentenceIndex > 0
+    return false
   }
 
   const displayError = localError ?? flow.stepError
@@ -167,7 +170,12 @@ export function InitialAssessment({ autoStart = false, onComplete }: InitialAsse
         steps={flow.steps}
         currentStep={flow.step}
         maxReachedStep={flow.maxReachedStep}
-        onStepClick={handleTimelineClick}
+        maxNavigableStep={flow.finalResult ? 5 : 4}
+        onStepClick={(targetStep) => {
+          if (targetStep === flow.step) return
+          setLocalError(null)
+          void flow.goToStep(targetStep)
+        }}
       />
 
       {displayError && (
@@ -178,26 +186,30 @@ export function InitialAssessment({ autoStart = false, onComplete }: InitialAsse
         <p className="mt-4 text-sm text-neutral-600">正在提交并加载下一阶段...</p>
       )}
 
+      {flow.loadingStep && !flow.submitting && (
+        <p className="mt-4 text-sm text-neutral-600">正在加载题目...</p>
+      )}
+
       {flow.step === 1 && flow.vocabQuestions.length > 0 && (
         <div className="mt-5 space-y-4">
           <h3 className="text-lg font-semibold">词汇识别</h3>
-          <p className="text-2xl font-semibold text-neutral-900">{flow.vocabQuestions[questionIndex]?.word}</p>
+          <p className="text-2xl font-semibold text-neutral-900">{flow.vocabQuestions[vocabIndex]?.word}</p>
           <OptionTags
-            options={flow.vocabQuestions[questionIndex]?.options ?? []}
-            selectedIndex={vocabAnswers[questionIndex]}
+            options={flow.vocabQuestions[vocabIndex]?.options ?? []}
+            selectedIndex={vocabAnswers[vocabIndex]}
             disabled={flow.submitting}
             onSelect={(optionIndex) => {
               const next = [...vocabAnswers]
-              next[questionIndex] = optionIndex
+              next[vocabIndex] = optionIndex
               setVocabAnswers(next)
             }}
           />
           <StepNavigator
-            index={questionIndex}
+            index={vocabIndex}
             total={flow.vocabQuestions.length}
             onPrevious={handlePrevious}
             onNext={() => void handleNext()}
-            canPrevious={questionIndex > 0 && !flow.submitting}
+            canPrevious={canGoPrevious()}
             canNext={currentAnswerFilled() && !flow.submitting}
             nextLabel={nextLabel()}
           />
@@ -212,25 +224,25 @@ export function InitialAssessment({ autoStart = false, onComplete }: InitialAsse
           ) : (
             <>
               <label className="block rounded-md border border-neutral-200 p-4 text-sm">
-                <span className="text-base font-medium">{flow.spellingQuestions[questionIndex]?.chinese}</span>
+                <span className="text-base font-medium">{flow.spellingQuestions[spellingIndex]?.chinese}</span>
                 <input
                   className="mt-3 h-11 w-full rounded-md border border-neutral-300 px-3"
-                  value={spellingAnswers[questionIndex] ?? ''}
+                  value={spellingAnswers[spellingIndex] ?? ''}
                   disabled={flow.submitting}
                   onChange={(event) => {
                     const next = [...spellingAnswers]
-                    next[questionIndex] = event.target.value
+                    next[spellingIndex] = event.target.value
                     setSpellingAnswers(next)
                   }}
                   placeholder="输入英文拼写"
                 />
               </label>
               <StepNavigator
-                index={questionIndex}
+                index={spellingIndex}
                 total={flow.spellingQuestions.length}
                 onPrevious={handlePrevious}
                 onNext={() => void handleNext()}
-                canPrevious={questionIndex > 0 && !flow.submitting}
+                canPrevious={canGoPrevious()}
                 canNext={currentAnswerFilled() && !flow.submitting}
                 nextLabel={nextLabel()}
               />
@@ -247,26 +259,26 @@ export function InitialAssessment({ autoStart = false, onComplete }: InitialAsse
           ) : (
             <>
               <label className="block rounded-md border border-neutral-200 p-4 text-sm">
-                <span className="text-base font-medium">使用单词：{flow.sentenceQuestions[questionIndex]?.word}</span>
+                <span className="text-base font-medium">使用单词：{flow.sentenceQuestions[sentenceIndex]?.word}</span>
                 <textarea
                   className="mt-3 w-full rounded-md border border-neutral-300 px-3 py-2"
                   rows={4}
-                  value={sentenceAnswers[questionIndex] ?? ''}
+                  value={sentenceAnswers[sentenceIndex] ?? ''}
                   disabled={flow.submitting}
                   onChange={(event) => {
                     const next = [...sentenceAnswers]
-                    next[questionIndex] = event.target.value
+                    next[sentenceIndex] = event.target.value
                     setSentenceAnswers(next)
                   }}
                   placeholder="用该单词造一个句子"
                 />
               </label>
               <StepNavigator
-                index={questionIndex}
+                index={sentenceIndex}
                 total={flow.sentenceQuestions.length}
                 onPrevious={handlePrevious}
                 onNext={() => void handleNext()}
-                canPrevious={questionIndex > 0 && !flow.submitting}
+                canPrevious={canGoPrevious()}
                 canNext={currentAnswerFilled() && !flow.submitting}
                 nextLabel={nextLabel()}
               />

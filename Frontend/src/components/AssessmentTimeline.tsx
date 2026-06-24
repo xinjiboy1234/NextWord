@@ -4,17 +4,21 @@ interface AssessmentTimelineProps {
   steps: readonly string[]
   currentStep: number
   maxReachedStep: number
+  /** 可点击跳转的最大步骤；默认与 maxReachedStep 相同 */
+  maxNavigableStep?: number
   onStepClick: (step: number) => void
 }
 
-export function AssessmentTimeline({ steps, currentStep, maxReachedStep, onStepClick }: AssessmentTimelineProps) {
+export function AssessmentTimeline({ steps, currentStep, maxReachedStep, maxNavigableStep, onStepClick }: AssessmentTimelineProps) {
+  const navigableLimit = maxNavigableStep ?? maxReachedStep
+
   return (
     <nav aria-label="测评进度" className="mt-4">
       <ol className="flex flex-wrap items-center gap-1">
         {steps.map((label, index) => {
           const step = index + 1
           const isCurrent = currentStep === step
-          const isReachable = step <= maxReachedStep
+          const isReachable = step <= navigableLimit
           const isCompleted = step < currentStep || (step < maxReachedStep && !isCurrent)
 
           return (

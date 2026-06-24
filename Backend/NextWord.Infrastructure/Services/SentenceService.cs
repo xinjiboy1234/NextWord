@@ -1,12 +1,17 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using NextWord.Domain.Entities;
 using NextWord.Domain.Interfaces;
 using NextWord.Domain.Models;
+using NextWord.Domain.Services;
 using NextWord.Infrastructure.Data;
 
 namespace NextWord.Infrastructure.Services;
 
-public sealed class SentenceService(ApplicationDbContext db, IUserLlmProviderFactory llmFactory) : ISentenceService
+public sealed class SentenceService(
+    ApplicationDbContext db,
+    IUserLlmProviderFactory llmFactory,
+    IOptions<LlmSentenceRatingOptions> sentenceRatingOptions) : ISentenceService
 {
     public async Task<IReadOnlyList<Sentence>> GetPromptsAsync(int count, CancellationToken cancellationToken)
     {
@@ -29,12 +34,16 @@ public sealed class SentenceService(ApplicationDbContext db, IUserLlmProviderFac
         CancellationToken cancellationToken)
     {
         var llm = await llmFactory.GetForUserAsync(userId, cancellationToken);
+        var explanationLanguage = ExplanationLanguageHelper.Resolve(
+            null,
+            sentenceRatingOptions.Value.ExplanationLanguage);
         var rating = await llm.RateSentenceAsync(new SentenceRatingRequest(
             userSentence.Trim(),
             targetWord.Trim(),
             string.IsNullOrWhiteSpace(scene) ? "life" : scene.Trim(),
             string.IsNullOrWhiteSpace(userLevel) ? "A2" : userLevel.Trim(),
-            new LlmRequestOptions("grading-stable", "sentence_rating")), cancellationToken);
+            new LlmRequestOptions("grading-stable", "sentence_rating"),
+            explanationLanguage), cancellationToken);
 
         var log = new SentenceLog
         {

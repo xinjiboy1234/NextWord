@@ -11,6 +11,11 @@ public static class LlmPromptFactory
 
     public static string BuildSentenceRatingPrompt(SentenceRatingRequest request)
     {
+        var explanationLanguage = ExplanationLanguageHelper.Resolve(
+            request.ExplanationLanguage,
+            ExplanationLanguageHelper.Default);
+        var explanationLanguageName = ExplanationLanguageHelper.GetPromptDisplayName(explanationLanguage);
+
         return $$"""
         You are an English language assessment assistant. Rate this sentence.
 
@@ -18,6 +23,7 @@ public static class LlmPromptFactory
         Target Word: {{request.TargetWord}}
         Scene: {{request.Scene}}
         User Sentence: {{request.UserSentence}}
+        Feedback Language: {{explanationLanguage}} ({{explanationLanguageName}})
 
         Return only JSON:
         {
@@ -37,6 +43,8 @@ public static class LlmPromptFactory
         - Be fair but not overly generous.
         - Evaluate whether the target word is used naturally and correctly.
         - If this is free expression, evaluate the whole passage.
+        - Write error_analysis and suggestion in {{explanationLanguageName}}.
+        - Keep ai_revision in natural English as the corrected learner sentence.
         """;
     }
 

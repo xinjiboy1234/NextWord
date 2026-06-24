@@ -51,6 +51,8 @@ public sealed class LlmMockProvider(IModelProfileResolver modelProfileResolver) 
     {
         var sentence = request.UserSentence.Trim();
         var target = request.TargetWord.Trim();
+        var useChinese = ExplanationLanguageHelper.IsChinese(
+            ExplanationLanguageHelper.Resolve(request.ExplanationLanguage, ExplanationLanguageHelper.Default));
         var isFreeExpression = string.Equals(target, "free expression", StringComparison.OrdinalIgnoreCase);
         var usesTarget = isFreeExpression || sentence.Contains(target, StringComparison.OrdinalIgnoreCase);
         var hasSentenceShape = sentence.Length >= 12 && (sentence.EndsWith('.') || sentence.EndsWith('!') || sentence.EndsWith('?'));
@@ -64,18 +66,28 @@ public sealed class LlmMockProvider(IModelProfileResolver modelProfileResolver) 
         var analysis = new List<string>();
         if (!usesTarget)
         {
-            analysis.Add($"Try to use the target word \"{target}\" directly.");
+            analysis.Add(useChinese
+                ? $"请直接在句子中使用目标词 \"{target}\"。"
+                : $"Try to use the target word \"{target}\" directly.");
         }
 
         if (!hasSentenceShape)
         {
-            analysis.Add("Write a complete sentence with clear punctuation.");
+            analysis.Add(useChinese
+                ? "请写一句结构完整、标点清晰的英文句子。"
+                : "Write a complete sentence with clear punctuation.");
         }
 
         if (analysis.Count == 0)
         {
-            analysis.Add("Clear expression with usable sentence structure.");
+            analysis.Add(useChinese
+                ? "表达清晰，句子结构可用。"
+                : "Clear expression with usable sentence structure.");
         }
+
+        var suggestion = usesTarget
+            ? useChinese ? "补充一个细节，让句子更具体。" : "Add one detail to make the sentence more specific."
+            : useChinese ? "在句子中明确体现目标词的含义。" : "Make the target meaning explicit in your sentence.";
 
         return Task.FromResult(new SentenceRatingResponse(
             grammar,
@@ -86,7 +98,7 @@ public sealed class LlmMockProvider(IModelProfileResolver modelProfileResolver) 
             revision,
             analysis,
             average >= 4 ? DifficultyLevel.Intermediate : DifficultyLevel.Basic,
-            usesTarget ? "Add one detail to make the sentence more specific." : "Make the target meaning explicit in your sentence."));
+            suggestion));
     }
 
     public Task<VocabExtractResponse> ExtractVocabAsync(VocabExtractRequest request, CancellationToken cancellationToken)

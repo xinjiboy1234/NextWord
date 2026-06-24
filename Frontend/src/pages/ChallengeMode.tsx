@@ -97,6 +97,7 @@ export function ChallengeMode() {
         steps={['词汇', '造句', '阅读']}
         currentStep={phaseStep}
         maxReachedStep={maxReachedStep}
+        maxNavigableStep={3}
         onStepClick={(step) => {
           if (step === 1) setPhase('vocab')
           if (step === 2) setPhase('sentence')

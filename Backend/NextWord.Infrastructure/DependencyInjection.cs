@@ -5,6 +5,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NextWord.Domain.Interfaces;
+using NextWord.Domain.Models;
 using NextWord.Domain.Services;
 using NextWord.Infrastructure.Auth;
 using NextWord.Infrastructure.Background;
@@ -42,6 +43,7 @@ public static class DependencyInjection
         services.AddScoped<IAuthService, AuthService>();
         services.AddSingleton<IJwtTokenService, JwtTokenService>();
         services.Configure<AuthOptions>(configuration.GetSection("Auth"));
+        services.Configure<LlmSentenceRatingOptions>(configuration.GetSection(LlmSentenceRatingOptions.SectionName));
         services.AddScoped<IUserLlmProviderFactory, UserLlmProviderFactory>();
         services.AddScoped<IReviewQueueService, ReviewQueueService>();
         services.AddScoped<ISentenceService, SentenceService>();

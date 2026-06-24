@@ -45,7 +45,8 @@ public sealed record SentenceRatingRequest(
     string TargetWord,
     string Scene,
     string UserLevel,
-    LlmRequestOptions? Options = null);
+    LlmRequestOptions? Options = null,
+    string? ExplanationLanguage = null);
 
 public sealed record SentenceRatingResponse(
     int GrammarScore,

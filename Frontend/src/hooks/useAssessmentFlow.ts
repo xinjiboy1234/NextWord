@@ -18,14 +18,41 @@ export function useAssessmentFlow() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [stepError, setStepError] = useState<string | null>(null)
+  const [loadingStep, setLoadingStep] = useState(false)
 
-  const goToStep = useCallback((target: number) => {
-    if (target < 1 || target > 5 || target > maxReachedStep) {
+  const goToStep = useCallback(async (target: number) => {
+    if (target < 1 || target > 5) {
       return
     }
+    if (target === 5 && maxReachedStep < 5 && !finalResult) {
+      return
+    }
+    if (!assessmentId) {
+      return
+    }
+
     setStepError(null)
-    setStep(target)
-  }, [maxReachedStep])
+    setLoadingStep(true)
+    try {
+      if (target === 2 && spellingQuestions.length === 0) {
+        const questions = await api.get<SpellingQuizQuestion[]>(endpoints.assessmentStep(assessmentId, 2))
+        setSpellingQuestions(questions.data)
+      }
+      if (target === 3 && sentenceQuestions.length === 0) {
+        const questions = await api.get<SentenceQuizQuestion[]>(endpoints.assessmentStep(assessmentId, 3))
+        setSentenceQuestions(questions.data)
+      }
+      if (target === 4 && !readingPayload) {
+        const payload = await api.get<ReadingQuizPayload>(endpoints.assessmentStep(assessmentId, 4))
+        setReadingPayload(payload.data)
+      }
+      setStep(target)
+    } catch {
+      setStepError('加载题目失败，请重试。')
+    } finally {
+      setLoadingStep(false)
+    }
+  }, [assessmentId, maxReachedStep, finalResult, spellingQuestions.length, sentenceQuestions.length, readingPayload])
 
   const start = useCallback(async () => {
     setLoading(true)
@@ -139,6 +166,7 @@ export function useAssessmentFlow() {
     finalResult,
     loading,
     submitting,
+    loadingStep,
     error,
     stepError,
     start,
