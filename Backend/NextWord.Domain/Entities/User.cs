@@ -20,4 +20,9 @@ public sealed class User
     public List<Assessment> Assessments { get; set; } = [];
     public List<ChallengeRecord> ChallengeRecords { get; set; } = [];
     public List<LevelHistory> LevelHistories { get; set; } = [];
+    public List<LearningEvent> LearningEvents { get; set; } = [];
+    public List<ProfileScoreSnapshot> ProfileScoreSnapshots { get; set; } = [];
+    public List<EvaluationReport> EvaluationReports { get; set; } = [];
+    public List<UserFeedback> UserFeedbacks { get; set; } = [];
+    public List<UserWordExclude> WordExcludes { get; set; } = [];
 }

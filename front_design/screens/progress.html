@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /><title>Progress · NextWord</title>
+<link rel="stylesheet" href="../css/tokens.css" /><link rel="stylesheet" href="../css/app.css" />
+<style>
+  .stat-hero { text-align:center; padding:var(--space-6) 0; }
+  .stat-hero-big {
+    font-family:var(--font-display);
+    font-size:clamp(48px,8vw,var(--text-4xl));
+    font-weight:700; letter-spacing:-0.03em;
+    line-height:1;
+    font-variant-numeric:tabular-nums;
+  }
+  .stat-card { text-align:center; padding:var(--space-6); border:1px solid var(--border); border-radius:var(--radius-md); }
+  .log-entry { display:flex; align-items:center; gap:var(--space-4); padding:var(--space-3) 0; border-bottom:1px solid var(--border-soft); font-size:var(--text-sm); }
+  .log-date { font-family:var(--font-mono); font-size:var(--text-xs); color:var(--meta); width:90px; flex-shrink:0; }
+  .log-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .log-dot.learn { background:var(--fg); }
+  .log-dot.spell { background:var(--success); }
+  .log-dot.read  { background:var(--info); }
+</style></head>
+<body>
+
+<div class="app-shell"><div class="main-area" style="margin-left:0;">
+<header class="topbar"><a href="../index.html" class="btn btn-ghost btn-sm">← Dashboard</a><span class="topbar-greeting" style="margin-left:auto;">Progress</span></header>
+<main class="content">
+
+<section class="stat-hero">
+  <p class="mono-label">Learning Statistics</p>
+  <p class="stat-hero-big" style="margin:var(--space-3) 0;">12</p>
+  <p style="font-weight:540;">consecutive days</p>
+  <p style="font-size:var(--text-sm);color:var(--muted);">Last active: today</p>
+</section>
+
+<div class="stat-grid" style="margin-bottom:var(--space-8);">
+  <div class="stat-card">
+    <p class="stat-num">847</p>
+    <p class="stat-desc">Words learned</p>
+  </div>
+  <div class="stat-card">
+    <p class="stat-num">23</p>
+    <p class="stat-desc">Due for review</p>
+  </div>
+  <div class="stat-card">
+    <p class="stat-num">78%</p>
+    <p class="stat-desc">Spelling accuracy</p>
+  </div>
+  <div class="stat-card">
+    <p class="stat-num">312</p>
+    <p class="stat-desc">Total log entries</p>
+  </div>
+</div>
+
+<div class="section-header"><h2>Activity Log</h2></div>
+<div>
+  <div class="log-entry"><span class="log-date">Today</span><span class="log-dot learn"></span><span>Learned 8 new words · 85% retention</span></div>
+  <div class="log-entry"><span class="log-date">Yesterday</span><span class="log-dot spell"></span><span>12 spelling attempts · 83% accuracy</span></div>
+  <div class="log-entry"><span class="log-date">Jun 23</span><span class="log-dot read"></span><span>Read "The Rise of Remote Work" · 3 words looked up</span></div>
+  <div class="log-entry"><span class="log-date">Jun 23</span><span class="log-dot learn"></span><span>Reviewed 5 due words · flip-card session</span></div>
+  <div class="log-entry"><span class="log-date">Jun 22</span><span class="log-dot spell"></span><span>10 spelling attempts · 80% accuracy</span></div>
+  <div class="log-entry"><span class="log-date">Jun 22</span><span class="log-dot learn"></span><span>Compose session · 10 guided sentences</span></div>
+</div>
+
+</main></div></div>
+
+<nav class="bottombar"><div class="bottombar-inner">
+  <button class="bottombar-tab" onclick="window.location.href='../index.html'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Learn</button>
+  <button class="bottombar-tab" onclick="window.location.href='spelling.html'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="8"/></svg>Practice</button>
+  <button class="bottombar-tab" onclick="window.location.href='article-library.html'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>Read</button>
+  <button class="bottombar-tab" onclick="window.location.href='profile.html'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Profile</button>
+</div></nav>
+</body></html>

@@ -1,15 +1,18 @@
-import { ArrowLeft, Sparkles } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { api } from './api/client'
 import { endpoints } from './api/endpoints'
+import { AppShell } from './components/layout/AppShell'
 import { UpgradeCandidateBanner } from './components/UpgradeCandidateBanner'
-import { UserAvatar } from './components/UserAvatar'
 import { useAuth } from './contexts/AuthContext'
+import { useProfileScores } from './hooks/useProfileScores'
+import { pathForView, viewFromPathname } from './navigation/routes'
+import type { ManageView } from './navigation/views'
 import { LoginPage } from './pages/LoginPage'
-
+import { ManagePage } from './pages/ManagePage'
 import type { ProgressSummary } from './types/models'
 import { ArticleLibrary } from './pages/ArticleLibrary'
-import { ArticleReader } from './pages/ArticleReader'
+import { ArticleReaderRoute } from './pages/ArticleReaderRoute'
 import { ChallengeMode } from './pages/ChallengeMode'
 import { Dashboard } from './pages/Dashboard'
 import { Home } from './pages/Home'
@@ -22,30 +25,19 @@ import { SentenceStudio } from './pages/SentenceStudio'
 import { SpellingMode } from './pages/SpellingMode'
 import { WordCard } from './pages/WordCard'
 
-type View =
-  | 'dashboard'
-  | 'learn'
-  | 'spelling'
-  | 'sentence'
-  | 'reading'
-  | 'assessment'
-  | 'challenge'
-  | 'level'
-  | 'review'
-  | 'home'
-  | 'progress'
-  | 'profile'
-
 const UPGRADE_DISMISS_KEY = 'nextword.upgrade.dismissed'
 
-function App() {
-  const { isAuthenticated, user, loading } = useAuth()
-  const [view, setView] = useState<View>('dashboard')
-  const [readingArticleId, setReadingArticleId] = useState<string | null>(null)
+function AuthenticatedApp() {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const { user } = useAuth()
+  const { scores: profileScores } = useProfileScores()
   const [progress, setProgress] = useState<ProgressSummary | null>(null)
   const [upgradeDismissed, setUpgradeDismissed] = useState(
     () => localStorage.getItem(UPGRADE_DISMISS_KEY) === '1',
   )
+
+  const view = viewFromPathname(location.pathname)
 
   const loadProgress = useCallback(async () => {
     try {
@@ -59,37 +51,37 @@ function App() {
   }, [])
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      setProgress(null)
-      return
-    }
-
     void loadProgress()
-  }, [isAuthenticated, loadProgress])
+  }, [loadProgress])
 
-  // 未完成首次测评时自动进入测评流程
   useEffect(() => {
-    if (progress && !progress.hasCompletedInitialAssessment) {
-      setView('assessment')
+    if (progress && !progress.hasCompletedInitialAssessment && location.pathname !== '/assessment') {
+      navigate('/assessment', { replace: true })
     }
-  }, [progress])
+  }, [progress, location.pathname, navigate])
 
   const handleAssessmentComplete = useCallback(() => {
     void loadProgress().then((data) => {
       if (data?.hasCompletedInitialAssessment) {
-        setView('dashboard')
+        navigate('/dashboard', { replace: true })
       }
     })
-  }, [loadProgress])
+  }, [loadProgress, navigate])
 
   const goHome = useCallback(() => {
-    setReadingArticleId(null)
     if (progress && !progress.hasCompletedInitialAssessment) {
-      setView('assessment')
+      navigate('/assessment', { replace: true })
       return
     }
-    setView('dashboard')
-  }, [progress])
+    navigate('/dashboard')
+  }, [progress, navigate])
+
+  const manageNavigate = useCallback((target: ManageView) => {
+    if (target === 'assessment') navigate('/assessment')
+    else if (target === 'challenge') navigate('/challenge')
+    else if (target === 'home') navigate('/word-bank')
+    else navigate('/progress')
+  }, [navigate])
 
   const showUpgradeCandidate = progress !== null
     && progress.hasCompletedInitialAssessment
@@ -99,126 +91,84 @@ function App() {
 
   const needsAssessment = progress !== null && !progress.hasCompletedInitialAssessment
   const showBackButton = view !== 'dashboard' && !(needsAssessment && view === 'assessment')
-  const awaitingProgress = isAuthenticated && progress === null
+  const awaitingProgress = progress === null
+
+  return (
+    <AppShell
+      displayName={user?.displayName ?? '用户'}
+      overallLevel={profileScores?.cefrDisplay ?? progress?.overallLevel}
+      overallScore={profileScores?.overall}
+      showBackButton={showBackButton}
+      onBack={goHome}
+    >
+      {awaitingProgress ? (
+        <p className="text-sm" style={{ color: 'var(--muted)' }}>加载中...</p>
+      ) : (
+        <>
+          {showUpgradeCandidate && (
+            <UpgradeCandidateBanner
+              currentLevel={progress?.overallLevel}
+              onOpenLevel={() => navigate('/level')}
+              onDismiss={() => {
+                localStorage.setItem(UPGRADE_DISMISS_KEY, '1')
+                setUpgradeDismissed(true)
+              }}
+            />
+          )}
+          <Routes>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route
+              path="/dashboard"
+              element={<Dashboard progress={progress} onNavigate={(v) => navigate(pathForView(v))} />}
+            />
+            <Route path="/learn" element={<WordCard />} />
+            <Route path="/spelling" element={<SpellingMode />} />
+            <Route path="/sentence" element={<SentenceStudio userLevel={progress?.overallLevel} />} />
+            <Route
+              path="/reading"
+              element={<ArticleLibrary onOpen={(id) => navigate(pathForView('reading', id))} />}
+            />
+            <Route path="/reading/:articleId" element={<ArticleReaderRoute />} />
+            <Route
+              path="/assessment"
+              element={(
+                <InitialAssessment
+                  autoStart={needsAssessment}
+                  onComplete={handleAssessmentComplete}
+                />
+              )}
+            />
+            <Route path="/challenge" element={<ChallengeMode />} />
+            <Route path="/level" element={<LevelDashboardPage />} />
+            <Route path="/review" element={<ReviewQueue />} />
+            <Route path="/word-bank" element={<Home onStart={() => navigate('/learn')} />} />
+            <Route path="/progress" element={<Progress />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/manage" element={<ManagePage onNavigate={manageNavigate} />} />
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+        </>
+      )}
+    </AppShell>
+  )
+}
+
+function App() {
+  const { isAuthenticated, loading } = useAuth()
 
   if (loading) {
     return (
-      <div className="grid min-h-dvh place-items-center bg-stone-50 text-neutral-600">
-        加载中...
+      <div className="auth-page">
+        <p style={{ color: 'var(--muted)' }}>加载中...</p>
       </div>
     )
   }
 
   if (!isAuthenticated) {
-    return (
-      <div className="min-h-dvh bg-stone-50 text-neutral-950">
-        <header className="border-b border-neutral-200 bg-white">
-          <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-4">
-            <div className="grid h-11 w-11 place-items-center rounded-md bg-emerald-700 text-white">
-              <Sparkles size={22} aria-hidden="true" />
-            </div>
-            <div>
-              <h1 className="text-xl font-semibold leading-tight">NextWord</h1>
-              <p className="text-sm text-neutral-600">请登录后使用学习功能</p>
-            </div>
-          </div>
-        </header>
-        <main className="mx-auto max-w-6xl px-4 py-8">
-          <LoginPage />
-        </main>
-      </div>
-    )
+    return <LoginPage />
   }
 
-  return (
-    <div className="min-h-dvh bg-stone-50 text-neutral-950">
-      <header className="border-b border-neutral-200 bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4">
-          <div className="flex items-center gap-3">
-            <div className="grid h-11 w-11 place-items-center rounded-md bg-emerald-700 text-white">
-              <Sparkles size={22} aria-hidden="true" />
-            </div>
-            <div>
-              <h1 className="text-xl font-semibold leading-tight">NextWord</h1>
-              <p className="text-sm text-neutral-600">你好，{user?.displayName}</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {showBackButton && (
-              <button
-                type="button"
-                onClick={goHome}
-                className="inline-flex h-11 items-center gap-2 rounded-md border border-neutral-200 bg-white px-3 text-sm font-medium text-neutral-700 hover:bg-neutral-100"
-              >
-                <ArrowLeft size={18} aria-hidden="true" />
-                返回首页
-              </button>
-            )}
-            <UserAvatar
-              displayName={user?.displayName ?? '用户'}
-              active={view === 'profile'}
-              onClick={() => setView('profile')}
-            />
-          </div>
-        </div>
-      </header>
-
-      <main className="mx-auto grid max-w-6xl gap-5 px-4 py-6">
-        {awaitingProgress ? (
-          <p className="text-sm text-neutral-600">加载中...</p>
-        ) : (
-          <>
-        {showUpgradeCandidate && (
-          <UpgradeCandidateBanner
-            onOpenLevel={() => setView('level')}
-            onDismiss={() => {
-              localStorage.setItem(UPGRADE_DISMISS_KEY, '1')
-              setUpgradeDismissed(true)
-            }}
-          />
-        )}
-        {view === 'dashboard' && <Dashboard onNavigate={setView} />}
-        {view === 'learn' && <WordCard />}
-        {view === 'spelling' && <SpellingMode />}
-        {view === 'sentence' && <SentenceStudio />}
-        {view === 'reading' && (
-          readingArticleId ? (
-            <ArticleReader
-              articleId={readingArticleId}
-              onBack={() => {
-                setReadingArticleId(null)
-              }}
-            />
-          ) : (
-            <ArticleLibrary
-              onOpen={(articleId) => {
-                setReadingArticleId(articleId)
-              }}
-            />
-          )
-        )}
-        {view === 'assessment' && (
-          <InitialAssessment
-            autoStart={needsAssessment}
-            onComplete={handleAssessmentComplete}
-          />
-        )}
-        {view === 'challenge' && <ChallengeMode />}
-        {view === 'level' && <LevelDashboardPage />}
-        {view === 'review' && <ReviewQueue />}
-        {view === 'home' && <Home onStart={() => setView('learn')} />}
-        {view === 'progress' && <Progress />}
-        {view === 'profile' && (
-          <ProfilePage
-            onNavigate={(target) => setView(target)}
-          />
-        )}
-          </>
-        )}
-      </main>
-    </div>
-  )
+  return <AuthenticatedApp />
 }
 
 export default App

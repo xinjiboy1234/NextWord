@@ -1,17 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
-import { api } from '../api/client'
-import { endpoints } from '../api/endpoints'
+import { useEffect, useState } from 'react'
 import { AssessmentTimeline } from '../components/AssessmentTimeline'
+import { ChallengeRecentList } from '../components/ChallengeRecentList'
 import { OptionTags } from '../components/OptionTags'
 import { StepNavigator } from '../components/StepNavigator'
 import { useChallengeFlow } from '../hooks/useChallengeFlow'
-import type { SentenceRating } from '../types/sentence'
 
 type ChallengePhase = 'vocab' | 'sentence' | 'reading'
-
-function sentenceScoreFromRating(rating: SentenceRating) {
-  return (rating.grammarScore + rating.naturalScore + rating.vocabularyScore + rating.relevanceScore) / 4
-}
 
 export function ChallengeMode() {
   const challenge = useChallengeFlow()
@@ -19,8 +13,8 @@ export function ChallengeMode() {
   const [vocabIndex, setVocabIndex] = useState(0)
   const [vocabAnswers, setVocabAnswers] = useState<number[]>([])
   const [sentenceText, setSentenceText] = useState('')
-  const [sentenceRating, setSentenceRating] = useState<SentenceRating | null>(null)
   const [readingIndex, setReadingIndex] = useState(-1)
+  const [lookupCount, setLookupCount] = useState(0)
   const [submitting, setSubmitting] = useState(false)
   const [maxReachedStep, setMaxReachedStep] = useState(1)
 
@@ -32,67 +26,61 @@ export function ChallengeMode() {
       setVocabIndex(0)
       setVocabAnswers([])
       setSentenceText('')
-      setSentenceRating(null)
       setReadingIndex(-1)
+      setLookupCount(0)
       setMaxReachedStep(1)
     }
   }, [challenge.pack])
 
-  const vocabScore = useMemo(() => {
-    if (!challenge.pack || challenge.pack.vocabulary.length === 0) return 0
-    const correct = challenge.pack.vocabulary.reduce((count, question, index) => {
-      return count + (vocabAnswers[index] === question.correctIndex ? 1 : 0)
-    }, 0)
-    return (correct / challenge.pack.vocabulary.length) * 100
-  }, [challenge.pack, vocabAnswers])
-
-  async function rateSentence() {
-    if (!challenge.pack || sentenceText.trim().length === 0) return
+  async function submitChallenge() {
+    if (!challenge.pack || readingIndex < 0 || submitting) return
     setSubmitting(true)
     try {
-      const { data } = await api.post<SentenceRating>(endpoints.sentenceRate, {
-        wordId: challenge.pack.sentence.wordId,
+      await challenge.submit({
+        vocabAnswers,
+        sentenceAnswer: sentenceText,
         targetWord: challenge.pack.sentence.word,
-        userSentence: sentenceText,
         scene: challenge.pack.sentence.scene,
-        userLevel: challenge.pack.attemptedLevel,
+        sentenceWordId: challenge.pack.sentence.wordId,
+        readingSelectedIndex: readingIndex,
+        lookupCount,
       })
-      setSentenceRating(data)
-      setMaxReachedStep((value) => Math.max(value, 3))
     } finally {
       setSubmitting(false)
     }
   }
 
-  async function submitChallenge() {
-    if (!challenge.pack || readingIndex < 0) return
-    const readingCorrect = readingIndex === challenge.pack.reading.correctIndex
-    const sentenceScore = sentenceRating ? sentenceScoreFromRating(sentenceRating) : 0
-    await challenge.submit(vocabScore, sentenceScore, readingCorrect ? 100 : 0)
-  }
-
   if (!challenge.pack) {
     return (
-      <section className="rounded-md border border-neutral-200 bg-white p-6">
-        <h2 className="text-2xl font-semibold">挑战测评</h2>
-        <p className="mt-2 text-sm text-neutral-600">词汇 + 造句 + 阅读综合挑战，逐题完成。</p>
-        <button
-          type="button"
-          onClick={() => void challenge.start(false)}
-          disabled={challenge.loading}
-          className="mt-4 inline-flex h-11 items-center rounded-md bg-emerald-700 px-4 text-sm font-semibold text-white"
-        >
-          {challenge.loading ? '生成挑战包...' : '开始挑战'}
-        </button>
-      </section>
+      <div className="stack stack-md">
+        <section className="card">
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-xl)', fontWeight: 700 }}>挑战测评</h2>
+          <p style={{ marginTop: 'var(--space-2)', fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>词汇 + 造句 + 阅读综合挑战，逐题完成。</p>
+          <button
+            type="button"
+            onClick={() => void challenge.start(false)}
+            disabled={challenge.loading}
+            className="btn btn-primary"
+            style={{ marginTop: 'var(--space-4)' }}
+          >
+            {challenge.loading ? '生成挑战包...' : '开始挑战'}
+          </button>
+        </section>
+        <section className="card stack stack-sm">
+          <h3 style={{ fontWeight: 540 }}>近期挑战</h3>
+          <ChallengeRecentList refreshKey={challenge.result?.totalScore} />
+        </section>
+      </div>
     )
   }
 
   const vocabQuestion = challenge.pack.vocabulary[vocabIndex]
 
   return (
-    <section className="rounded-md border border-neutral-200 bg-white p-6">
-      <h2 className="text-2xl font-semibold">挑战测评 · {challenge.pack.attemptedLevel}</h2>
+    <section className="card stack stack-md">
+      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-xl)', fontWeight: 700 }}>
+        挑战测评 · {challenge.pack.attemptedLevel}
+      </h2>
       <AssessmentTimeline
         steps={['词汇', '造句', '阅读']}
         currentStep={phaseStep}
@@ -108,7 +96,7 @@ export function ChallengeMode() {
       {phase === 'vocab' && vocabQuestion && (
         <div className="mt-5 space-y-4">
           <h3 className="text-lg font-semibold">词汇挑战</h3>
-          <p className="text-2xl font-semibold">{vocabQuestion.word}</p>
+          <p style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-xl)', fontWeight: 700 }}>{vocabQuestion.word}</p>
           <OptionTags
             options={vocabQuestion.options}
             selectedIndex={vocabAnswers[vocabIndex]}
@@ -140,20 +128,15 @@ export function ChallengeMode() {
       {phase === 'sentence' && (
         <div className="mt-5 space-y-4">
           <h3 className="text-lg font-semibold">造句挑战</h3>
-          <p className="text-sm text-neutral-600">使用单词：{challenge.pack.sentence.word}</p>
+          <p style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>使用单词：{challenge.pack.sentence.word}</p>
           <textarea
-            className="w-full rounded-md border border-neutral-300 px-3 py-2"
+            className="textarea"
             rows={4}
             value={sentenceText}
-            disabled={Boolean(sentenceRating) || submitting}
+            disabled={submitting || Boolean(challenge.result)}
             onChange={(event) => setSentenceText(event.target.value)}
             placeholder="用目标词造句"
           />
-          {sentenceRating && (
-            <p className="rounded-md bg-emerald-50 p-3 text-sm text-emerald-900">
-              评分：{sentenceScoreFromRating(sentenceRating).toFixed(1)} / 5
-            </p>
-          )}
           <StepNavigator
             index={0}
             total={1}
@@ -162,14 +145,11 @@ export function ChallengeMode() {
               setVocabIndex(challenge.pack!.vocabulary.length - 1)
             }}
             onNext={() => {
-              if (!sentenceRating) {
-                void rateSentence()
-                return
-              }
+              setMaxReachedStep((value) => Math.max(value, 3))
               setPhase('reading')
             }}
-            canNext={sentenceText.trim().length > 0 && !submitting}
-            nextLabel={sentenceRating ? '下一步' : '提交评分'}
+            canNext={sentenceText.trim().length > 0}
+            nextLabel="下一步"
             showProgress={false}
           />
         </div>
@@ -178,8 +158,8 @@ export function ChallengeMode() {
       {phase === 'reading' && (
         <div className="mt-5 space-y-4">
           <h3 className="text-lg font-semibold">阅读挑战</h3>
-          <p className="text-sm leading-6 text-neutral-700">{challenge.pack.reading.articleExcerpt}</p>
-          <div className="rounded-md border border-neutral-200 p-4">
+          <p style={{ fontSize: 'var(--text-sm)', lineHeight: 1.7, color: 'var(--muted)' }}>{challenge.pack.reading.articleExcerpt}</p>
+          <div className="card" style={{ padding: 'var(--space-4)' }}>
             <p className="text-sm font-medium">{challenge.pack.reading.question}</p>
             <div className="mt-3">
               <OptionTags
@@ -189,22 +169,28 @@ export function ChallengeMode() {
               />
             </div>
           </div>
+          <p style={{ fontSize: 'var(--text-xs)', color: 'var(--muted)' }}>
+            阅读查词次数：{lookupCount}（可在阅读模块查词后计入）
+          </p>
           <StepNavigator
             index={0}
             total={1}
             onPrevious={() => setPhase('sentence')}
             onNext={() => void submitChallenge()}
-            canNext={readingIndex >= 0 && !challenge.result}
-            nextLabel="提交挑战结果"
+            canNext={readingIndex >= 0 && !challenge.result && !submitting}
+            nextLabel={submitting ? '提交中...' : '提交挑战结果'}
             showProgress={false}
           />
         </div>
       )}
 
       {challenge.result && (
-        <p className={`mt-4 rounded-md p-3 text-sm ${challenge.result.passed ? 'bg-emerald-50 text-emerald-900' : 'bg-amber-50 text-amber-900'}`}>
-          {challenge.result.passed ? '挑战成功' : '挑战未通过'} · 总分 {challenge.result.totalScore}
-        </p>
+        <div className={`alert ${challenge.result.passed ? 'alert-success' : 'alert-error'}`} style={{ marginTop: 'var(--space-4)' }}>
+          <p>{challenge.result.passed ? '挑战成功' : '挑战未通过'} · 总分 {challenge.result.totalScore.toFixed(0)}</p>
+          <p style={{ fontSize: 'var(--text-sm)', marginTop: 4 }}>
+            词汇 {challenge.result.vocabularyScore.toFixed(0)} · 写作 {challenge.result.writingScore.toFixed(0)} · 阅读 {challenge.result.readingScore.toFixed(0)}
+          </p>
+        </div>
       )}
     </section>
   )

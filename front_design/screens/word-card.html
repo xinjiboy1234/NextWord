@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Learn · NextWord</title>
+  <link rel="stylesheet" href="../css/tokens.css" />
+  <link rel="stylesheet" href="../css/app.css" />
+  <style>
+    .learn-layout { display: grid; grid-template-columns: 1fr 320px; gap: var(--space-6); align-items: start; }
+    @media (max-width: 900px) { .learn-layout { grid-template-columns: 1fr; } }
+
+    .progress-header {
+      display: flex; align-items: center; gap: var(--space-4);
+      margin-bottom: var(--space-6);
+    }
+    .progress-header .count {
+      font-family: var(--font-mono);
+      font-size: var(--text-sm);
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .flashcard {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: var(--space-12) var(--space-8);
+      text-align: center;
+      min-height: 320px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: var(--space-4);
+      transition: transform 0.3s var(--ease-spring), box-shadow 0.3s var(--ease-standard);
+      position: relative;
+    }
+    .flashcard.correct { box-shadow: 0 0 0 2px var(--success); }
+    .flashcard.wrong   { box-shadow: 0 0 0 2px var(--danger); }
+    .word-display {
+      font-family: var(--font-display);
+      font-size: clamp(36px, 6vw, var(--text-4xl));
+      font-weight: 700;
+      letter-spacing: -0.025em;
+      line-height: 1.1;
+    }
+    .word-phonetic {
+      font-family: var(--font-mono);
+      font-size: var(--text-lg);
+      color: var(--muted);
+      letter-spacing: 0.02em;
+    }
+    .word-pos-tag {
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--meta);
+    }
+
+    .answer-area { margin-top: var(--space-6); }
+    .answer-area .input { text-align: center; font-size: var(--text-lg); }
+
+    .rating-area { margin-top: var(--space-6); display: none; }
+    .rating-area.visible { display: block; animation: fadeUp 0.3s var(--ease-spring); }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .feedback-panel { margin-top: var(--space-4); display: none; }
+    .feedback-panel.visible { display: block; animation: fadeUp 0.3s var(--ease-spring); }
+
+    .nav-buttons { display: flex; gap: var(--space-3); margin-top: var(--space-6); }
+    .nav-buttons .btn { flex: 1; }
+
+    .complete-state { text-align: center; display: none; }
+    .complete-state.visible { display: block; animation: celebIn 0.5s var(--ease-spring); }
+
+    /* Feedback side panel */
+    .side-info dt {
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--meta);
+    }
+    .side-info dd {
+      font-size: var(--text-sm);
+      margin: 0 0 var(--space-3);
+    }
+    .example-block {
+      padding: var(--space-3);
+      background: var(--border-soft);
+      border-radius: var(--radius-md);
+      font-size: var(--text-sm);
+      font-style: italic;
+      color: var(--muted);
+    }
+
+    @media (max-width: 430px) {
+      .flashcard { padding: var(--space-6) var(--space-4); min-height: 240px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="app-shell">
+  <div class="main-area" style="margin-left:0;">
+    <header class="topbar">
+      <a href="../index.html" class="btn btn-ghost btn-sm">← Dashboard</a>
+      <span class="topbar-greeting" style="margin-left:auto;">Learn · Word Card</span>
+    </header>
+    <main class="content">
+
+      <div class="learn-layout">
+        <!-- Main: Flashcard + Input -->
+        <div>
+          <!-- Progress -->
+          <div class="progress-header">
+            <span class="count" id="progressLabel">1 / 8</span>
+            <div class="progress-bar" style="flex:1;">
+              <div class="progress-bar-fill" id="progressFill" style="width: 12.5%;"></div>
+            </div>
+          </div>
+
+          <!-- Active learning -->
+          <div id="activeState">
+            <div class="flashcard" id="flashcard">
+              <p class="word-pos-tag" id="wordPos">VERB</p>
+              <p class="word-display" id="wordDisplay">elucidate</p>
+              <p class="word-phonetic" id="wordPhonetic">/ɪˈluːsɪdeɪt/</p>
+            </div>
+
+            <div class="answer-area">
+              <input class="input" type="text" id="answerInput" placeholder="Type the Chinese meaning…" autocomplete="off" />
+            </div>
+
+            <div class="rating-area" id="ratingArea">
+              <p style="font-size:var(--text-sm);color:var(--muted);margin-bottom:var(--space-3);text-align:center;">How well did you know it?</p>
+              <div class="rating-group">
+                <button class="rating-btn forgot" data-rating="forgot">Forgot</button>
+                <button class="rating-btn fuzzy" data-rating="fuzzy">Fuzzy</button>
+                <button class="rating-btn remember" data-rating="remember">Remember</button>
+              </div>
+            </div>
+
+            <div class="feedback-panel" id="feedbackPanel">
+              <div class="card" style="margin-top:var(--space-4);">
+                <div class="row-between">
+                  <span id="feedbackIcon" style="font-size:24px;"></span>
+                  <div>
+                    <p style="font-weight:540;" id="feedbackMeaning"></p>
+                    <p style="font-size:var(--text-sm);color:var(--muted);margin-top:4px;" id="feedbackExample"></p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="nav-buttons" id="navButtons" style="display:none;">
+              <button class="btn btn-secondary" id="prevBtn" disabled>← Previous</button>
+              <button class="btn btn-primary" id="nextBtn">Next →</button>
+            </div>
+          </div>
+
+          <!-- Complete state -->
+          <div class="complete-state" id="completeState">
+            <div style="font-size:64px;margin-bottom:16px;">🎉</div>
+            <h2 style="font-family:var(--font-display);font-weight:700;">Today's words complete!</h2>
+            <p style="color:var(--muted);margin:8px 0 24px;">8 words reviewed. Come back tomorrow for your review queue.</p>
+            <button class="btn btn-primary" onclick="window.location.href='../index.html'">Back to Dashboard</button>
+          </div>
+        </div>
+
+        <!-- Side: Word Info -->
+        <aside class="side-panel" id="sidePanel">
+          <h4 class="side-panel-title">Word Details</h4>
+          <dl class="side-info">
+            <dt>Meaning</dt>
+            <dd id="sideMeaning">阐明，解释</dd>
+            <dt>Example</dt>
+            <dd class="example-block" id="sideExample">The professor elucidated the complex theory with simple diagrams.</dd>
+            <dt>Mastery</dt>
+            <dd id="sideMastery">
+              <div class="progress-bar" style="margin-top:4px;">
+                <div class="progress-bar-fill brand" style="width:45%;"></div>
+              </div>
+              <span style="font-size:var(--text-xs);color:var(--muted);">45% · Review in 3 days</span>
+            </dd>
+          </dl>
+        </aside>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<nav class="bottombar" id="bottombar">
+  <div class="bottombar-inner">
+    <button class="bottombar-tab active" onclick="window.location.href='../index.html'">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Learn
+    </button>
+    <button class="bottombar-tab" onclick="window.location.href='spelling.html'">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="8"/></svg>
+      Practice
+    </button>
+    <button class="bottombar-tab" onclick="window.location.href='article-library.html'">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
+      Read
+    </button>
+    <button class="bottombar-tab" onclick="window.location.href='profile.html'">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Profile
+    </button>
+  </div>
+</nav>
+
+<script>
+  // Word queue
+  const words = [
+    { word:'elucidate', phonetic:'/ɪˈluːsɪdeɪt/', pos:'VERB', meaning:'阐明，解释', example:'The professor elucidated the complex theory with simple diagrams.', mastery:45, interval:3 },
+    { word:'ubiquitous', phonetic:'/juːˈbɪkwɪtəs/', pos:'ADJ',  meaning:'无处不在的', example:'Smartphones have become ubiquitous in modern society.', mastery:62, interval:5 },
+    { word:'pragmatic',  phonetic:'/præɡˈmætɪk/',  pos:'ADJ',  meaning:'务实的，实用的', example:'She took a pragmatic approach to solving the budget crisis.', mastery:38, interval:2 },
+    { word:'ambiguous',  phonetic:'/æmˈbɪɡjuəs/',  pos:'ADJ',  meaning:'模棱两可的', example:'The contract language was deliberately ambiguous.', mastery:71, interval:7 },
+    { word:'scrutinize', phonetic:'/ˈskruːtɪnaɪz/',pos:'VERB', meaning:'仔细审查', example:'The auditor scrutinized every line of the financial report.', mastery:29, interval:1 },
+    { word:'benevolent', phonetic:'/bəˈnevələnt/',pos:'ADJ',  meaning:'仁慈的，慈善的', example:'The benevolent donor funded scholarships for 50 students.', mastery:55, interval:4 },
+    { word:'ephemeral',  phonetic:'/ɪˈfemərəl/',  pos:'ADJ',  meaning:'短暂的，瞬息的', example:'The ephemeral beauty of cherry blossoms lasts only a week.', mastery:33, interval:2 },
+    { word:'tenacious',  phonetic:'/tɪˈneɪʃəs/',  pos:'ADJ',  meaning:'坚韧的，执着的', example:'Her tenacious spirit helped her overcome every obstacle.', mastery:48, interval:3 },
+  ];
+
+  let currentIndex = 0;
+  let answered = new Set();
+  const total = words.length;
+
+  const el = id => document.getElementById(id);
+  const wordDisplay = el('wordDisplay');
+  const wordPhonetic = el('wordPhonetic');
+  const wordPos = el('wordPos');
+  const answerInput = el('answerInput');
+  const progressLabel = el('progressLabel');
+  const progressFill = el('progressFill');
+  const ratingArea = el('ratingArea');
+  const feedbackPanel = el('feedbackPanel');
+  const navButtons = el('navButtons');
+  const prevBtn = el('prevBtn');
+  const nextBtn = el('nextBtn');
+  const flashcard = el('flashcard');
+  const completeState = el('completeState');
+  const activeState = el('activeState');
+
+  function renderWord(i) {
+    const w = words[i];
+    wordDisplay.textContent = w.word;
+    wordPhonetic.textContent = w.phonetic;
+    wordPos.textContent = w.pos;
+    answerInput.value = '';
+    answerInput.disabled = answered.has(i);
+    ratingArea.classList.remove('visible');
+    feedbackPanel.classList.remove('visible');
+    flashcard.classList.remove('correct','wrong');
+    progressLabel.textContent = `${i + 1} / ${total}`;
+    progressFill.style.width = `${((i + 1) / total) * 100}%`;
+    prevBtn.disabled = i === 0;
+    nextBtn.textContent = i === total - 1 ? 'Finish →' : 'Next →';
+    updateSidePanel(w);
+    answerInput.focus();
+  }
+
+  function updateSidePanel(w) {
+    el('sideMeaning').textContent = w.meaning;
+    el('sideExample').textContent = w.example;
+    el('sideMastery').innerHTML = `
+      <div class="progress-bar" style="margin-top:4px;">
+        <div class="progress-bar-fill brand" style="width:${w.mastery}%;"></div>
+      </div>
+      <span style="font-size:var(--text-xs);color:var(--muted);">${w.mastery}% · Review in ${w.interval} day${w.interval>1?'s':''}</span>
+    `;
+  }
+
+  function checkAnswer(rating) {
+    if (answered.has(currentIndex)) return;
+    answered.add(currentIndex);
+    answerInput.disabled = true;
+    const w = words[currentIndex];
+
+    // Show feedback
+    const correct = rating === 'remember';
+    const partial = rating === 'fuzzy';
+    flashcard.classList.add(correct ? 'correct' : partial ? '' : 'wrong');
+    el('feedbackIcon').textContent = correct ? '✓' : partial ? '~' : '✗';
+    el('feedbackMeaning').textContent = w.meaning;
+    el('feedbackExample').textContent = w.example;
+    feedbackPanel.classList.add('visible');
+    ratingArea.classList.remove('visible');
+    navButtons.style.display = '';
+
+    // Celebration for last word
+    if (answered.size === total) {
+      setTimeout(() => {
+        activeState.style.display = 'none';
+        completeState.classList.add('visible');
+        spawnConfetti();
+      }, 600);
+    }
+  }
+
+  function spawnConfetti() {
+    const container = document.createElement('div');
+    container.className = 'celebration';
+    const colors = ['var(--success)','var(--fg)','var(--warn)','var(--info)','var(--danger)'];
+    for (let i = 0; i < 40; i++) {
+      const piece = document.createElement('div');
+      piece.className = 'confetti-piece';
+      piece.style.left = Math.random() * 100 + '%';
+      piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+      piece.style.animationDelay = Math.random() * 0.8 + 's';
+      piece.style.animationDuration = (1 + Math.random() * 2) + 's';
+      container.appendChild(piece);
+    }
+    document.body.appendChild(container);
+    setTimeout(() => container.remove(), 3000);
+  }
+
+  // Input: Enter to submit as "fuzzy"
+  answerInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !answered.has(currentIndex)) {
+      ratingArea.classList.add('visible');
+      answerInput.blur();
+    }
+  });
+
+  // Rating buttons
+  document.querySelectorAll('.rating-btn').forEach(btn => {
+    btn.addEventListener('click', () => checkAnswer(btn.dataset.rating));
+  });
+
+  // Navigation
+  prevBtn.addEventListener('click', () => { if (currentIndex > 0) { currentIndex--; renderWord(currentIndex); } });
+  nextBtn.addEventListener('click', () => {
+    if (currentIndex < total - 1) { currentIndex++; renderWord(currentIndex); }
+    else if (answered.size === total) {
+      activeState.style.display = 'none';
+      completeState.classList.add('visible');
+      spawnConfetti();
+    }
+  });
+
+  // Init
+  renderWord(0);
+  navButtons.style.display = 'none';
+</script>
+
+</body>
+</html>

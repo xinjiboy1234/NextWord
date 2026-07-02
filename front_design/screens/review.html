@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /><title>Review · NextWord</title>
+<link rel="stylesheet" href="../css/tokens.css" /><link rel="stylesheet" href="../css/app.css" />
+<style>
+  .review-layout { display:grid; grid-template-columns:1fr 280px; gap:var(--space-6); align-items:start; }
+  @media (max-width:900px) { .review-layout { grid-template-columns:1fr; } }
+  .flip-card {
+    perspective:800px; width:100%; min-height:260px; cursor:pointer;
+  }
+  .flip-inner {
+    position:relative; width:100%; height:100%; min-height:260px;
+    transition:transform 0.5s var(--ease-spring);
+    transform-style:preserve-3d;
+  }
+  .flip-inner.flipped { transform:rotateY(180deg); }
+  .flip-front, .flip-back {
+    position:absolute; inset:0;
+    backface-visibility:hidden;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:var(--space-8); text-align:center;
+    border:1px solid var(--border); border-radius:var(--radius-md);
+    background:var(--surface);
+  }
+  .flip-back { transform:rotateY(180deg); }
+  .flip-word {
+    font-family:var(--font-display);
+    font-size:clamp(28px,5vw,var(--text-3xl));
+    font-weight:700; letter-spacing:-0.02em;
+  }
+  .flip-hint { font-size:var(--text-sm); color:var(--muted); margin-top:var(--space-4); }
+  .activity-stat { display:flex; justify-content:space-between; padding:var(--space-2) 0; border-bottom:1px solid var(--border-soft); font-size:var(--text-sm); }
+  .activity-stat .val { font-family:var(--font-mono); font-variant-numeric:tabular-nums; }
+</style></head>
+<body>
+
+<div class="app-shell"><div class="main-area" style="margin-left:0;">
+<header class="topbar"><a href="../index.html" class="btn btn-ghost btn-sm">← Dashboard</a>
+  <span style="margin-left:auto;display:flex;align-items:center;gap:var(--space-3);">
+    <span class="count" style="font-family:var(--font-mono);font-size:var(--text-sm);color:var(--muted);" id="counter">1 / 5</span>
+    <button class="btn btn-ghost btn-sm" onclick="location.reload()">Refresh ↻</button>
+  </span>
+</header>
+<main class="content">
+
+<div class="review-layout">
+  <div>
+    <div class="section-header"><h2>Review Queue</h2><p>5 words due today. Tap the card to reveal the meaning.</p></div>
+
+    <div class="flip-card" id="flipCard" onclick="flip()">
+      <div class="flip-inner" id="flipInner">
+        <div class="flip-front">
+          <p class="mono-label">Word</p>
+          <p class="flip-word" id="frontWord">ephemeral</p>
+          <p style="font-family:var(--font-mono);font-size:var(--text-sm);color:var(--muted);margin-top:4px;">/ɪˈfemərəl/</p>
+          <p class="flip-hint">Tap to reveal meaning</p>
+        </div>
+        <div class="flip-back">
+          <p class="mono-label">Meaning</p>
+          <p class="flip-word" id="backMeaning">短暂的，瞬息的</p>
+          <p style="font-size:var(--text-sm);color:var(--muted);margin-top:var(--space-2);">adjective</p>
+          <p style="font-size:var(--text-sm);color:var(--muted);font-style:italic;margin-top:var(--space-4);max-width:36ch;">"The ephemeral beauty of cherry blossoms lasts only a week."</p>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:var(--space-2);justify-content:center;margin-top:var(--space-4);">
+      <button class="btn btn-secondary btn-sm" id="prevWord" disabled onclick="prevWord()">← Previous</button>
+      <button class="btn btn-primary btn-sm" id="nextWord" onclick="nextWord()">Next →</button>
+    </div>
+  </div>
+
+  <aside class="side-panel">
+    <h4 class="side-panel-title">Activity Summary</h4>
+    <div class="activity-stat"><span>Compose sessions</span><span class="val">47</span></div>
+    <div class="activity-stat"><span>Free expression</span><span class="val">12</span></div>
+    <div class="activity-stat"><span>Spelling attempts</span><span class="val">234</span></div>
+    <div class="activity-stat"><span>Spelling accuracy</span><span class="val">78%</span></div>
+
+    <h4 class="side-panel-title" style="margin-top:var(--space-6);">Recent Activity</h4>
+    <div style="font-size:var(--text-sm);">
+      <p style="padding:4px 0;border-bottom:1px solid var(--border-soft);"><span style="color:var(--meta);">Today</span> — Learned 8 words</p>
+      <p style="padding:4px 0;border-bottom:1px solid var(--border-soft);"><span style="color:var(--meta);">Yesterday</span> — 12 spelling attempts</p>
+      <p style="padding:4px 0;border-bottom:1px solid var(--border-soft);"><span style="color:var(--meta);">Jun 23</span> — Completed reading</p>
+    </div>
+  </aside>
+</div>
+
+</main></div></div>
+
+<nav class="bottombar"><div class="bottombar-inner">
+  <button class="bottombar-tab" onclick="window.location.href='../index.html'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Learn</button>
+  <button class="bottombar-tab" onclick="window.location.href='spelling.html'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="8"/></svg>Practice</button>
+  <button class="bottombar-tab" onclick="window.location.href='article-library.html'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>Read</button>
+  <button class="bottombar-tab" onclick="window.location.href='profile.html'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Profile</button>
+</div></nav>
+
+<script>
+  const words = [
+    { word:'ephemeral',  meaning:'短暂的，瞬息的', phonetic:'/ɪˈfemərəl/', pos:'adjective', example:'The ephemeral beauty of cherry blossoms lasts only a week.' },
+    { word:'tenacious',  meaning:'坚韧的，执着的', phonetic:'/tɪˈneɪʃəs/', pos:'adjective', example:'Her tenacious spirit helped her overcome every obstacle.' },
+    { word:'ambiguous',  meaning:'模棱两可的', phonetic:'/æmˈbɪɡjuəs/', pos:'adjective', example:'The contract language was deliberately ambiguous.' },
+    { word:'pragmatic',  meaning:'务实的，实用的', phonetic:'/præɡˈmætɪk/', pos:'adjective', example:'She took a pragmatic approach to solving the budget crisis.' },
+    { word:'scrutinize', meaning:'仔细审查', phonetic:'/ˈskruːtɪnaɪz/', pos:'verb', example:'The auditor scrutinized every line of the report.' },
+  ];
+  let idx = 0, isFlipped = false;
+  const el=id=>document.getElementById(id);
+
+  function render() {
+    const w = words[idx];
+    el('frontWord').textContent = w.word;
+    el('frontWord').nextElementSibling.textContent = w.phonetic;
+    el('backMeaning').textContent = w.meaning;
+    el('backMeaning').nextElementSibling.textContent = w.pos;
+    el('backMeaning').nextElementSibling.nextElementSibling.textContent = `"${w.example}"`;
+    el('flipInner').classList.remove('flipped');
+    isFlipped = false;
+    el('counter').textContent = `${idx+1} / ${words.length}`;
+    el('prevWord').disabled = idx === 0;
+    el('nextWord').textContent = idx === words.length-1 ? 'Finish' : 'Next →';
+  }
+
+  function flip() { isFlipped = !isFlipped; el('flipInner').classList.toggle('flipped', isFlipped); }
+  function nextWord() { if (idx < words.length-1) { idx++; render(); } else { el('flipCard').style.display='none'; document.querySelector('.section-header h2').textContent='Review Complete'; document.querySelector('.section-header p').textContent='All 5 words reviewed. Come back tomorrow!'; } }
+  function prevWord() { if (idx > 0) { idx--; render(); } }
+
+  render();
+</script>
+</body></html>

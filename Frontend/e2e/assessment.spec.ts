@@ -1,16 +1,25 @@
 import { expect, test } from '@playwright/test'
+import { loginAsTestUser, registerTestUser, applyAuthToPage, skipInitialAssessment } from './helpers'
 
 test.describe('首次水平测评', () => {
-  test('从我的进入测评页并开始流程', async ({ page }) => {
-    await page.goto('/')
+  test('新用户自动进入测评并开始词汇步', async ({ page, request }) => {
+    await loginAsTestUser(page, request)
+    await page.goto('/dashboard')
 
-    await page.getByRole('button', { name: '我的' }).click()
-    await page.getByRole('button', { name: '测评' }).click()
+    await expect(page).toHaveURL(/\/assessment/, { timeout: 15_000 })
+    await expect(page.getByText('词汇识别')).toBeVisible({ timeout: 30_000 })
+    await expect(page.getByRole('button', { name: '词汇' })).toBeVisible()
+  })
+
+  test('已完成测评用户可从管理页进入', async ({ page, request }) => {
+    const auth = await registerTestUser(request)
+    await skipInitialAssessment(request, auth.token)
+    await applyAuthToPage(page, auth)
+
+    await page.goto('/manage')
+    await page.getByRole('button', { name: '水平测评' }).click()
+    await expect(page).toHaveURL(/\/assessment/)
 
     await expect(page.getByRole('heading', { name: '首次水平测评' })).toBeVisible()
-    await page.locator('section').filter({ hasText: '首次水平测评' }).getByRole('button', { name: '开始测评' }).click()
-
-    await expect(page.getByText('词汇识别')).toBeVisible({ timeout: 15_000 })
-    await expect(page.getByText('1. 词汇')).toBeVisible()
   })
 })

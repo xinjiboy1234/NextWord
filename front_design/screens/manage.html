@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /><title>Manage · NextWord</title>
+<link rel="stylesheet" href="../css/tokens.css" /><link rel="stylesheet" href="../css/app.css" />
+<style>
+  .manage-section { margin-bottom: var(--space-8); }
+  .manage-section h2 {
+    font-family: var(--font-display);
+    font-size: var(--text-lg);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: var(--space-4);
+  }
+  .manage-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--space-4);
+  }
+  .manage-card {
+    display: flex; align-items: center; gap: var(--space-4);
+    padding: var(--space-5);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: box-shadow var(--motion-base) var(--ease-standard),
+                transform var(--motion-base) var(--ease-standard);
+  }
+  .manage-card:hover { box-shadow: var(--elev-raised); transform: translateY(-2px); }
+  .manage-card-icon {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    background: var(--accent-active);
+    display: grid; place-items: center;
+    flex-shrink: 0;
+  }
+  .manage-card-icon svg { width: 22px; height: 22px; color: var(--fg); }
+  .manage-card-info { flex: 1; min-width: 0; }
+  .manage-card-info h3 { font-size: var(--text-sm); font-weight: 540; letter-spacing: -0.01em; }
+  .manage-card-info p { font-size: var(--text-xs); color: var(--muted); margin-top: 2px; }
+  .manage-card-chevron { color: var(--meta); flex-shrink: 0; }
+  .manage-card-chevron svg { width: 18px; height: 18px; }
+
+  @media (max-width: 768px) {
+    .manage-card-grid { grid-template-columns: 1fr; }
+  }
+</style></head>
+<body>
+
+<div class="app-shell"><div class="main-area" style="margin-left:0;">
+<header class="topbar">
+  <a href="../index.html" class="btn btn-ghost btn-sm">← Dashboard</a>
+  <span class="topbar-greeting" style="margin-left:auto;">Manage</span>
+</header>
+<main class="content">
+
+  <div class="section-header">
+    <h2>Manage</h2>
+    <p>System configuration, placement tests, challenges, and vocabulary data.</p>
+  </div>
+
+  <!-- System -->
+  <div class="manage-section">
+    <p class="mono-label" style="margin-bottom:var(--space-4);">System</p>
+    <div class="manage-card-grid">
+
+      <div class="manage-card" onclick="openSettings()">
+        <div class="manage-card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+        </div>
+        <div class="manage-card-info">
+          <h3>System Settings</h3>
+          <p>LLM provider, API keys, model configuration</p>
+        </div>
+        <span class="manage-card-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Assessment & Testing -->
+  <div class="manage-section">
+    <p class="mono-label" style="margin-bottom:var(--space-4);">Assessment &amp; Testing</p>
+    <div class="manage-card-grid">
+
+      <a href="assessment.html" class="manage-card" style="text-decoration:none;color:inherit;">
+        <div class="manage-card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        </div>
+        <div class="manage-card-info">
+          <h3>Initial Assessment</h3>
+          <p>5-step CEFR placement test — vocabulary, spelling, composing, reading</p>
+        </div>
+        <span class="manage-card-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></span>
+      </a>
+
+      <a href="challenge.html" class="manage-card" style="text-decoration:none;color:inherit;">
+        <div class="manage-card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 9H4.5a2.5 2.5 0 010-5C7 4 6 9 6 9z"/><path d="M18 9h1.5a2.5 2.5 0 000-5C17 4 18 9 18 9z"/><path d="M4 22h16"/><path d="M10 22V2h4v20"/></svg>
+        </div>
+        <div class="manage-card-info">
+          <h3>Challenge Mode</h3>
+          <p>3-stage comprehensive test — vocab, composing, reading</p>
+        </div>
+        <span class="manage-card-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></span>
+      </a>
+
+    </div>
+  </div>
+
+  <!-- Data -->
+  <div class="manage-section">
+    <p class="mono-label" style="margin-bottom:var(--space-4);">Data</p>
+    <div class="manage-card-grid">
+
+      <a href="word-bank.html" class="manage-card" style="text-decoration:none;color:inherit;">
+        <div class="manage-card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        </div>
+        <div class="manage-card-info">
+          <h3>Word Bank</h3>
+          <p>Full vocabulary lemma list with search and filtering</p>
+        </div>
+        <span class="manage-card-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></span>
+      </a>
+
+      <a href="progress.html" class="manage-card" style="text-decoration:none;color:inherit;">
+        <div class="manage-card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        </div>
+        <div class="manage-card-info">
+          <h3>Learning Data</h3>
+          <p>Progress statistics, streaks, and activity history</p>
+        </div>
+        <span class="manage-card-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></span>
+      </a>
+
+    </div>
+  </div>
+
+</main></div></div>
+
+<!-- Settings Drawer -->
+<div class="drawer-overlay" id="settingsOverlay" onclick="closeSettings()"></div>
+<div class="drawer" id="settingsDrawer">
+  <div class="drawer-header">
+    <h2>System Settings</h2>
+    <button class="drawer-close" onclick="closeSettings()">×</button>
+  </div>
+  <div class="drawer-body">
+    <div class="stack stack-md">
+      <div class="field">
+        <label>Preset</label>
+        <select class="select" id="llmPreset"><option>OpenAI</option><option>DeepSeek</option><option>Qwen</option></select>
+      </div>
+      <div class="field"><label>Provider</label><input class="input" id="llmProvider" value="openai" /></div>
+      <div class="field"><label>Model</label><input class="input" id="llmModel" value="gpt-4o" /></div>
+      <div class="field"><label>API URL</label><input class="input" id="llmApiUrl" value="https://api.openai.com/v1" /></div>
+      <div class="field"><label>API Key</label><input class="input" type="password" id="llmApiKey" value="sk-••••••••••••••••" /></div>
+    </div>
+  </div>
+  <div class="drawer-footer">
+    <button class="btn btn-primary" style="width:100%;" id="settingsSaveBtn" onclick="saveSettings()">Save</button>
+  </div>
+</div>
+
+<nav class="bottombar"><div class="bottombar-inner">
+  <button class="bottombar-tab" onclick="window.location.href='../index.html'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Learn</button>
+  <button class="bottombar-tab" onclick="window.location.href='spelling.html'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="8"/></svg>Practice</button>
+  <button class="bottombar-tab" onclick="window.location.href='article-library.html'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>Read</button>
+  <button class="bottombar-tab" onclick="window.location.href='profile.html'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Profile</button>
+</div></nav>
+
+<script>
+  function openSettings() {
+    document.getElementById('settingsOverlay').classList.add('open');
+    document.getElementById('settingsDrawer').classList.add('open');
+  }
+  function closeSettings() {
+    document.getElementById('settingsOverlay').classList.remove('open');
+    document.getElementById('settingsDrawer').classList.remove('open');
+  }
+  function saveSettings() {
+    const btn = document.getElementById('settingsSaveBtn');
+    btn.textContent = '✓ Saved';
+    btn.style.background = 'var(--success)';
+    btn.style.color = '#fff';
+    setTimeout(() => {
+      btn.textContent = 'Save';
+      btn.style.background = '';
+      btn.style.color = '';
+      closeSettings();
+    }, 1200);
+  }
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeSettings();
+  });
+</script>
+
+</body></html>

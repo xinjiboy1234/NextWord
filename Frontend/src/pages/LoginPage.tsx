@@ -1,14 +1,10 @@
-import { LogIn, UserPlus } from 'lucide-react'
+import { BookOpenText } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 
 type Mode = 'login' | 'register'
 
-interface LoginPageProps {
-  onSuccess?: () => void
-}
-
-export function LoginPage({ onSuccess }: LoginPageProps) {
+export function LoginPage() {
   const { login, register } = useAuth()
   const [mode, setMode] = useState<Mode>('login')
   const [email, setEmail] = useState('')
@@ -27,7 +23,6 @@ export function LoginPage({ onSuccess }: LoginPageProps) {
       } else {
         await register(email, password, displayName || email)
       }
-      onSuccess?.()
     } catch {
       setError(mode === 'login' ? '登录失败，请检查邮箱和密码。' : '注册失败，邮箱可能已被使用。')
     } finally {
@@ -36,77 +31,78 @@ export function LoginPage({ onSuccess }: LoginPageProps) {
   }
 
   return (
-    <div className="mx-auto max-w-md rounded-md border border-neutral-200 bg-white p-6">
-      <div className="mb-6 flex gap-2">
-        <button
-          type="button"
-          onClick={() => setMode('login')}
-          className={`flex-1 rounded-md border px-3 py-2 text-sm font-medium ${
-            mode === 'login' ? 'border-emerald-700 bg-emerald-700 text-white' : 'border-neutral-200'
-          }`}
-        >
-          <span className="inline-flex items-center gap-2 justify-center w-full">
-            <LogIn size={16} aria-hidden="true" />
-            登录
-          </span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setMode('register')}
-          className={`flex-1 rounded-md border px-3 py-2 text-sm font-medium ${
-            mode === 'register' ? 'border-emerald-700 bg-emerald-700 text-white' : 'border-neutral-200'
-          }`}
-        >
-          <span className="inline-flex items-center gap-2 justify-center w-full">
-            <UserPlus size={16} aria-hidden="true" />
-            注册
-          </span>
-        </button>
-      </div>
+    <div className="auth-page">
+      <div className="auth-card">
+        <div className="auth-brand">
+          <BookOpenText size={32} style={{ color: 'var(--brand)' }} aria-hidden="true" />
+          NextWord
+        </div>
 
-      <form className="grid gap-4" onSubmit={handleSubmit}>
-        {mode === 'register' && (
-          <label className="grid gap-1 text-sm">
-            <span className="font-medium text-neutral-700">昵称</span>
+        <div className="tabs auth-tabs" role="tablist">
+          <button
+            type="button"
+            className={`tab${mode === 'login' ? ' active' : ''}`}
+            role="tab"
+            aria-selected={mode === 'login'}
+            onClick={() => setMode('login')}
+          >
+            登录
+          </button>
+          <button
+            type="button"
+            className={`tab${mode === 'register' ? ' active' : ''}`}
+            role="tab"
+            aria-selected={mode === 'register'}
+            onClick={() => setMode('register')}
+          >
+            注册
+          </button>
+        </div>
+
+        {error ? <div className="auth-error">{error}</div> : null}
+
+        <form className="auth-fields" onSubmit={handleSubmit}>
+          {mode === 'register' && (
+            <div className="field">
+              <label htmlFor="displayName">昵称</label>
+              <input
+                id="displayName"
+                type="text"
+                className="input"
+                value={displayName}
+                onChange={(event) => setDisplayName(event.target.value)}
+                placeholder="可选"
+              />
+            </div>
+          )}
+          <div className="field">
+            <label htmlFor="email">邮箱</label>
             <input
-              type="text"
-              value={displayName}
-              onChange={(event) => setDisplayName(event.target.value)}
-              className="rounded-md border border-neutral-300 px-3 py-2"
-              placeholder="可选"
+              id="email"
+              type="email"
+              required
+              className="input"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
             />
-          </label>
-        )}
-        <label className="grid gap-1 text-sm">
-          <span className="font-medium text-neutral-700">邮箱</span>
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            className="rounded-md border border-neutral-300 px-3 py-2"
-          />
-        </label>
-        <label className="grid gap-1 text-sm">
-          <span className="font-medium text-neutral-700">密码</span>
-          <input
-            type="password"
-            required
-            minLength={6}
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            className="rounded-md border border-neutral-300 px-3 py-2"
-          />
-        </label>
-        {error && <p className="text-sm text-rose-700">{error}</p>}
-        <button
-          type="submit"
-          disabled={submitting}
-          className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
-        >
-          {submitting ? '提交中...' : mode === 'login' ? '登录' : '注册'}
-        </button>
-      </form>
+          </div>
+          <div className="field">
+            <label htmlFor="password">密码</label>
+            <input
+              id="password"
+              type="password"
+              required
+              minLength={6}
+              className="input"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+            />
+          </div>
+          <button type="submit" disabled={submitting} className="btn btn-primary auth-submit">
+            {submitting ? '提交中...' : mode === 'login' ? '登录' : '注册'}
+          </button>
+        </form>
+      </div>
     </div>
   )
 }

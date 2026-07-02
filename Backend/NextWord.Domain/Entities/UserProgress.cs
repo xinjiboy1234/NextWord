@@ -19,5 +19,16 @@ public sealed class UserProgress
     public int PendingReviewCount { get; set; }
     public bool IsUpgradeCandidate { get; set; }
 
+    // Score kernel (v1) — OverallScore computed at read, not stored
+    public int? VocabularyScore { get; set; }
+    public int? ReadingScore { get; set; }
+    public int? WritingScore { get; set; }
+    public int? SpellingScore { get; set; }
+    public string? DifficultyBucket { get; set; }
+    public string? CefrDisplay { get; set; }
+    public DateTimeOffset? ScoresUpdatedAt { get; set; }
+    public int ScoreSchemaVersion { get; set; } = 1;
+    public string? LegacyCefrJson { get; set; }
+
     public User? User { get; set; }
 }

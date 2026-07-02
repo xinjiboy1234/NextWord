@@ -18,7 +18,8 @@ export function AudioPlayer({ text }: AudioPlayerProps) {
       type="button"
       onClick={speak}
       title="播放发音"
-      className="grid h-10 w-10 place-items-center rounded-md border border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-100"
+      className="btn btn-icon btn-secondary"
+      aria-label="播放发音"
     >
       <Volume2 size={18} aria-hidden="true" />
     </button>

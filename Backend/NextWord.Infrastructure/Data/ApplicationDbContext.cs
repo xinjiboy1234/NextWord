@@ -37,6 +37,13 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<AssessmentRecord> AssessmentRecords => Set<AssessmentRecord>();
     public DbSet<ChallengeRecord> ChallengeRecords => Set<ChallengeRecord>();
     public DbSet<LevelHistory> LevelHistories => Set<LevelHistory>();
+    public DbSet<LearningEvent> LearningEvents => Set<LearningEvent>();
+    public DbSet<ProfileScoreSnapshot> ProfileScoreSnapshots => Set<ProfileScoreSnapshot>();
+    public DbSet<EvaluationReport> EvaluationReports => Set<EvaluationReport>();
+    public DbSet<BackgroundJob> BackgroundJobs => Set<BackgroundJob>();
+    public DbSet<UserFeedback> UserFeedbacks => Set<UserFeedback>();
+    public DbSet<UserWordExclude> UserWordExcludes => Set<UserWordExclude>();
+    public DbSet<ChallengeSession> ChallengeSessions => Set<ChallengeSession>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -94,6 +101,9 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.Property(annotation => annotation.CefrLevel).HasConversion<string>().HasMaxLength(8);
             entity.Property(annotation => annotation.RecommendedAction).HasConversion<string>().HasMaxLength(32);
             entity.Property(annotation => annotation.ModelProfileId).HasMaxLength(80);
+            entity.Property(annotation => annotation.DimensionsJson).HasMaxLength(2000);
+            entity.Property(annotation => annotation.SourcesJson).HasMaxLength(4000);
+            entity.Property(annotation => annotation.PromptVersion).HasMaxLength(40);
         });
 
         modelBuilder.Entity<DifficultyAnnotation>(entity =>
@@ -122,6 +132,9 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.Property(progress => progress.HasCompletedInitialAssessment);
             entity.Property(progress => progress.PendingReviewCount);
             entity.Property(progress => progress.IsUpgradeCandidate);
+            entity.Property(progress => progress.DifficultyBucket).HasMaxLength(32);
+            entity.Property(progress => progress.CefrDisplay).HasMaxLength(8);
+            entity.Property(progress => progress.LegacyCefrJson).HasMaxLength(2000);
             entity.HasOne(progress => progress.User)
                 .WithMany(user => user.ProgressRecords)
                 .HasForeignKey(progress => progress.UserId)
@@ -353,6 +366,101 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.HasOne(history => history.User)
                 .WithMany(user => user.LevelHistories)
                 .HasForeignKey(history => history.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<LearningEvent>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.IdempotencyKey).IsUnique();
+            entity.HasIndex(e => new { e.UserId, e.OccurredAt });
+            entity.Property(e => e.EventType).HasMaxLength(64).IsRequired();
+            entity.Property(e => e.PayloadJson).HasMaxLength(16000).IsRequired();
+            entity.Property(e => e.IdempotencyKey).HasMaxLength(128).IsRequired();
+            entity.HasOne(e => e.User)
+                .WithMany(user => user.LearningEvents)
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ProfileScoreSnapshot>(entity =>
+        {
+            entity.HasKey(s => s.Id);
+            entity.HasIndex(s => new { s.UserId, s.Date }).IsUnique();
+            entity.Property(s => s.ScoresJson).HasMaxLength(2000).IsRequired();
+            entity.HasOne(s => s.User)
+                .WithMany(user => user.ProfileScoreSnapshots)
+                .HasForeignKey(s => s.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<EvaluationReport>(entity =>
+        {
+            entity.HasKey(r => r.Id);
+            entity.HasIndex(r => r.IdempotencyKey).IsUnique();
+            entity.HasIndex(r => new { r.UserId, r.CreatedAt });
+            entity.Property(r => r.TriggerType).HasMaxLength(32).IsRequired();
+            entity.Property(r => r.InputSnapshotJson).HasMaxLength(16000).IsRequired();
+            entity.Property(r => r.InputSnapshotHash).HasMaxLength(64).IsRequired();
+            entity.Property(r => r.ContentJson).HasMaxLength(16000).IsRequired();
+            entity.Property(r => r.Status).HasMaxLength(16).IsRequired();
+            entity.Property(r => r.IdempotencyKey).HasMaxLength(128).IsRequired();
+            entity.Property(r => r.ModelProfileId).HasMaxLength(80);
+            entity.HasOne(r => r.User)
+                .WithMany(user => user.EvaluationReports)
+                .HasForeignKey(r => r.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(r => r.Assessment)
+                .WithMany()
+                .HasForeignKey(r => r.AssessmentId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<BackgroundJob>(entity =>
+        {
+            entity.HasKey(j => j.Id);
+            entity.HasIndex(j => j.IdempotencyKey).IsUnique();
+            entity.HasIndex(j => new { j.Status, j.CreatedAt });
+            entity.Property(j => j.JobType).HasMaxLength(64).IsRequired();
+            entity.Property(j => j.PayloadJson).HasMaxLength(16000).IsRequired();
+            entity.Property(j => j.Status).HasMaxLength(16).IsRequired();
+            entity.Property(j => j.IdempotencyKey).HasMaxLength(128).IsRequired();
+            entity.Property(j => j.ErrorMessage).HasMaxLength(2000);
+        });
+
+        modelBuilder.Entity<UserFeedback>(entity =>
+        {
+            entity.HasKey(f => f.Id);
+            entity.HasIndex(f => new { f.UserId, f.CreatedAt });
+            entity.Property(f => f.FeedbackType).HasMaxLength(32).IsRequired();
+            entity.Property(f => f.TargetWord).HasMaxLength(80).IsRequired();
+            entity.Property(f => f.ContextJson).HasMaxLength(4000);
+            entity.Property(f => f.Status).HasMaxLength(16).IsRequired();
+            entity.HasOne(f => f.User)
+                .WithMany(user => user.UserFeedbacks)
+                .HasForeignKey(f => f.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<UserWordExclude>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.UserId, e.WordLemma }).IsUnique();
+            entity.Property(e => e.WordLemma).HasMaxLength(80).IsRequired();
+            entity.HasOne(e => e.User)
+                .WithMany(user => user.WordExcludes)
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ChallengeSession>(entity =>
+        {
+            entity.HasKey(session => session.Id);
+            entity.HasIndex(session => new { session.UserId, session.CreatedAt });
+            entity.Property(session => session.PackJson).HasMaxLength(32000).IsRequired();
+            entity.HasOne(session => session.User)
+                .WithMany()
+                .HasForeignKey(session => session.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }

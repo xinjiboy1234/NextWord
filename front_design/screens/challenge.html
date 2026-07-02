@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Challenge · NextWord</title>
+  <link rel="stylesheet" href="../css/tokens.css" />
+  <link rel="stylesheet" href="../css/app.css" />
+  <style>
+    .stage-indicator {
+      display: flex; align-items: center; gap: var(--space-2);
+      margin-bottom: var(--space-6);
+    }
+    .stage-dot {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      display: grid; place-items: center;
+      font-weight: 540; font-size: var(--text-sm);
+      border: 2px solid var(--border);
+      transition: all var(--motion-base);
+    }
+    .stage-dot.done { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+    .stage-dot.current { border-color: var(--fg); }
+    .stage-line { flex: 1; height: 2px; background: var(--border); max-width: 60px; }
+    .stage-line.done { background: var(--fg); }
+
+    .challenge-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: var(--space-8);
+      max-width: 640px; margin: 0 auto;
+      text-align: center;
+      animation: qIn 0.35s var(--ease-spring);
+    }
+    @keyframes qIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .big-score {
+      font-family: var(--font-display);
+      font-size: clamp(64px, 10vw, 96px);
+      font-weight: 700;
+      letter-spacing: -0.04em;
+      line-height: 1;
+    }
+  </style>
+</head>
+<body>
+
+<div class="app-shell">
+  <div class="main-area" style="margin-left:0;">
+    <header class="topbar">
+      <a href="../index.html" class="btn btn-ghost btn-sm">← Dashboard</a>
+      <span class="topbar-greeting" style="margin-left:auto;">Challenge Mode</span>
+    </header>
+    <main class="content">
+
+      <!-- Stage indicator -->
+      <div class="stage-indicator" style="justify-content:center;" id="stageInd"></div>
+
+      <!-- Challenge content -->
+      <div id="challengeContent"></div>
+
+    </main>
+  </div>
+</div>
+
+<script>
+  const stages = [
+    { name:'Vocabulary', icon:'📝', desc:'Multiple choice questions' },
+    { name:'Compose', icon:'💬', desc:'Write sentences with target words' },
+    { name:'Reading', icon:'📖', desc:'Read + answer questions' },
+  ];
+
+  let stage = 0;
+  const stageDone = new Set();
+  let totalScore = 0;
+  const el = id => document.getElementById(id);
+
+  function renderStageInd() {
+    let html = '';
+    stages.forEach((s, i) => {
+      if (i > 0) html += `<div class="stage-line${stageDone.has(i-1)?' done':''}"></div>`;
+      let cls = 'stage-dot';
+      if (stageDone.has(i)) cls += ' done';
+      if (i === stage) cls += ' current';
+      html += `<div class="${cls}">${stageDone.has(i) ? '✓' : s.icon}</div>`;
+    });
+    el('stageInd').innerHTML = html;
+  }
+
+  function nextStage() {
+    stageDone.add(stage);
+    if (stage < 2) { stage++; renderStageInd(); renderContent(); }
+    else showResults();
+  }
+
+  function renderContent() {
+    if (stage === 0) renderVocab();
+    else if (stage === 1) renderCompose();
+    else renderReading();
+  }
+
+  function renderVocab() {
+    el('challengeContent').innerHTML = `
+      <div class="challenge-card">
+        <p class="mono-label">Stage 1 · Vocabulary</p>
+        <p style="font-size:var(--text-2xl);font-weight:700;font-family:var(--font-display);margin:var(--space-4) 0;">ubiquitous</p>
+        <p style="color:var(--muted);margin-bottom:var(--space-4);">Choose the correct meaning:</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3);max-width:400px;margin:0 auto;" id="vocabOpts">
+          <div class="option-tag" onclick="selectOption(this)">稀有的</div>
+          <div class="option-tag" onclick="selectOption(this)">无处不在的</div>
+          <div class="option-tag" onclick="selectOption(this)">复杂的</div>
+          <div class="option-tag" onclick="selectOption(this)">暂时的</div>
+        </div>
+        <button class="btn btn-primary" style="margin-top:var(--space-6);" id="vocabSubmit" disabled onclick="nextStage()">Submit & continue</button>
+      </div>`;
+  }
+
+  function selectOption(el) {
+    document.querySelectorAll('#vocabOpts .option-tag').forEach(t => t.classList.remove('selected'));
+    el.classList.add('selected');
+    document.getElementById('vocabSubmit').disabled = false;
+  }
+
+  function renderCompose() {
+    el('challengeContent').innerHTML = `
+      <div class="challenge-card">
+        <p class="mono-label">Stage 2 · Compose</p>
+        <p style="font-size:var(--text-2xl);font-weight:700;font-family:var(--font-display);margin-bottom:8px;">tenacious</p>
+        <p style="font-family:var(--font-mono);font-size:var(--text-sm);color:var(--muted);margin-bottom:var(--space-4);">/tɪˈneɪʃəs/ · adjective</p>
+        <textarea class="textarea" id="composeInput" placeholder="Write a sentence using 'tenacious'…" rows="3"></textarea>
+        <button class="btn btn-primary" style="margin-top:var(--space-4);" onclick="simulateScore()">Submit for scoring</button>
+        <div id="scoreResult" style="margin-top:var(--space-4);display:none;">
+          <span class="status-tag status-usable">Usable</span>
+          <p style="font-size:var(--text-sm);color:var(--muted);margin-top:8px;">Score: 74/100</p>
+          <button class="btn btn-primary btn-sm" style="margin-top:var(--space-3);" onclick="nextStage()">Next stage →</button>
+        </div>
+      </div>`;
+  }
+
+  function simulateScore() {
+    document.querySelector('#challengeContent #scoreResult').style.display = '';
+    totalScore += 74;
+  }
+
+  function renderReading() {
+    el('challengeContent').innerHTML = `
+      <div class="challenge-card" style="text-align:left;">
+        <p class="mono-label">Stage 3 · Reading</p>
+        <div style="padding:var(--space-4);background:var(--border-soft);border-radius:var(--radius-md);margin:var(--space-4) 0;font-size:var(--text-sm);line-height:1.7;">
+          <p>The gig economy has expanded rapidly, offering flexible work but raising concerns about worker protections and benefits.</p>
+        </div>
+        <p style="font-weight:540;margin-bottom:var(--space-4);">What is a concern mentioned about the gig economy?</p>
+        <div class="options-grid" id="readOpts">
+          <div class="option-tag" onclick="selectReadOpt(this)">Too few jobs</div>
+          <div class="option-tag" onclick="selectReadOpt(this)">Worker protections</div>
+          <div class="option-tag" onclick="selectReadOpt(this)">High salaries</div>
+          <div class="option-tag" onclick="selectReadOpt(this)">Office locations</div>
+        </div>
+        <button class="btn btn-primary" style="margin-top:var(--space-4);" id="readSubmit" disabled onclick="totalScore+=80;nextStage();">Submit challenge</button>
+      </div>`;
+  }
+
+  function selectReadOpt(el) {
+    document.querySelectorAll('#readOpts .option-tag').forEach(t => t.classList.remove('selected'));
+    el.classList.add('selected');
+    document.getElementById('readSubmit').disabled = false;
+  }
+
+  function showResults() {
+    const passed = totalScore >= 180;
+    el('challengeContent').innerHTML = `
+      <div class="challenge-card">
+        <div style="font-size:64px;margin-bottom:8px;">${passed ? '🏆' : '📚'}</div>
+        <p class="mono-label">Challenge Complete</p>
+        <div class="big-score" style="margin:var(--space-4) 0;">${totalScore}</div>
+        <p style="font-weight:540;">${passed ? 'Challenge passed!' : 'Keep practicing — you\'re close.'}</p>
+        <p style="font-size:var(--text-sm);color:var(--muted);margin-top:4px;">${passed ? 'Total score 220/300' : 'Total score ' + totalScore + '/300. Passing threshold: 180.'}</p>
+        <button class="btn btn-primary" style="margin-top:var(--space-6);" onclick="window.location.href='../index.html'">Back to Dashboard</button>
+      </div>`;
+  }
+
+  renderStageInd();
+  renderContent();
+</script>
+
+</body>
+</html>

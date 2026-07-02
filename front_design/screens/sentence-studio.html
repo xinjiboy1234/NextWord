@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Compose · NextWord</title>
+  <link rel="stylesheet" href="../css/tokens.css" />
+  <link rel="stylesheet" href="../css/app.css" />
+  <style>
+    .compose-layout { display: grid; grid-template-columns: 1fr 300px; gap: var(--space-6); align-items: start; }
+    @media (max-width: 900px) { .compose-layout { grid-template-columns: 1fr; } }
+
+    .target-word {
+      font-family: var(--font-display);
+      font-size: var(--text-2xl);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .scene-desc {
+      font-size: var(--text-sm);
+      color: var(--muted);
+      line-height: 1.55;
+      padding: var(--space-4);
+      background: var(--border-soft);
+      border-radius: var(--radius-md);
+    }
+
+    .score-grid {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-2);
+      margin-top: var(--space-3);
+    }
+    .score-cell {
+      text-align: center;
+      padding: var(--space-3);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+    }
+    .score-cell .val {
+      font-family: var(--font-display);
+      font-size: var(--text-xl);
+      font-weight: 700;
+    }
+    .score-cell .lbl {
+      font-size: var(--text-xs);
+      color: var(--muted);
+      font-family: var(--font-mono);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .status-tag {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 4px 12px;
+      border-radius: var(--radius-pill);
+      font-size: var(--text-sm);
+      font-weight: 540;
+    }
+    .status-stable  { background: var(--success-soft); color: var(--success); }
+    .status-usable  { background: var(--info-soft); color: var(--info); }
+    .status-polish  { background: var(--warn-soft); color: var(--warn-fg); }
+    .status-rewrite { background: var(--danger-soft); color: var(--danger); }
+
+    .rewrite-block {
+      padding: var(--space-4);
+      background: var(--border-soft);
+      border-radius: var(--radius-md);
+      border-left: 3px solid var(--fg);
+    }
+  </style>
+</head>
+<body>
+
+<div class="app-shell">
+  <div class="main-area" style="margin-left:0;">
+    <header class="topbar">
+      <a href="../index.html" class="btn btn-ghost btn-sm">← Dashboard</a>
+      <span class="topbar-greeting" style="margin-left:auto;">Compose · Sentence Studio</span>
+    </header>
+    <main class="content">
+
+      <!-- Tabs -->
+      <div class="tabs" style="margin-bottom:var(--space-6);" role="tablist">
+        <button class="tab active" data-tab="guided">Guided · Target Word</button>
+        <button class="tab" data-tab="free">Free Expression</button>
+      </div>
+
+      <div class="compose-layout">
+        <div>
+          <!-- Guided mode -->
+          <div id="guidedMode">
+            <div class="progress-header">
+              <span class="count" id="gProgress">1 / 10</span>
+              <div class="progress-bar" style="flex:1;"><div class="progress-bar-fill" id="gFill" style="width:10%;"></div></div>
+            </div>
+
+            <!-- Word prompt -->
+            <div class="card" style="margin-bottom:var(--space-4);">
+              <div class="row-between">
+                <div>
+                  <p class="target-word" id="gWord">pragmatic</p>
+                  <p style="font-size:var(--text-sm);color:var(--muted);margin-top:4px;">/præɡˈmætɪk/ · adjective</p>
+                </div>
+                <span class="badge badge-muted">B2</span>
+              </div>
+              <div class="scene-desc" style="margin-top:var(--space-4);" id="gScene">
+                You're discussing a business decision with your team. Someone suggests an expensive solution — you propose a more cost-effective alternative.
+              </div>
+            </div>
+
+            <!-- Scene selector -->
+            <div style="margin-bottom:var(--space-4);">
+              <p style="font-size:var(--text-sm);color:var(--muted);margin-bottom:var(--space-2);">Scene context</p>
+              <div class="scene-group" id="sceneGroup">
+                <button class="scene-btn active" data-scene="life">Daily Life</button>
+                <button class="scene-btn" data-scene="work">Workplace</button>
+                <button class="scene-btn" data-scene="academic">Academic</button>
+              </div>
+            </div>
+
+            <!-- Input -->
+            <div class="field" style="margin-bottom:var(--space-4);">
+              <label>Write a sentence using "<span id="gTargetLabel">pragmatic</span>"</label>
+              <textarea class="textarea" id="gInput" placeholder="Write an English sentence here…" rows="3"></textarea>
+            </div>
+
+            <button class="btn btn-primary" id="gSubmit">Submit for scoring</button>
+
+            <!-- Feedback -->
+            <div id="gFeedback" style="display:none;margin-top:var(--space-4);">
+              <div class="card">
+                <div class="row-between" style="margin-bottom:var(--space-3);">
+                  <span class="status-tag status-usable" id="gStatus">Usable</span>
+                  <span style="font-size:var(--text-sm);color:var(--muted);">Score: <strong id="gScore">72</strong>/100</span>
+                </div>
+                <div class="score-grid" id="gScores"></div>
+              </div>
+              <div style="margin-top:var(--space-3);display:flex;gap:var(--space-2);">
+                <button class="btn btn-secondary btn-sm" id="gPrev" disabled>← Prev</button>
+                <button class="btn btn-primary btn-sm" id="gNext">Next →</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Free mode (hidden) -->
+          <div id="freeMode" style="display:none;">
+            <p style="font-size:var(--text-sm);color:var(--muted);margin-bottom:var(--space-4);">
+              Write 2–5 English sentences on any topic. AI will score grammar, naturalness, vocabulary, and coherence.
+            </p>
+            <div class="field" style="margin-bottom:var(--space-4);">
+              <textarea class="textarea" id="fInput" placeholder="Write 2–5 English sentences expressing your thoughts…" rows="5"></textarea>
+            </div>
+            <button class="btn btn-primary" id="fSubmit">Get feedback</button>
+            <div id="fFeedback" style="display:none;margin-top:var(--space-4);">
+              <div class="card">
+                <div style="text-align:center;margin-bottom:var(--space-3);">
+                  <span style="font-family:var(--font-display);font-size:var(--text-3xl);font-weight:700;" id="fOverall">78</span>
+                  <span style="font-size:var(--text-sm);color:var(--muted);">/100</span>
+                </div>
+                <span class="status-tag status-usable" style="margin:0 auto;display:inline-flex;" id="fStatus">Usable</span>
+                <div class="score-grid" style="margin-top:var(--space-4);" id="fScores"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Side: Feedback panel -->
+        <aside class="side-panel" id="sidePanel">
+          <h4 class="side-panel-title">AI Feedback</h4>
+          <div id="sideContent">
+            <p style="font-size:var(--text-sm);color:var(--muted);">
+              Submit a sentence to see AI scoring across four dimensions: grammar, naturalness, vocabulary, and relevance.
+            </p>
+          </div>
+        </aside>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<nav class="bottombar" id="bottombar">
+  <div class="bottombar-inner">
+    <button class="bottombar-tab" onclick="window.location.href='../index.html'">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Learn
+    </button>
+    <button class="bottombar-tab active" onclick="window.location.href='spelling.html'">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="8"/></svg>
+      Practice
+    </button>
+    <button class="bottombar-tab" onclick="window.location.href='article-library.html'">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
+      Read
+    </button>
+    <button class="bottombar-tab" onclick="window.location.href='profile.html'">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Profile
+    </button>
+  </div>
+</nav>
+
+<script>
+  const el = id => document.getElementById(id);
+
+  // Tab switching
+  document.querySelectorAll('.tab').forEach(t => {
+    t.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      const mode = t.dataset.tab;
+      el('guidedMode').style.display = mode === 'guided' ? '' : 'none';
+      el('freeMode').style.display = mode === 'free' ? '' : 'none';
+    });
+  });
+
+  // Scene selector
+  document.querySelectorAll('.scene-btn').forEach(b => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('.scene-btn').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+    });
+  });
+
+  // Guided submit
+  let gIdx = 0;
+  const guidedWords = [
+    { word:'pragmatic', scene:'You\'re discussing a business decision. Someone suggests an expensive solution — you propose a more cost-effective alternative.', cefr:'B2' },
+    { word:'eloquent', scene:'You\'re giving a toast at a colleague\'s farewell party. Express gratitude and well-wishes.', cefr:'C1' },
+  ];
+
+  function renderScores(scores) {
+    const dims = ['Grammar','Naturalness','Vocabulary','Relevance'];
+    return dims.map((d,i) => `
+      <div class="score-cell">
+        <div class="val">${scores[i]}</div>
+        <div class="lbl">${d}</div>
+      </div>
+    `).join('');
+  }
+
+  el('gSubmit').addEventListener('click', () => {
+    const input = el('gInput').value.trim();
+    if (!input) return;
+    // Simulate AI scoring
+    const scores = [82, 70, 75, 65];
+    const avg = Math.round(scores.reduce((a,b)=>a+b)/4);
+    let status = 'usable', cls = 'status-usable';
+    if (avg >= 85) { status='Stable'; cls='status-stable'; }
+    else if (avg < 60) { status='Needs rewrite'; cls='status-rewrite'; }
+    else if (avg < 70) { status='Needs polish'; cls='status-polish'; }
+
+    el('gFeedback').style.display = '';
+    el('gStatus').textContent = status;
+    el('gStatus').className = 'status-tag ' + cls;
+    el('gScore').textContent = avg;
+    el('gScores').innerHTML = renderScores(scores);
+
+    el('sideContent').innerHTML = `
+      <p style="font-weight:540;margin-bottom:8px;">${status}</p>
+      <p style="font-size:var(--text-sm);color:var(--muted);margin-bottom:12px;">Average: ${avg}/100 across 4 dimensions.</p>
+      <div class="rewrite-block">
+        <p style="font-size:var(--text-sm);font-weight:540;margin-bottom:4px;">AI suggestion</p>
+        <p style="font-size:var(--text-sm);color:var(--muted);">"Let's take a pragmatic approach and evaluate the ROI before committing to the expensive option."</p>
+      </div>
+    `;
+  });
+
+  el('gNext').addEventListener('click', () => { gIdx = (gIdx+1) % guidedWords.length; updateGuided(); });
+  el('gPrev').addEventListener('click', () => { gIdx = Math.max(0, gIdx-1); updateGuided(); });
+
+  function updateGuided() {
+    const w = guidedWords[gIdx];
+    el('gWord').textContent = w.word;
+    el('gTargetLabel').textContent = w.word;
+    el('gScene').textContent = w.scene;
+    el('gProgress').textContent = `${gIdx+1} / ${guidedWords.length}`;
+    el('gFill').style.width = `${((gIdx+1)/guidedWords.length)*100}%`;
+    el('gFeedback').style.display = 'none';
+    el('gInput').value = '';
+    el('gPrev').disabled = gIdx === 0;
+    el('sideContent').innerHTML = '<p style="font-size:var(--text-sm);color:var(--muted);">Submit a sentence to see AI scoring across four dimensions.</p>';
+  }
+
+  // Free submit
+  el('fSubmit').addEventListener('click', () => {
+    const input = el('fInput').value.trim();
+    if (!input) return;
+    const scores = [78, 72, 80, 75];
+    const avg = Math.round(scores.reduce((a,b)=>a+b)/4);
+    el('fFeedback').style.display = '';
+    el('fOverall').textContent = avg;
+    el('fScores').innerHTML = renderScores(scores);
+    el('sideContent').innerHTML = `
+      <p style="font-weight:540;margin-bottom:8px;">Overall: ${avg}/100</p>
+      <p style="font-size:var(--text-sm);color:var(--muted);margin-bottom:12px;">Good sentence structure. Consider varying your vocabulary for more natural expression.</p>
+      <div class="score-grid">${renderScores(scores)}</div>
+    `;
+  });
+</script>
+
+</body>
+</html>

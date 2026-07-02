@@ -9,6 +9,7 @@ public static class EndpointRouteBuilderExtensions
         ProfileEndpoints.Map(app);
         LearningEndpoints.Map(app);
         ProgressEndpoints.Map(app);
+        ProfileScoreEndpoints.Map(app);
         LlmEndpoints.Map(app);
         SentenceEndpoints.Map(app);
         FreeExpressionEndpoints.Map(app);
@@ -21,6 +22,7 @@ public static class EndpointRouteBuilderExtensions
         AssessmentEndpoints.Map(app);
         ChallengeEndpoints.Map(app);
         LevelEndpoints.Map(app);
+        ScoreKernelEndpoints.Map(app);
         return app;
     }
 }

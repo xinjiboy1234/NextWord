@@ -16,7 +16,7 @@ public static class WordEndpoints
             return Results.Ok(result.Select(WordDto.FromEntity));
         });
 
-        group.MapGet("/daily", async (HttpContext http, int? count, IUserRepository users, IWordRepository words, CancellationToken ct) =>
+        group.MapGet("/daily", async (HttpContext http, int? count, IUserRepository users, IDailyWordSelectionService dailyWords, CancellationToken ct) =>
         {
             var user = await UserResolver.ResolveAsync(http, null, users, ct);
             if (user is null)
@@ -24,8 +24,8 @@ public static class WordEndpoints
                 return Results.Unauthorized();
             }
 
-            var result = await words.GetDailyWordsAsync(user.Id, Math.Clamp(count ?? 5, 1, 20), ct);
-            return Results.Ok(result.Select(WordDto.FromEntity));
+            var result = await dailyWords.GetDailyAsync(user.Id, Math.Clamp(count ?? 10, 1, 20), ct);
+            return Results.Ok(result);
         });
 
         group.MapGet("/{id:guid}", async (Guid id, IWordRepository words, CancellationToken ct) =>

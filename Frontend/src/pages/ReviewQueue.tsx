@@ -2,6 +2,7 @@ import { RefreshCw } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { api } from '../api/client'
 import { endpoints } from '../api/endpoints'
+import { Badge } from '../components/ui/Badge'
 import { StepNavigator } from '../components/StepNavigator'
 import type { Word } from '../types/models'
 import type { LogSummary, RecentLog } from '../types/sentence'
@@ -12,7 +13,7 @@ export function ReviewQueue() {
   const [logs, setLogs] = useState<RecentLog[]>([])
   const [loading, setLoading] = useState(true)
   const [index, setIndex] = useState(0)
-  const [revealed, setRevealed] = useState(false)
+  const [flipped, setFlipped] = useState(false)
 
   async function load() {
     setLoading(true)
@@ -25,7 +26,7 @@ export function ReviewQueue() {
     setWords(wordsResponse.data)
     setLogs(logsResponse.data)
     setIndex(0)
-    setRevealed(false)
+    setFlipped(false)
     setLoading(false)
   }
 
@@ -34,50 +35,69 @@ export function ReviewQueue() {
   }, [])
 
   useEffect(() => {
-    setRevealed(false)
+    setFlipped(false)
   }, [index])
 
   if (loading) {
-    return <div className="rounded-md border border-neutral-200 bg-white p-6 text-sm text-neutral-600">正在加载复习队列...</div>
+    return <div className="card"><p className="text-sm" style={{ color: 'var(--muted)' }}>正在加载复习队列...</p></div>
   }
 
   const currentWord = words[index] ?? null
+  const dueCount = summary?.dueReviews ?? words.length
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
-      <section className="rounded-md border border-neutral-200 bg-white p-5">
-        <div className="flex items-center justify-between gap-3">
+    <div className="review-layout">
+      <div>
+        <div className="section-header row-between">
           <div>
-            <h2 className="text-2xl font-semibold">今日复习</h2>
-            <p className="mt-1 text-sm text-neutral-600">{summary?.dueReviews ?? 0} 个词到期，逐词复习。</p>
+            <h2>复习队列</h2>
+            <p>{dueCount} 个词待复习。点击卡片翻转查看释义。</p>
           </div>
-          <button type="button" onClick={() => void load()} title="刷新" className="grid h-10 w-10 place-items-center rounded-md border border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-100">
-            <RefreshCw size={18} aria-hidden="true" />
+          <button type="button" onClick={() => void load()} title="刷新" className="btn btn-ghost btn-sm">
+            <RefreshCw size={16} aria-hidden="true" />
+            刷新
           </button>
         </div>
 
         {!currentWord ? (
-          <p className="mt-5 text-sm text-neutral-600">暂无到期复习词。</p>
+          <div className="empty-state">
+            <p>暂无到期复习词。</p>
+          </div>
         ) : (
-          <div className="mt-5 space-y-4">
-            <article className="rounded-md border border-neutral-200 p-5">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <h3 className="text-2xl font-semibold">{currentWord.lemma}</h3>
-                <span className="rounded-md bg-neutral-100 px-2 py-1 text-xs font-medium text-neutral-600">{currentWord.cefrLevel}</span>
+          <div className="stack stack-md">
+            <p className="mono-label" style={{ textTransform: 'none' }}>
+              {index + 1} / {words.length}
+            </p>
+
+            <div
+              className="flip-card"
+              onClick={() => setFlipped((value) => !value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault()
+                  setFlipped((value) => !value)
+                }
+              }}
+              role="button"
+              tabIndex={0}
+              aria-label="翻转卡片查看释义"
+            >
+              <div className={`flip-inner${flipped ? ' flipped' : ''}`}>
+                <div className="flip-front">
+                  <p className="flip-word">{currentWord.lemma}</p>
+                  <p style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)', marginTop: 'var(--space-2)' }}>
+                    {currentWord.partOfSpeech} · {currentWord.phonetics}
+                  </p>
+                  <Badge variant="muted">{currentWord.cefrLevel}</Badge>
+                  <p className="flip-hint">点击翻转查看释义</p>
+                </div>
+                <div className="flip-back">
+                  <p className="flip-word" style={{ fontSize: 'var(--text-xl)' }}>{currentWord.meanings.join('；')}</p>
+                  <p className="flip-hint">{currentWord.lemma}</p>
+                </div>
               </div>
-              <p className="mt-2 text-sm text-neutral-500">{currentWord.partOfSpeech} · {currentWord.phonetics}</p>
-              {revealed ? (
-                <p className="mt-4 text-base text-neutral-800">{currentWord.meanings.join('；')}</p>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setRevealed(true)}
-                  className="mt-4 inline-flex h-10 items-center rounded-md border border-neutral-200 bg-white px-4 text-sm font-medium text-neutral-700 hover:bg-neutral-100"
-                >
-                  显示释义
-                </button>
-              )}
-            </article>
+            </div>
+
             <StepNavigator
               index={index}
               total={words.length}
@@ -88,38 +108,34 @@ export function ReviewQueue() {
             />
           </div>
         )}
-      </section>
+      </div>
 
-      <aside className="grid content-start gap-4">
+      <aside className="stack stack-md">
         {summary && (
-          <section className="grid grid-cols-2 gap-3 rounded-md border border-neutral-200 bg-white p-5">
-            <Metric label="造句" value={summary.sentenceCount} />
-            <Metric label="自由表达" value={summary.freeExpressionCount} />
-            <Metric label="拼写" value={summary.spellingCount} />
-            <Metric label="正确率" value={`${summary.spellingAccuracyPercent}%`} />
-          </section>
-        )}
-        <section className="rounded-md border border-neutral-200 bg-white p-5">
-          <h3 className="text-base font-semibold">最近记录</h3>
-          <div className="mt-3 grid gap-2">
-            {logs.map((log) => (
-              <div key={`${log.type}-${log.label}-${log.timestamp}`} className="flex items-center justify-between gap-3 rounded-md bg-neutral-50 px-3 py-2 text-sm">
-                <span className="font-medium text-neutral-800">{log.label}</span>
-                <span className="text-neutral-500">{log.result}</span>
-              </div>
-            ))}
+          <div className="side-panel">
+            <h4 className="side-panel-title">活动统计</h4>
+            <div className="activity-stat"><span>造句</span><span className="val">{summary.sentenceCount}</span></div>
+            <div className="activity-stat"><span>自由表达</span><span className="val">{summary.freeExpressionCount}</span></div>
+            <div className="activity-stat"><span>拼写</span><span className="val">{summary.spellingCount}</span></div>
+            <div className="activity-stat"><span>拼写正确率</span><span className="val">{summary.spellingAccuracyPercent}%</span></div>
           </div>
-        </section>
+        )}
+        <div className="side-panel">
+          <h4 className="side-panel-title">最近记录</h4>
+          {logs.length === 0 ? (
+            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>暂无记录</p>
+          ) : (
+            <div className="stack stack-sm">
+              {logs.map((log) => (
+                <div key={`${log.type}-${log.label}-${log.timestamp}`} className="activity-stat">
+                  <span>{log.label}</span>
+                  <span className="val" style={{ color: 'var(--muted)' }}>{log.result}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </aside>
-    </div>
-  )
-}
-
-function Metric({ label, value }: { label: string; value: number | string }) {
-  return (
-    <div className="rounded-md bg-neutral-50 p-3">
-      <p className="text-xs text-neutral-500">{label}</p>
-      <p className="mt-1 text-xl font-semibold">{value}</p>
     </div>
   )
 }

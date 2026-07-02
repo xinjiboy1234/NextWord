@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Assessment · NextWord</title>
+  <link rel="stylesheet" href="../css/tokens.css" />
+  <link rel="stylesheet" href="../css/app.css" />
+  <style>
+    .timeline {
+      display: flex; align-items: center;
+      margin-bottom: var(--space-8);
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: var(--space-2);
+    }
+
+    .question-area {
+      max-width: 720px;
+      margin: 0 auto;
+    }
+    .question-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: var(--space-8);
+      text-align: center;
+      animation: qIn 0.35s var(--ease-spring);
+    }
+    @keyframes qIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .question-word {
+      font-family: var(--font-display);
+      font-size: var(--text-3xl);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: var(--space-6);
+    }
+
+    .options-grid {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-3);
+      max-width: 500px; margin: 0 auto;
+    }
+    @media (max-width: 500px) {
+      .options-grid { grid-template-columns: 1fr; }
+    }
+
+    .result-summary {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-4);
+      max-width: 500px; margin: 0 auto;
+    }
+
+    .level-card {
+      text-align: center;
+      padding: var(--space-5);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+    }
+    .level-card .level-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 56px; height: 56px;
+      border-radius: 50%;
+      background: var(--fg);
+      color: var(--bg);
+      font-family: var(--font-display);
+      font-size: var(--text-xl);
+      font-weight: 700;
+      margin-bottom: var(--space-2);
+    }
+    .level-card .level-name { font-weight: 540; }
+    .level-card .level-desc { font-size: var(--text-xs); color: var(--muted); margin-top: 2px; }
+  </style>
+</head>
+<body>
+
+<div class="app-shell">
+  <div class="main-area" style="margin-left:0;">
+    <header class="topbar">
+      <span class="topbar-greeting">Assessment · Step <strong id="stepLabel">1</strong> of 5</span>
+    </header>
+    <main class="content">
+
+      <!-- Timeline -->
+      <div class="timeline" id="timeline"></div>
+
+      <!-- Active Step Content -->
+      <div class="question-area" id="questionArea"></div>
+
+    </main>
+  </div>
+</div>
+
+<script>
+  const steps = [
+    { name:'Vocabulary', icon:'📝', desc:'Multiple choice — pick the correct Chinese meaning for each English word.' },
+    { name:'Spelling',   icon:'✍️', desc:'Write the English word for the given Chinese meaning.' },
+    { name:'Compose',    icon:'💬', desc:'Write a sentence using the target word.' },
+    { name:'Reading',    icon:'📖', desc:'Read a short passage and answer comprehension questions.' },
+    { name:'Results',    icon:'🏆', desc:'Your CEFR placement results.' },
+  ];
+
+  let currentStep = 0;
+  const completedSteps = new Set();
+  const el = id => document.getElementById(id);
+
+  function renderTimeline() {
+    let html = '';
+    steps.forEach((s, i) => {
+      if (i > 0) html += `<div class="step-connector"></div>`;
+      let cls = 'step';
+      if (completedSteps.has(i)) cls += ' completed';
+      if (i === currentStep) cls += ' active';
+      html += `<div class="${cls}" data-step="${i}" onclick="goToStep(${i})">
+        <span class="step-dot">${completedSteps.has(i) ? '✓' : (i+1)}</span>
+        <span>${s.icon} ${s.name}</span>
+      </div>`;
+    });
+    el('timeline').innerHTML = html;
+    el('stepLabel').textContent = currentStep + 1;
+  }
+
+  function goToStep(i) {
+    if (i > currentStep && !completedSteps.has(currentStep)) return; // must complete current
+    currentStep = i;
+    renderTimeline();
+    renderStep();
+  }
+
+  function markComplete() {
+    completedSteps.add(currentStep);
+    if (currentStep < 4) currentStep++;
+    renderTimeline();
+    renderStep();
+  }
+
+  function renderVocabularyStep() {
+    const words = [
+      { word:'meticulous', options:['粗心的','一丝不苟的','懒惰的','快速的'], correct:1 },
+      { word:'benevolent', options:['恶意的','仁慈的','冷漠的','贪婪的'], correct:1 },
+    ];
+    const w = words[(completedSteps.size) % words.length];
+    return `
+      <div class="question-card">
+        <p class="mono-label">Question ${completedSteps.size + 1} — Vocabulary</p>
+        <p class="question-word">${w.word}</p>
+        <p style="font-size:var(--text-sm);color:var(--muted);margin-bottom:var(--space-4);">Choose the correct Chinese meaning</p>
+        <div class="options-grid" id="vocabOptions">
+          ${w.options.map((o,i) => `
+            <div class="option-tag" data-idx="${i}" onclick="selectVocabOption(${i}, ${w.correct}, this)">${o}</div>
+          `).join('')}
+        </div>
+        <button class="btn btn-primary" style="margin-top:var(--space-6);" onclick="markComplete()" id="vocabNext" disabled>
+          ${completedSteps.size >= 1 ? 'Next →' : 'Submit & continue'}
+        </button>
+      </div>`;
+  }
+
+  function selectVocabOption(idx, correct, el) {
+    document.querySelectorAll('#vocabOptions .option-tag').forEach(t => t.classList.remove('selected'));
+    el.classList.add('selected');
+    document.getElementById('vocabNext').disabled = false;
+  }
+
+  function renderSpellingStep() {
+    return `
+      <div class="question-card">
+        <p class="mono-label">Spelling</p>
+        <p style="font-size:var(--text-lg);font-weight:540;margin-bottom:var(--space-2);">仔细审查</p>
+        <p style="font-family:var(--font-mono);font-size:var(--text-sm);color:var(--muted);margin-bottom:var(--space-6);">/ˈskruːtɪnaɪz/ · verb</p>
+        <input class="input" type="text" id="spellAnswer" placeholder="Type the English word…" style="text-align:center;font-size:var(--text-xl);letter-spacing:0.04em;" autocomplete="off" />
+        <button class="btn btn-primary" style="margin-top:var(--space-4);" onclick="markComplete()">Submit</button>
+      </div>`;
+  }
+
+  function renderComposeStep() {
+    return `
+      <div class="question-card">
+        <p class="mono-label">Compose</p>
+        <p style="font-size:var(--text-2xl);font-weight:700;font-family:var(--font-display);margin-bottom:var(--space-2);">pragmatic</p>
+        <p style="font-size:var(--text-sm);color:var(--muted);margin-bottom:var(--space-6);">Write a sentence using this word.</p>
+        <textarea class="textarea" id="composeAnswer" placeholder="Write an English sentence…" rows="3"></textarea>
+        <button class="btn btn-primary" style="margin-top:var(--space-4);" onclick="markComplete()">Submit</button>
+      </div>`;
+  }
+
+  function renderReadingStep() {
+    return `
+      <div class="question-card" style="text-align:left;">
+        <p class="mono-label">Reading Comprehension</p>
+        <div style="padding:var(--space-4);background:var(--border-soft);border-radius:var(--radius-md);margin-bottom:var(--space-6);font-size:var(--text-sm);line-height:1.7;">
+          <p>Remote work has fundamentally changed how organizations operate. Studies show that employees with autonomy over their schedules report higher job satisfaction, though maintaining team cohesion requires deliberate effort from management.</p>
+        </div>
+        <p style="font-weight:540;margin-bottom:var(--space-4);">According to the passage, what increases when employees control their schedules?</p>
+        <div class="options-grid" id="readOptions">
+          <div class="option-tag" onclick="selectReadOption(this)">Company profits</div>
+          <div class="option-tag" onclick="selectReadOption(this)">Job satisfaction</div>
+          <div class="option-tag" onclick="selectReadOption(this)">Office attendance</div>
+          <div class="option-tag" onclick="selectReadOption(this)">Team size</div>
+        </div>
+        <button class="btn btn-primary" style="margin-top:var(--space-4);" onclick="markComplete()" id="readNext" disabled>Submit & see results</button>
+      </div>`;
+  }
+
+  function selectReadOption(el) {
+    document.querySelectorAll('#readOptions .option-tag').forEach(t => t.classList.remove('selected'));
+    el.classList.add('selected');
+    document.getElementById('readNext').disabled = false;
+  }
+
+  function renderResultsStep() {
+    const levels = [
+      { name:'Vocabulary', level:'B1', desc:'Intermediate — you know ~2,500 word families.' },
+      { name:'Spelling', level:'A2', desc:'Elementary — work on common spelling patterns.' },
+      { name:'Compose', level:'B1', desc:'Intermediate — you can write clear connected text.' },
+      { name:'Reading', level:'B2', desc:'Upper intermediate — you understand complex texts.' },
+    ];
+    return `
+      <div class="question-card">
+        <p class="mono-label">Placement Results</p>
+        <p style="font-family:var(--font-display);font-size:var(--text-2xl);font-weight:700;margin-bottom:4px;">Overall: B1</p>
+        <p style="font-size:var(--text-sm);color:var(--muted);margin-bottom:var(--space-6);">Intermediate English learner</p>
+        <div class="result-summary">
+          ${levels.map(l => `
+            <div class="level-card">
+              <div class="level-badge">${l.level}</div>
+              <div class="level-name">${l.name}</div>
+              <div class="level-desc">${l.desc}</div>
+            </div>
+          `).join('')}
+        </div>
+        <button class="btn btn-primary" style="margin-top:var(--space-6);" onclick="window.location.href='../index.html'">Go to Dashboard</button>
+      </div>`;
+  }
+
+  function renderStep() {
+    const renderers = [renderVocabularyStep, renderSpellingStep, renderComposeStep, renderReadingStep, renderResultsStep];
+    el('questionArea').innerHTML = renderers[currentStep]();
+  }
+
+  renderTimeline();
+  renderStep();
+</script>
+
+</body>
+</html>

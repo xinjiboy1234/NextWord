@@ -144,18 +144,19 @@ export function InitialAssessment({ autoStart = false, onComplete }: InitialAsse
 
   if (!flow.assessmentId) {
     return (
-      <section className="rounded-md border border-neutral-200 bg-white p-6">
-        <h2 className="text-2xl font-semibold">首次水平测评</h2>
-        <p className="mt-2 text-sm text-neutral-600">5 步测评：词汇 → 拼写 → 造句 → 阅读 → 定级</p>
-        {flow.error && <p className="mt-3 text-sm text-rose-700">{flow.error}</p>}
+      <section className="card">
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-xl)', fontWeight: 700 }}>首次水平测评</h2>
+        <p style={{ marginTop: 'var(--space-2)', fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>5 步测评：词汇 → 拼写 → 造句 → 阅读 → 定级</p>
+        {flow.error && <p className="alert alert-error" style={{ marginTop: 'var(--space-3)' }}>{flow.error}</p>}
         {(autoStart || flow.loading) && !flow.error && !flow.assessmentId ? (
-          <p className="mt-4 text-sm text-neutral-600">{flow.loading ? '正在准备测评...' : '即将开始...'}</p>
+          <p style={{ marginTop: 'var(--space-4)', fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>{flow.loading ? '正在准备测评...' : '即将开始...'}</p>
         ) : (
           <button
             type="button"
             onClick={() => void flow.start()}
             disabled={flow.loading}
-            className="mt-4 inline-flex h-11 items-center rounded-md bg-emerald-700 px-4 text-sm font-semibold text-white disabled:opacity-60"
+            className="btn btn-primary"
+            style={{ marginTop: 'var(--space-4)' }}
           >
             {flow.loading ? '准备中...' : '开始测评'}
           </button>
@@ -165,7 +166,7 @@ export function InitialAssessment({ autoStart = false, onComplete }: InitialAsse
   }
 
   return (
-    <section className="rounded-md border border-neutral-200 bg-white p-6">
+    <section className="card stack stack-md">
       <AssessmentTimeline
         steps={flow.steps}
         currentStep={flow.step}
@@ -179,21 +180,21 @@ export function InitialAssessment({ autoStart = false, onComplete }: InitialAsse
       />
 
       {displayError && (
-        <p className="mt-4 rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-800">{displayError}</p>
+        <p className="alert alert-error">{displayError}</p>
       )}
 
       {flow.submitting && (
-        <p className="mt-4 text-sm text-neutral-600">正在提交并加载下一阶段...</p>
+        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>正在提交并加载下一阶段...</p>
       )}
 
       {flow.loadingStep && !flow.submitting && (
-        <p className="mt-4 text-sm text-neutral-600">正在加载题目...</p>
+        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>正在加载题目...</p>
       )}
 
       {flow.step === 1 && flow.vocabQuestions.length > 0 && (
         <div className="mt-5 space-y-4">
           <h3 className="text-lg font-semibold">词汇识别</h3>
-          <p className="text-2xl font-semibold text-neutral-900">{flow.vocabQuestions[vocabIndex]?.word}</p>
+          <p style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-xl)', fontWeight: 700 }}>{flow.vocabQuestions[vocabIndex]?.word}</p>
           <OptionTags
             options={flow.vocabQuestions[vocabIndex]?.options ?? []}
             selectedIndex={vocabAnswers[vocabIndex]}
@@ -220,13 +221,14 @@ export function InitialAssessment({ autoStart = false, onComplete }: InitialAsse
         <div className="mt-5 space-y-4">
           <h3 className="text-lg font-semibold">拼写测评</h3>
           {flow.spellingQuestions.length === 0 ? (
-            <p className="text-sm text-neutral-600">正在加载拼写题目...</p>
+            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>正在加载拼写题目...</p>
           ) : (
             <>
-              <label className="block rounded-md border border-neutral-200 p-4 text-sm">
-                <span className="text-base font-medium">{flow.spellingQuestions[spellingIndex]?.chinese}</span>
+              <label className="card field" style={{ display: 'block' }}>
+                <span style={{ fontSize: 'var(--text-base)', fontWeight: 540 }}>{flow.spellingQuestions[spellingIndex]?.chinese}</span>
                 <input
-                  className="mt-3 h-11 w-full rounded-md border border-neutral-300 px-3"
+                  className="input"
+                  style={{ marginTop: 'var(--space-3)' }}
                   value={spellingAnswers[spellingIndex] ?? ''}
                   disabled={flow.submitting}
                   onChange={(event) => {
@@ -255,13 +257,14 @@ export function InitialAssessment({ autoStart = false, onComplete }: InitialAsse
         <div className="mt-5 space-y-4">
           <h3 className="text-lg font-semibold">造句测评</h3>
           {flow.sentenceQuestions.length === 0 ? (
-            <p className="text-sm text-neutral-600">正在加载造句题目...</p>
+            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>正在加载造句题目...</p>
           ) : (
             <>
-              <label className="block rounded-md border border-neutral-200 p-4 text-sm">
-                <span className="text-base font-medium">使用单词：{flow.sentenceQuestions[sentenceIndex]?.word}</span>
+              <label className="card field" style={{ display: 'block' }}>
+                <span style={{ fontSize: 'var(--text-base)', fontWeight: 540 }}>使用单词：{flow.sentenceQuestions[sentenceIndex]?.word}</span>
                 <textarea
-                  className="mt-3 w-full rounded-md border border-neutral-300 px-3 py-2"
+                  className="textarea"
+                  style={{ marginTop: 'var(--space-3)' }}
                   rows={4}
                   value={sentenceAnswers[sentenceIndex] ?? ''}
                   disabled={flow.submitting}
@@ -291,12 +294,12 @@ export function InitialAssessment({ autoStart = false, onComplete }: InitialAsse
         <div className="mt-5 space-y-4">
           <h3 className="text-lg font-semibold">阅读测评</h3>
           {!flow.readingPayload ? (
-            <p className="text-sm text-neutral-600">正在加载阅读题目...</p>
+            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>正在加载阅读题目...</p>
           ) : (
             <>
               <p className="text-sm font-medium">{flow.readingPayload.title}</p>
-              <p className="text-sm leading-6 text-neutral-700">{flow.readingPayload.content}</p>
-              <div className="rounded-md border border-neutral-200 p-4">
+              <p style={{ fontSize: 'var(--text-sm)', lineHeight: 1.7, color: 'var(--muted)' }}>{flow.readingPayload.content}</p>
+              <div className="card" style={{ padding: 'var(--space-4)' }}>
                 <p className="text-sm font-medium">{flow.readingPayload.question.question}</p>
                 <div className="mt-3">
                   <OptionTags
@@ -323,15 +326,23 @@ export function InitialAssessment({ autoStart = false, onComplete }: InitialAsse
       )}
 
       {flow.step === 5 && flow.finalResult && (
-        <div className="mt-5 rounded-md border border-emerald-200 bg-emerald-50 p-4">
-          <h3 className="text-lg font-semibold text-emerald-900">定级结果</h3>
-          <p className="mt-2 text-sm text-emerald-950">总体等级：{flow.finalResult.overallLevel}</p>
-          <ul className="mt-2 space-y-1 text-sm text-emerald-900">
-            <li>词汇：{flow.finalResult.vocabLevel}</li>
-            <li>拼写：{flow.finalResult.spellingLevel}</li>
-            <li>造句：{flow.finalResult.sentenceLevel}</li>
-            <li>阅读：{flow.finalResult.readingLevel}</li>
+        <div className="alert alert-success" style={{ marginTop: 'var(--space-4)' }}>
+          <h3 style={{ fontWeight: 540 }}>定级结果</h3>
+          <p style={{ marginTop: 'var(--space-2)', fontSize: 'var(--text-sm)' }}>总体等级：{flow.finalResult.overallLevel}</p>
+          {flow.finalResult.overallScore != null && (
+            <p style={{ fontSize: 'var(--text-sm)' }}>综合 Score：{flow.finalResult.overallScore.toFixed(0)}</p>
+          )}
+          <ul style={{ marginTop: 'var(--space-2)', fontSize: 'var(--text-sm)' }} className="stack stack-sm">
+            <li>词汇：{flow.finalResult.vocabLevel}{flow.finalResult.vocabularyScore != null ? ` (${flow.finalResult.vocabularyScore.toFixed(0)})` : ''}</li>
+            <li>拼写：{flow.finalResult.spellingLevel}{flow.finalResult.spellingScore != null ? ` (${flow.finalResult.spellingScore.toFixed(0)})` : ''}</li>
+            <li>造句：{flow.finalResult.sentenceLevel}{flow.finalResult.writingScore != null ? ` (${flow.finalResult.writingScore.toFixed(0)})` : ''}</li>
+            <li>阅读：{flow.finalResult.readingLevel}{flow.finalResult.readingScore != null ? ` (${flow.finalResult.readingScore.toFixed(0)})` : ''}</li>
           </ul>
+          {flow.finalResult.evaluationReportId && (
+            <p style={{ fontSize: 'var(--text-xs)', color: 'var(--muted)', marginTop: 'var(--space-2)' }}>
+              评估报告 #{flow.finalResult.evaluationReportId} 生成中，可在等级面板查看。
+            </p>
+          )}
         </div>
       )}
     </section>

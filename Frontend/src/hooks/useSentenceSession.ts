@@ -3,7 +3,7 @@ import { api } from '../api/client'
 import { endpoints } from '../api/endpoints'
 import type { SentencePrompt, SentenceRating } from '../types/sentence'
 
-export function useSentenceSession() {
+export function useSentenceSession(userLevel = 'A2') {
   const [prompts, setPrompts] = useState<SentencePrompt[]>([])
   const [index, setIndex] = useState(0)
   const [rating, setRating] = useState<SentenceRating | null>(null)
@@ -42,7 +42,7 @@ export function useSentenceSession() {
         targetWord: current.targetWord,
         userSentence,
         scene,
-        userLevel: 'A2',
+        userLevel,
       })
       setRating(data)
     } catch {

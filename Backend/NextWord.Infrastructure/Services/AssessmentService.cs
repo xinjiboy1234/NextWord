@@ -12,7 +12,10 @@ public sealed class AssessmentService(
     ApplicationDbContext db,
     IAssessmentScoringService scoring,
     ISentenceService sentences,
-    IUserRepository users) : IAssessmentService
+    IUserRepository users,
+    IScoreProfileService scoreProfile,
+    IBackgroundJobService backgroundJobs,
+    IEvaluationReportService evaluationReports) : IAssessmentService
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
@@ -112,6 +115,12 @@ public sealed class AssessmentService(
             RebuildStep(sentence, AssessmentStepType.Sentence),
             RebuildStep(reading, AssessmentStepType.Reading));
 
+        var scoreResult = scoring.CalculateFinalScores(
+            RebuildStep(vocab, AssessmentStepType.Vocabulary),
+            RebuildStep(spelling, AssessmentStepType.Spelling),
+            RebuildStep(sentence, AssessmentStepType.Sentence),
+            RebuildStep(reading, AssessmentStepType.Reading));
+
         db.AssessmentRecords.Add(new AssessmentRecord
         {
             AssessmentId = assessmentId,
@@ -119,20 +128,30 @@ public sealed class AssessmentService(
             QuestionType = "final",
             QuestionsJson = "{}",
             AnswersJson = "{}",
-            ScoresJson = JsonSerializer.Serialize(final, JsonOptions)
+            ScoresJson = JsonSerializer.Serialize(new { final, scoreResult }, JsonOptions)
         });
 
         assessment.Status = AssessmentStatus.Completed;
         assessment.EndAt = DateTimeOffset.UtcNow;
         assessment.FinalLevel = final.OverallLevel;
 
+        var previous = (await users.GetOrCreateProgressAsync(assessment.UserId, cancellationToken)).OverallLevel;
+
+        await scoreProfile.ApplyUpdateAsync(
+            new ProfileUpdateCommand(
+                assessment.UserId,
+                "AssessmentCompleted",
+                new ProfileScoreAssignment(
+                    scoreResult.VocabularyScore,
+                    scoreResult.ReadingScore,
+                    scoreResult.WritingScore,
+                    scoreResult.SpellingScore),
+                null,
+                $"assessment:{assessmentId}:complete",
+                JsonSerializer.Serialize(new { final, scoreResult }, JsonOptions)),
+            cancellationToken);
+
         var progress = await users.GetOrCreateProgressAsync(assessment.UserId, cancellationToken);
-        var previous = progress.OverallLevel;
-        progress.OverallLevel = final.OverallLevel;
-        progress.VocabLevel = final.VocabLevel;
-        progress.SpellingLevel = final.SpellingLevel;
-        progress.SentenceLevel = final.SentenceLevel;
-        progress.ReadingLevel = final.ReadingLevel;
         progress.HasCompletedInitialAssessment = true;
         progress.LevelStartDate = DateOnly.FromDateTime(DateTime.UtcNow);
 
@@ -145,7 +164,43 @@ public sealed class AssessmentService(
         });
 
         await db.SaveChangesAsync(cancellationToken);
-        return final;
+
+        var evaluationReportId = await evaluationReports.EnqueueForUserAsync(
+            assessment.UserId,
+            "InitialAssessment",
+            assessmentId,
+            cancellationToken);
+
+        var sentencePayload = JsonSerializer.Serialize(new
+        {
+            userId = assessment.UserId,
+            assessmentId,
+            answers = JsonSerializer.Deserialize<List<string>>(sentence.AnswersJson, JsonOptions)?
+                .Zip(JsonSerializer.Deserialize<List<SentenceQuizQuestion>>(sentence.QuestionsJson, JsonOptions) ?? [])
+                .Select(pair => new
+                {
+                    WordId = pair.Second?.WordId,
+                    TargetWord = pair.Second?.Word ?? string.Empty,
+                    Scene = pair.Second?.Scene ?? "life",
+                    Answer = pair.First ?? string.Empty
+                }).ToList()
+        }, JsonOptions);
+
+        await backgroundJobs.EnqueueAsync(
+            "SentenceLlmScoring",
+            sentencePayload,
+            $"sentence:assessment:{assessmentId}",
+            cancellationToken);
+
+        return final with
+        {
+            VocabularyScore = scoreResult.VocabularyScore,
+            SpellingScore = scoreResult.SpellingScore,
+            WritingScore = scoreResult.WritingScore,
+            ReadingScore = scoreResult.ReadingScore,
+            OverallScore = scoreResult.OverallScore,
+            EvaluationReportId = evaluationReportId
+        };
     }
 
     public Task<Assessment?> GetAsync(Guid assessmentId, CancellationToken cancellationToken)

@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dashboard · NextWord</title>
+  <link rel="stylesheet" href="css/tokens.css" />
+  <link rel="stylesheet" href="css/app.css" />
+  <style>
+    .upgrade-banner {
+      display: flex; align-items: center; gap: var(--space-4);
+      padding: var(--space-4) var(--space-5);
+      background: var(--info-soft);
+      border: 1px solid var(--info);
+      border-radius: var(--radius-md);
+      margin-bottom: var(--space-6);
+      animation: bannerIn 0.4s var(--ease-spring);
+      color: var(--fg);
+    }
+    @keyframes bannerIn {
+      from { opacity: 0; transform: translateY(-8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .upgrade-banner svg { width: 20px; height: 20px; flex-shrink: 0; color: var(--info); }
+    .upgrade-banner p { font-size: var(--text-sm); flex: 1; }
+    .upgrade-banner .close-btn { flex-shrink: 0; }
+    .module-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: var(--space-4);
+    }
+    .welcome-strip {
+      margin-bottom: var(--space-6);
+      animation: welcomeIn 0.5s var(--ease-spring);
+    }
+    @keyframes welcomeIn {
+      from { opacity: 0; transform: translateY(-12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .welcome-strip h1 {
+      font-family: var(--font-display);
+      font-size: var(--text-2xl);
+      font-weight: 700;
+      letter-spacing: -0.025em;
+    }
+    .welcome-strip p { color: var(--muted); font-size: var(--text-sm); margin-top: var(--space-1); }
+
+    @media (max-width: 768px) {
+      .module-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 430px) {
+      .module-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="app-shell">
+
+  <!-- Sidebar (desktop) -->
+  <aside class="sidebar collapsed" id="sidebar">
+    <button class="sidebar-toggle" id="sidebarToggle" title="Toggle sidebar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+    </button>
+    <div class="sidebar-brand">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
+      <span>NextWord</span>
+    </div>
+    <nav class="sidebar-nav">
+      <p class="sidebar-section-label">Learning</p>
+      <a href="index.html" class="active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        <span>Dashboard</span>
+      </a>
+      <a href="screens/word-card.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="8"/></svg>
+        <span>Learn</span>
+      </a>
+      <a href="screens/spelling.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        <span>Spell</span>
+      </a>
+      <a href="screens/sentence-studio.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        <span>Compose</span>
+      </a>
+      <a href="screens/article-library.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
+        <span>Read</span>
+      </a>
+
+      <p class="sidebar-section-label">Progress</p>
+      <a href="screens/levels.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 20V10M18 20V4M6 20v-4"/></svg>
+        <span>Levels</span>
+      </a>
+      <a href="screens/review.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1 4v6h6M23 20v-6h-6"/><path d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15"/></svg>
+        <span>Review</span>
+      </a>
+      <a href="screens/progress.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        <span>Progress</span>
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <a href="screens/profile.html" class="sidebar-user">
+        <div class="sidebar-avatar">Y</div>
+        <div class="sidebar-user-info">
+          <div class="sidebar-user-name"><span>You</span></div>
+          <div class="sidebar-user-level"><span>CEFR B1</span></div>
+        </div>
+      </a>
+    </div>
+  </aside>
+
+  <!-- Main Area -->
+  <div class="main-area">
+    <header class="topbar">
+      <span class="topbar-greeting">Good morning, <strong>You</strong> · Keep it up today</span>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost btn-sm" onclick="window.location.href='screens/profile.html'">Profile</button>
+      </div>
+    </header>
+
+    <main class="content">
+
+      <!-- Upgrade Banner -->
+      <div class="upgrade-banner" id="upgradeBanner">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        <p><strong>Upgrade candidate:</strong> You're eligible to advance from B1 to B2. Visit Levels to start the assessment.</p>
+        <a href="screens/levels.html" class="btn btn-sm btn-primary">View levels</a>
+        <button class="btn btn-ghost btn-sm close-btn" onclick="document.getElementById('upgradeBanner').style.display='none'">×</button>
+      </div>
+
+      <div class="welcome-strip">
+        <h1>Learning Center</h1>
+        <p>Pick a module to start today's practice. 7 modules available.</p>
+      </div>
+
+      <!-- Module Grid -->
+      <div class="module-grid">
+
+        <div class="module-card" onclick="window.location.href='screens/word-card.html'" style="animation: cardIn 0.4s var(--ease-spring) both; animation-delay: 0ms;">
+          <div class="module-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3v18M3 12h18"/></svg></div>
+          <h3>Learn</h3>
+          <p>New word memorization with SM-2 spaced repetition. 8 words today.</p>
+          <span class="badge badge-muted">8 new</span>
+        </div>
+
+        <div class="module-card" onclick="window.location.href='screens/spelling.html'" style="animation: cardIn 0.4s var(--ease-spring) both; animation-delay: 60ms;">
+          <div class="module-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>
+          <h3>Spell</h3>
+          <p>Dictation and spelling practice with error position highlighting.</p>
+          <span class="badge badge-muted">12 due</span>
+        </div>
+
+        <div class="module-card" onclick="window.location.href='screens/sentence-studio.html'" style="animation: cardIn 0.4s var(--ease-spring) both; animation-delay: 120ms;">
+          <div class="module-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
+          <h3>Compose</h3>
+          <p>AI-assisted sentence writing with multi-dimension scoring.</p>
+          <span class="badge badge-muted">10 questions</span>
+        </div>
+
+        <div class="module-card" onclick="window.location.href='screens/article-library.html'" style="animation: cardIn 0.4s var(--ease-spring) both; animation-delay: 180ms;">
+          <div class="module-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg></div>
+          <h3>Read</h3>
+          <p>Leveled short articles with tap-to-lookup and vocabulary tools.</p>
+          <span class="badge badge-muted">B1</span>
+        </div>
+
+        <div class="module-card" onclick="window.location.href='screens/levels.html'" style="animation: cardIn 0.4s var(--ease-spring) both; animation-delay: 240ms;">
+          <div class="module-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 20V10M18 20V4M6 20v-4"/></svg></div>
+          <h3>Levels</h3>
+          <p>View your CEFR levels across all four skill dimensions.</p>
+          <span class="badge badge-info">B1 → B2</span>
+        </div>
+
+        <div class="module-card" onclick="window.location.href='screens/review.html'" style="animation: cardIn 0.4s var(--ease-spring) both; animation-delay: 300ms;">
+          <div class="module-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1 4v6h6M23 20v-6h-6"/><path d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15"/></svg></div>
+          <h3>Review</h3>
+          <p>Browse your due review queue. Flip-card style vocabulary check.</p>
+          <span class="badge badge-warn">5 due</span>
+        </div>
+
+        <div class="module-card" onclick="window.location.href='screens/progress.html'" style="animation: cardIn 0.4s var(--ease-spring) both; animation-delay: 360ms;">
+          <div class="module-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
+          <h3>Progress</h3>
+          <p>Learning statistics, streaks, and activity history.</p>
+          <span class="badge badge-success">12-day streak</span>
+        </div>
+
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- Bottom Tab Bar (mobile) -->
+<nav class="bottombar" id="bottombar">
+  <div class="bottombar-inner">
+    <button class="bottombar-tab active" onclick="window.location.href='index.html'">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Learn
+    </button>
+    <button class="bottombar-tab" onclick="window.location.href='screens/word-card.html'">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="8"/></svg>
+      Practice
+    </button>
+    <button class="bottombar-tab" onclick="window.location.href='screens/article-library.html'">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
+      Read
+    </button>
+    <button class="bottombar-tab" onclick="window.location.href='screens/profile.html'">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Profile
+    </button>
+  </div>
+</nav>
+
+<script>
+  /* ─── Sidebar collapse toggle ─────────────────────── */
+  const sidebar = document.getElementById('sidebar');
+  const toggle = document.getElementById('sidebarToggle');
+
+  // Default: collapsed. Restore from localStorage if user previously expanded.
+  if (localStorage.getItem('nw_sidebar_expanded') === '1') {
+    sidebar.classList.remove('collapsed');
+  }
+
+  toggle.addEventListener('click', () => {
+    const nowCollapsed = sidebar.classList.toggle('collapsed');
+    localStorage.setItem('nw_sidebar_expanded', nowCollapsed ? '0' : '1');
+  });
+
+  /* ─── Upgrade banner ─────────────────────────────── */
+  const banner = document.getElementById('upgradeBanner');
+  if (localStorage.getItem('nw_banner_closed') === '1') banner.style.display = 'none';
+  banner?.querySelector('.close-btn')?.addEventListener('click', () => {
+    localStorage.setItem('nw_banner_closed', '1');
+  });
+
+  /* ─── Module card entrance observer ──────────────── */
+  const cards = document.querySelectorAll('.module-card');
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) e.target.style.opacity = '1'; });
+  });
+  cards.forEach(c => { c.style.opacity = '0'; observer.observe(c); });
+</script>
+
+</body>
+</html>

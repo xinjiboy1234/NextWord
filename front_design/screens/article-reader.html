@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Reader · NextWord</title>
+  <link rel="stylesheet" href="../css/tokens.css" />
+  <link rel="stylesheet" href="../css/app.css" />
+  <style>
+    .reader-layout { display: grid; grid-template-columns: 1fr 300px; gap: var(--space-6); align-items: start; }
+    @media (max-width: 900px) { .reader-layout { grid-template-columns: 1fr; } }
+
+    .reader-toolbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: var(--space-3) 0;
+      margin-bottom: var(--space-4);
+      border-bottom: 1px solid var(--border);
+    }
+    .article-body {
+      font-size: var(--text-lg);
+      line-height: 1.75;
+      letter-spacing: -0.005em;
+    }
+    .article-body p { margin-bottom: var(--space-4); }
+    .article-body .word-clickable {
+      cursor: pointer;
+      border-bottom: 1px dashed var(--border);
+      transition: background var(--motion-fast), border-color var(--motion-fast);
+      padding: 0 1px;
+    }
+    .article-body .word-clickable:hover {
+      background: var(--accent-active);
+      border-bottom-color: var(--fg);
+    }
+    .article-body .word-clickable.active {
+      background: var(--fg);
+      color: var(--bg);
+      border-bottom-color: var(--fg);
+    }
+
+    /* Word popover */
+    .word-popover { display: none; }
+    .word-popover.visible { display: block; }
+    .popover-close {
+      position: absolute; top: var(--space-2); right: var(--space-2);
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      display: grid; place-items: center;
+      cursor: pointer;
+      font-size: 14px;
+      color: var(--muted);
+    }
+    .popover-close:hover { background: var(--accent-active); color: var(--fg); }
+
+    .vocab-table { width: 100%; font-size: var(--text-sm); }
+    .vocab-table th {
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--meta);
+      text-align: left;
+      padding: var(--space-2) var(--space-2);
+      border-bottom: 1px solid var(--border);
+    }
+    .vocab-table td { padding: var(--space-2); border-bottom: 1px solid var(--border-soft); }
+    .vocab-table .vocab-word { font-weight: 540; cursor: pointer; }
+    .vocab-table .vocab-word:hover { text-decoration: underline; }
+
+    .comment-card {
+      padding: var(--space-3);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      margin-bottom: var(--space-2);
+    }
+    .comment-card .c-author {
+      font-size: var(--text-xs);
+      font-family: var(--font-mono);
+      color: var(--meta);
+    }
+    .comment-card .c-body { font-size: var(--text-sm); margin-top: 4px; }
+    .ai-reply {
+      margin-top: var(--space-2);
+      padding: var(--space-3);
+      background: var(--border-soft);
+      border-radius: var(--radius-md);
+      font-size: var(--text-sm);
+      border-left: 3px solid var(--fg);
+    }
+  </style>
+</head>
+<body>
+
+<div class="app-shell">
+  <div class="main-area" style="margin-left:0;">
+    <header class="topbar">
+      <a href="article-library.html" class="btn btn-ghost btn-sm">← Library</a>
+      <span style="margin-left:auto;display:flex;align-items:center;gap:var(--space-3);">
+        <span class="count" style="font-family:var(--font-mono);font-size:var(--text-sm);color:var(--muted);">3 words looked up</span>
+        <button class="btn btn-primary btn-sm" id="completeBtn">Complete Reading</button>
+      </span>
+    </header>
+    <main class="content">
+
+      <div class="reader-layout">
+        <!-- Article -->
+        <div>
+          <div class="reader-toolbar">
+            <div>
+              <span class="badge badge-info">B1 · Intermediate</span>
+              <span style="font-size:var(--text-sm);color:var(--muted);margin-left:var(--space-2);">Business · 450 words</span>
+            </div>
+          </div>
+
+          <h1 style="font-family:var(--font-display);font-size:var(--text-2xl);font-weight:700;letter-spacing:-0.02em;margin-bottom:var(--space-4);">
+            The Rise of Remote Work
+          </h1>
+
+          <div class="article-body" id="articleBody">
+            <p>
+              Over the past decade, <span class="word-clickable" data-word="remote">remote</span> work has
+              <span class="word-clickable" data-word="transform">transformed</span> from a niche
+              <span class="word-clickable" data-word="perk">perk</span> into a global
+              <span class="word-clickable" data-word="phenomenon">phenomenon</span>. What began as an
+              <span class="word-clickable" data-word="experiment">experiment</span> in
+              <span class="word-clickable" data-word="flexibility">flexibility</span> has
+              <span class="word-clickable" data-word="fundamentally">fundamentally</span> reshaped how
+              <span class="word-clickable" data-word="organization">organizations</span> operate.
+            </p>
+            <p>
+              Companies that once <span class="word-clickable" data-word="insist">insisted</span> on
+              <span class="word-clickable" data-word="mandatory">mandatory</span> office attendance have
+              <span class="word-clickable" data-word="embrace">embraced</span> hybrid models. Studies show
+              <span class="word-clickable" data-word="productivity">productivity</span> often increases when
+              employees gain <span class="word-clickable" data-word="autonomy">autonomy</span> over their
+              <span class="word-clickable" data-word="schedule">schedules</span>, though maintaining
+              <span class="word-clickable" data-word="cohesion">team cohesion</span> requires
+              <span class="word-clickable" data-word="deliberate">deliberate</span> effort.
+            </p>
+            <p>
+              The <span class="word-clickable" data-word="implication">implications</span> extend beyond
+              individual <span class="word-clickable" data-word="wellbeing">wellbeing</span>. Reduced
+              <span class="word-clickable" data-word="commute">commuting</span> lowers carbon
+              <span class="word-clickable" data-word="emission">emissions</span>, while distributed teams
+              allow companies to <span class="word-clickable" data-word="recruit">recruit</span> from a
+              global <span class="word-clickable" data-word="talent">talent</span> pool rather than a
+              single <span class="word-clickable" data-word="metropolitan">metropolitan</span> area.
+            </p>
+          </div>
+
+          <!-- Vocabulary extraction -->
+          <div style="margin-top:var(--space-8);">
+            <div class="row-between" style="margin-bottom:var(--space-3);">
+              <h3 style="font-family:var(--font-display);font-weight:700;font-size:var(--text-lg);">Key Vocabulary</h3>
+              <button class="btn btn-ghost btn-sm" id="extractVocab">Extract vocabulary</button>
+            </div>
+            <div id="vocabResult"></div>
+          </div>
+
+          <!-- Comments -->
+          <div style="margin-top:var(--space-8);">
+            <h3 style="font-family:var(--font-display);font-weight:700;font-size:var(--text-lg);margin-bottom:var(--space-4);">Comments</h3>
+
+            <div class="field" style="margin-bottom:var(--space-3);">
+              <label>Add a comment</label>
+              <textarea class="textarea" id="commentInput" placeholder="Share your thoughts on this article…" rows="2"></textarea>
+            </div>
+            <div class="row" style="gap:var(--space-2);margin-bottom:var(--space-4);">
+              <button class="btn btn-primary btn-sm" id="postComment">Post comment</button>
+              <button class="btn btn-ghost btn-sm" id="requestAiReply">Request AI reply</button>
+            </div>
+
+            <div id="commentsList">
+              <div class="comment-card">
+                <p class="c-author">You · Paragraph 2</p>
+                <p class="c-body">I think remote work suits creative roles but might hurt collaborative ones.</p>
+                <div class="ai-reply">
+                  <p style="font-weight:540;font-size:var(--text-xs);color:var(--meta);">AI Assistant</p>
+                  <p>That's a fair point — research from Microsoft (2023) found that remote work boosts individual productivity by 13% but reduces cross-team collaboration by 25%. Hybrid models attempt to balance both.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Side: Word popover anchor area -->
+        <aside class="side-panel" id="sidePanel">
+          <h4 class="side-panel-title">Word Lookup</h4>
+          <div id="lookupDefault">
+            <p style="font-size:var(--text-sm);color:var(--muted);">Tap any underlined word in the article to see its definition here.</p>
+          </div>
+          <div id="lookupResult" style="display:none;">
+            <p style="font-family:var(--font-display);font-size:var(--text-xl);font-weight:700;" id="luWord"></p>
+            <p style="font-family:var(--font-mono);font-size:var(--text-sm);color:var(--muted);margin-top:2px;" id="luPhonetic"></p>
+            <span class="badge badge-muted" style="margin-top:var(--space-2);" id="luPos"></span>
+            <p style="font-weight:540;margin-top:var(--space-3);" id="luMeaning"></p>
+            <p style="font-size:var(--text-sm);color:var(--muted);margin-top:var(--space-2);font-style:italic;" id="luExample"></p>
+          </div>
+        </aside>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<script>
+  // Word lookup data
+  const wordData = {
+    'remote':{ phonetic:'/rɪˈmoʊt/', pos:'ADJ', meaning:'远程的；遥远的', example:'Many employees now work from remote locations.' },
+    'transform':{ phonetic:'/trænsˈfɔːrm/', pos:'VERB', meaning:'转变，改变', example:'Digital technology transformed the publishing industry.' },
+    'perk':{ phonetic:'/pɜːrk/', pos:'NOUN', meaning:'额外福利', example:'Free lunch is a popular workplace perk.' },
+    'phenomenon':{ phonetic:'/fɪˈnɑːmɪnən/', pos:'NOUN', meaning:'现象', example:'Social media addiction is a modern phenomenon.' },
+    'productivity':{ phonetic:'/ˌproʊdʌkˈtɪvəti/', pos:'NOUN', meaning:'生产力', example:'The new system improved productivity by 30%.' },
+  };
+
+  const el = id => document.getElementById(id);
+
+  // Word click
+  document.querySelectorAll('.word-clickable').forEach(w => {
+    w.addEventListener('click', function() {
+      document.querySelectorAll('.word-clickable.active').forEach(x => x.classList.remove('active'));
+      this.classList.add('active');
+      const word = this.dataset.word;
+      const data = wordData[word];
+      if (data) {
+        el('lookupDefault').style.display = 'none';
+        el('lookupResult').style.display = '';
+        el('luWord').textContent = word;
+        el('luPhonetic').textContent = data.phonetic;
+        el('luPos').textContent = data.pos;
+        el('luMeaning').textContent = data.meaning;
+        el('luExample').textContent = data.example;
+      }
+    });
+  });
+
+  // Vocab extraction
+  el('extractVocab').addEventListener('click', function() {
+    this.textContent = 'Extracting…';
+    setTimeout(() => {
+      const vocab = [
+        { word:'remote', meaning:'远程的', usage:'Used to describe work done outside an office' },
+        { word:'perk', meaning:'额外福利', usage:'Informal term for employee benefits' },
+        { word:'phenomenon', meaning:'现象', usage:'An observable fact or event' },
+        { word:'productivity', meaning:'生产力', usage:'Rate of output per unit of input' },
+        { word:'autonomy', meaning:'自主权', usage:'The right of self-government or independence' },
+      ];
+      let html = '<table class="vocab-table"><thead><tr><th>Word</th><th>Meaning</th><th>Usage</th></tr></thead><tbody>';
+      vocab.forEach(v => {
+        html += `<tr><td class="vocab-word">${v.word}</td><td>${v.meaning}</td><td style="color:var(--muted);">${v.usage}</td></tr>`;
+      });
+      html += '</tbody></table>';
+      html += '<button class="btn btn-ghost btn-sm" style="margin-top:8px;" onclick="this.previousElementSibling.outerHTML=\'\';this.outerHTML=\'\';document.getElementById(\'extractVocab\').textContent=\'Extract vocabulary\';">Re-extract</button>';
+      el('vocabResult').innerHTML = html;
+      this.textContent = 'Re-extract';
+    }, 600);
+  });
+
+  // Complete reading
+  el('completeBtn').addEventListener('click', function() {
+    this.textContent = '✓ Completed';
+    this.style.background = 'var(--success)';
+    this.disabled = true;
+    // Celebration
+    const c = document.createElement('div');
+    c.className = 'celebration';
+    c.innerHTML = `
+      <div class="celebration-card">
+        <p style="font-size:48px;">📖</p>
+        <h2 style="font-family:var(--font-display);font-weight:700;margin-top:8px;">Reading complete!</h2>
+        <p style="color:var(--muted);margin-top:4px;">3 words looked up · 1 comment posted</p>
+        <button class="btn btn-primary btn-sm" style="margin-top:16px;" onclick="this.closest('.celebration').remove()">Continue</button>
+      </div>`;
+    document.body.appendChild(c);
+  });
+
+  // Post comment
+  el('postComment').addEventListener('click', () => {
+    const text = el('commentInput').value.trim();
+    if (!text) return;
+    const card = document.createElement('div');
+    card.className = 'comment-card';
+    card.innerHTML = `<p class="c-author">You · just now</p><p class="c-body">${text}</p>`;
+    card.style.animation = 'fadeUp 0.3s var(--ease-spring)';
+    el('commentsList').prepend(card);
+    el('commentInput').value = '';
+  });
+
+  // AI reply
+  el('requestAiReply').addEventListener('click', function() {
+    const text = el('commentInput').value.trim();
+    if (!text) return;
+    this.textContent = 'Generating…';
+    this.disabled = true;
+    setTimeout(() => {
+      const replies = [
+        "Excellent observation! This connects to research showing that asynchronous communication tools (Slack, Notion) help bridge the collaboration gap you identified.",
+        "Good point. A 2025 Stanford study found that structured virtual whiteboarding sessions can recover about 60% of the in-person collaboration benefit."
+      ];
+      const card = document.createElement('div');
+      card.className = 'comment-card';
+      card.innerHTML = `
+        <p class="c-author">You · just now</p><p class="c-body">${text}</p>
+        <div class="ai-reply"><p style="font-weight:540;font-size:var(--text-xs);color:var(--meta);">AI Assistant</p><p>${replies[Math.floor(Math.random()*replies.length)]}</p></div>
+      `;
+      el('commentsList').prepend(card);
+      el('commentInput').value = '';
+      this.textContent = 'Request AI reply';
+      this.disabled = false;
+    }, 1000);
+  });
+</script>
+
+</body>
+</html>

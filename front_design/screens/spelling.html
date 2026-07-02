@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Spell · NextWord</title>
+  <link rel="stylesheet" href="../css/tokens.css" />
+  <link rel="stylesheet" href="../css/app.css" />
+  <style>
+    .spell-layout { display: grid; grid-template-columns: 1fr 300px; gap: var(--space-6); align-items: start; }
+    @media (max-width: 900px) { .spell-layout { grid-template-columns: 1fr; } }
+
+    .prompt-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: var(--space-8);
+      text-align: center;
+    }
+    .prompt-meaning {
+      font-family: var(--font-display);
+      font-size: clamp(24px, 3vw, var(--text-xl));
+      font-weight: 540;
+      letter-spacing: -0.01em;
+      margin-bottom: var(--space-2);
+    }
+    .prompt-pos {
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--meta);
+      margin-bottom: var(--space-4);
+    }
+    .prompt-phonetic {
+      font-family: var(--font-mono);
+      font-size: var(--text-sm);
+      color: var(--muted);
+      margin-bottom: var(--space-2);
+    }
+    .tts-btn {
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      display: inline-grid; place-items: center;
+      cursor: pointer;
+      transition: all var(--motion-fast);
+      margin-bottom: var(--space-4);
+    }
+    .tts-btn:hover { border-color: var(--fg); background: var(--accent-active); }
+    .tts-btn svg { width: 20px; height: 20px; }
+
+    .spell-input-area {
+      margin-top: var(--space-4);
+    }
+    .spell-input-area .input {
+      text-align: center;
+      font-size: var(--text-xl);
+      letter-spacing: 0.04em;
+      font-family: var(--font-mono);
+    }
+
+    /* Error highlighting */
+    .char-correct { color: var(--success); }
+    .char-wrong   { color: var(--danger); text-decoration: line-through; }
+    .char-missing { color: var(--danger); border-bottom: 2px dashed var(--danger); }
+    .char-extra   { color: var(--warn);  }
+
+    .spell-feedback {
+      margin-top: var(--space-4);
+      display: none;
+    }
+    .spell-feedback.visible { display: block; animation: fadeUp 0.3s var(--ease-spring); }
+
+    .result-strip {
+      display: flex; align-items: center; gap: var(--space-3);
+      padding: var(--space-4);
+      border-radius: var(--radius-md);
+      margin-bottom: var(--space-3);
+    }
+    .result-strip.correct { background: var(--success-soft); }
+    .result-strip.incorrect { background: var(--danger-soft); }
+
+    .diff-display {
+      font-family: var(--font-mono);
+      font-size: var(--text-lg);
+      letter-spacing: 0.06em;
+      padding: var(--space-4);
+      background: var(--border-soft);
+      border-radius: var(--radius-md);
+      text-align: center;
+      word-break: break-all;
+    }
+
+    @media (max-width: 430px) {
+      .prompt-card { padding: var(--space-4); }
+      .spell-input-area .input { font-size: var(--text-lg); }
+    }
+  </style>
+</head>
+<body>
+
+<div class="app-shell">
+  <div class="main-area" style="margin-left:0;">
+    <header class="topbar">
+      <a href="../index.html" class="btn btn-ghost btn-sm">← Dashboard</a>
+      <span class="topbar-greeting" style="margin-left:auto;">Spell · Dictation</span>
+    </header>
+    <main class="content">
+
+      <div class="spell-layout">
+        <div>
+          <!-- Progress -->
+          <div class="progress-header">
+            <span class="count" id="progressLabel">1 / 6</span>
+            <div class="progress-bar" style="flex:1;">
+              <div class="progress-bar-fill" id="progressFill" style="width: 16.7%;"></div>
+            </div>
+          </div>
+
+          <!-- Active -->
+          <div id="activeState">
+            <div class="prompt-card" id="promptCard">
+              <p class="prompt-pos" id="spellPos">ADJECTIVE</p>
+              <p class="prompt-meaning" id="spellMeaning">无处不在的</p>
+              <p class="prompt-phonetic" id="spellPhonetic">/juːˈbɪkwɪtəs/</p>
+              <button class="tts-btn" id="ttsBtn" title="Listen">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07"/></svg>
+              </button>
+
+              <div class="spell-input-area">
+                <input class="input" type="text" id="spellInput" placeholder="Type the English word…" autocomplete="off" autocapitalize="off" spellcheck="false" />
+              </div>
+
+              <div style="margin-top:var(--space-4);display:flex;gap:var(--space-2);justify-content:center;">
+                <button class="btn btn-ghost btn-sm" id="thinkBtn" style="display:none;">Think again</button>
+                <button class="btn btn-primary" id="submitBtn">Check spelling</button>
+              </div>
+            </div>
+
+            <!-- Feedback -->
+            <div class="spell-feedback" id="spellFeedback">
+              <div class="result-strip" id="resultStrip">
+                <span id="resultIcon" style="font-size:20px;"></span>
+                <span id="resultText" style="font-weight:540;"></span>
+              </div>
+              <div class="diff-display" id="diffDisplay"></div>
+            </div>
+
+            <!-- Navigation -->
+            <div class="nav-buttons" id="navButtons" style="display:none;margin-top:var(--space-4);">
+              <button class="btn btn-secondary" id="prevBtn">← Previous</button>
+              <button class="btn btn-primary" id="nextBtn">Next →</button>
+            </div>
+          </div>
+
+          <!-- Complete -->
+          <div class="complete-state" id="completeState" style="display:none;">
+            <div style="font-size:64px;margin-bottom:16px;">✅</div>
+            <h2 style="font-family:var(--font-display);font-weight:700;">Spelling complete!</h2>
+            <p style="color:var(--muted);margin:8px 0 24px;" id="completeStats"></p>
+            <button class="btn btn-primary" onclick="window.location.href='../index.html'">Back to Dashboard</button>
+          </div>
+        </div>
+
+        <!-- Side: Word Info -->
+        <aside class="side-panel" id="sidePanel">
+          <h4 class="side-panel-title">Word Info</h4>
+          <div id="sideContent">
+            <p style="font-size:var(--text-sm);color:var(--muted);">Example sentence will appear after you submit.</p>
+          </div>
+        </aside>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<nav class="bottombar" id="bottombar">
+  <div class="bottombar-inner">
+    <button class="bottombar-tab" onclick="window.location.href='../index.html'">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Learn
+    </button>
+    <button class="bottombar-tab active" onclick="window.location.href='spelling.html'">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="8"/></svg>
+      Practice
+    </button>
+    <button class="bottombar-tab" onclick="window.location.href='article-library.html'">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
+      Read
+    </button>
+    <button class="bottombar-tab" onclick="window.location.href='profile.html'">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Profile
+    </button>
+  </div>
+</nav>
+
+<script>
+  const items = [
+    { answer:'ubiquitous', meaning:'无处不在的', pos:'ADJ', phonetic:'/juːˈbɪkwɪtəs/', example:'Smartphones have become ubiquitous in modern society.' },
+    { answer:'benevolent', meaning:'仁慈的，慈善的', pos:'ADJ', phonetic:'/bəˈnevələnt/', example:'The benevolent donor funded scholarships for 50 students.' },
+    { answer:'ephemeral',  meaning:'短暂的，瞬息的', pos:'ADJ', phonetic:'/ɪˈfemərəl/', example:'The ephemeral beauty of cherry blossoms lasts only a week.' },
+    { answer:'scrutinize', meaning:'仔细审查', pos:'VERB', phonetic:'/ˈskruːtɪnaɪz/', example:'The auditor scrutinized every line of the report.' },
+    { answer:'tenacious',  meaning:'坚韧的，执着的', pos:'ADJ', phonetic:'/tɪˈneɪʃəs/', example:'Her tenacious spirit helped her overcome every obstacle.' },
+    { answer:'ambiguous',  meaning:'模棱两可的', pos:'ADJ', phonetic:'/æmˈbɪɡjuəs/', example:'The contract language was deliberately ambiguous.' },
+  ];
+
+  let idx = 0, submitted = new Set(), attempts = {};
+  const total = items.length;
+  const el = id => document.getElementById(id);
+
+  function render(i) {
+    const item = items[i];
+    el('spellMeaning').textContent = item.meaning;
+    el('spellPos').textContent = item.pos;
+    el('spellPhonetic').textContent = item.phonetic;
+    el('spellInput').value = '';
+    el('spellInput').disabled = submitted.has(i);
+    el('spellFeedback').classList.remove('visible');
+    el('navButtons').style.display = submitted.has(i) ? '' : 'none';
+    el('submitBtn').style.display = submitted.has(i) ? 'none' : '';
+    el('thinkBtn').style.display = submitted.has(i) ? 'none' : 'none';
+    el('progressLabel').textContent = `${i+1} / ${total}`;
+    el('progressFill').style.width = `${((i+1)/total)*100}%`;
+    el('prevBtn').disabled = i === 0;
+    el('nextBtn').textContent = i === total-1 ? 'Finish' : 'Next →';
+    el('sideContent').innerHTML = '<p style="font-size:var(--text-sm);color:var(--muted);">Example sentence will appear after you submit.</p>';
+    if (!submitted.has(i)) el('spellInput').focus();
+  }
+
+  function diffDisplay(user, correct) {
+    let html = '';
+    const maxLen = Math.max(user.length, correct.length);
+    for (let j = 0; j < maxLen; j++) {
+      const uc = user[j] || '', cc = correct[j] || '';
+      if (uc === cc) html += `<span class="char-correct">${uc}</span>`;
+      else if (!uc) html += `<span class="char-missing">${cc}</span>`;
+      else if (!cc) html += `<span class="char-extra">${uc}</span>`;
+      else html += `<span class="char-wrong">${uc}</span>`;
+    }
+    return html;
+  }
+
+  el('submitBtn').addEventListener('click', () => {
+    if (submitted.has(idx)) return;
+    const userAnswer = el('spellInput').value.trim();
+    if (!userAnswer) return;
+    submitted.add(idx);
+    attempts[idx] = (attempts[idx] || 0) + 1;
+    const item = items[idx];
+    const correct = userAnswer.toLowerCase() === item.answer.toLowerCase();
+
+    el('spellInput').disabled = true;
+    el('submitBtn').style.display = 'none';
+    el('spellFeedback').classList.add('visible');
+    el('navButtons').style.display = '';
+
+    const strip = el('resultStrip');
+    strip.className = 'result-strip ' + (correct ? 'correct' : 'incorrect');
+    el('resultIcon').textContent = correct ? '✓' : '✗';
+    el('resultText').textContent = correct ? 'Perfect!' : `Not quite — the word is "${item.answer}"`;
+    el('diffDisplay').innerHTML = diffDisplay(userAnswer, item.answer);
+    el('sideContent').innerHTML = `
+      <p style="font-weight:540;margin-bottom:4px;">${item.answer}</p>
+      <p style="font-size:var(--text-sm);color:var(--muted);margin-bottom:8px;">${item.meaning} · ${item.pos}</p>
+      <div class="example-block">${item.example}</div>
+    `;
+
+    if ([...submitted].length === total) {
+      el('nextBtn').addEventListener('click', () => {
+        const correctCount = [...submitted].filter(i => {
+          return true; // simplified — in real app we'd track
+        }).length;
+        el('activeState').style.display = 'none';
+        el('completeState').style.display = '';
+        el('completeStats').textContent = `${correctCount} of ${total} correct.`;
+      }, {once:true});
+    }
+  });
+
+  el('spellInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !submitted.has(idx)) el('submitBtn').click();
+  });
+
+  el('prevBtn').addEventListener('click', () => { if (idx > 0) { idx--; render(idx); } });
+  el('nextBtn').addEventListener('click', () => {
+    if (idx < total-1) { idx++; render(idx); }
+    else {
+      el('activeState').style.display = 'none';
+      el('completeState').style.display = '';
+    }
+  });
+
+  render(0);
+</script>
+
+</body>
+</html>

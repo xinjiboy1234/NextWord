@@ -1,4 +1,4 @@
-import { BookOpenText, Filter } from 'lucide-react'
+import { BookOpenText } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api/client'
 import { endpoints } from '../api/endpoints'
@@ -6,6 +6,13 @@ import type { ArticleSummary, DifficultyLevel } from '../types/article'
 
 interface ArticleLibraryProps {
   onOpen: (articleId: string) => void
+}
+
+const LEVEL_LABELS: Record<string, string> = {
+  All: '全部难度',
+  Basic: '基础',
+  Intermediate: '中级',
+  Advanced: '高级',
 }
 
 export function ArticleLibrary({ onOpen }: ArticleLibraryProps) {
@@ -44,64 +51,59 @@ export function ArticleLibrary({ onOpen }: ArticleLibraryProps) {
   }, [articles])
 
   return (
-    <div className="grid gap-5">
-      <section className="rounded-md border border-neutral-200 bg-white p-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-2xl font-semibold">短文库</h2>
-            <p className="mt-1 text-sm text-neutral-600">内置 {articles.length} 篇分级短文，支持点击查词与词汇提取。</p>
-          </div>
-          <label className="inline-flex items-center gap-2 text-sm">
-            <Filter size={16} />
-            <select
-              value={level}
-              onChange={(event) => setLevel(event.target.value as DifficultyLevel | 'All')}
-              className="h-10 rounded-md border border-neutral-300 px-3"
-            >
-              <option value="All">全部难度</option>
-              <option value="Basic">Basic</option>
-              <option value="Intermediate">Intermediate</option>
-              <option value="Advanced">Advanced</option>
-            </select>
-          </label>
+    <div className="stack stack-md">
+      <div className="section-header row-between" style={{ flexWrap: 'wrap' }}>
+        <div>
+          <h2>短文库</h2>
+          <p>内置 {articles.length} 篇分级短文，支持点击查词与词汇提取。</p>
         </div>
+        <div className="field" style={{ minWidth: 160 }}>
+          <label htmlFor="article-level">难度筛选</label>
+          <select
+            id="article-level"
+            value={level}
+            onChange={(event) => setLevel(event.target.value as DifficultyLevel | 'All')}
+            className="select"
+          >
+            <option value="All">{LEVEL_LABELS.All}</option>
+            <option value="Basic">{LEVEL_LABELS.Basic}</option>
+            <option value="Intermediate">{LEVEL_LABELS.Intermediate}</option>
+            <option value="Advanced">{LEVEL_LABELS.Advanced}</option>
+          </select>
+        </div>
+      </div>
 
-        {error && <p className="mt-4 rounded-md bg-rose-50 p-3 text-sm text-rose-900">{error}</p>}
-        {loading ? (
-          <p className="mt-6 text-sm text-neutral-600">加载中...</p>
-        ) : (
-          <div className="mt-5 grid gap-5">
-            {grouped.map(([label, items]) => (
-              <div key={label}>
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-neutral-500">{label}</h3>
-                <div className="mt-3 grid gap-3 md:grid-cols-2">
-                  {items.map((article) => (
-                    <article key={article.id} className="rounded-md border border-neutral-200 p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <h4 className="text-lg font-semibold">{article.title}</h4>
-                          <p className="mt-1 text-sm text-neutral-600">
-                            {article.wordCount} 词 · {article.source}
-                            {article.topicTag ? ` · ${article.topicTag}` : ''}
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => onOpen(article.id)}
-                          className="inline-flex h-10 items-center gap-2 rounded-md bg-emerald-700 px-3 text-sm font-medium text-white"
-                        >
-                          <BookOpenText size={16} />
-                          阅读
-                        </button>
-                      </div>
-                    </article>
-                  ))}
-                </div>
+      {error ? <div className="alert alert-error">{error}</div> : null}
+      {loading ? (
+        <p style={{ color: 'var(--muted)', fontSize: 'var(--text-sm)' }}>加载中...</p>
+      ) : grouped.length === 0 ? (
+        <div className="empty-state"><p>暂无文章</p></div>
+      ) : (
+        <div className="stack stack-md">
+          {grouped.map(([label, items]) => (
+            <div key={label}>
+              <p className="article-group-label">{label}</p>
+              <div className="stack stack-sm">
+                {items.map((article) => (
+                  <article key={article.id} className="card row-between" style={{ flexWrap: 'wrap' }}>
+                    <div>
+                      <h4 style={{ fontWeight: 540, fontSize: 'var(--text-base)' }}>{article.title}</h4>
+                      <p style={{ marginTop: 'var(--space-1)', fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>
+                        {article.wordCount} 词 · {article.source}
+                        {article.topicTag ? ` · ${article.topicTag}` : ''}
+                      </p>
+                    </div>
+                    <button type="button" onClick={() => onOpen(article.id)} className="btn btn-primary btn-sm">
+                      <BookOpenText size={16} aria-hidden="true" />
+                      阅读
+                    </button>
+                  </article>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
-      </section>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

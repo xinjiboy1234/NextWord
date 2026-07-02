@@ -23,11 +23,14 @@ export function UserAvatar({ displayName, active = false, onClick }: UserAvatarP
       onClick={onClick}
       aria-label="我的"
       title={displayName}
-      className={`grid h-11 w-11 place-items-center rounded-full border-2 text-sm font-semibold transition ${
-        active
-          ? 'border-emerald-700 bg-emerald-700 text-white'
-          : 'border-emerald-200 bg-emerald-50 text-emerald-800 hover:border-emerald-400 hover:bg-emerald-100'
-      }`}
+      className="sidebar-avatar"
+      style={{
+        width: 44,
+        height: 44,
+        fontSize: 'var(--text-sm)',
+        border: active ? '2px solid var(--fg)' : '2px solid transparent',
+        boxShadow: active ? '0 0 0 2px var(--border)' : undefined,
+      }}
     >
       {initials}
     </button>

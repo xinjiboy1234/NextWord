@@ -25,65 +25,64 @@ export function ArticleReader({ articleId, onBack }: ArticleReaderProps) {
   async function handleWordClick(word: string, paragraphIndex: number, paragraphText: string) {
     await lookup.lookup(word, paragraphText)
     await reader.recordLookup()
-    // 方便评论时引用段落
     void paragraphIndex
   }
 
   if (reader.loading) {
-    return <p className="text-sm text-neutral-600">加载文章中...</p>
+    return <p style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>加载文章中...</p>
   }
 
   if (reader.error || !reader.article) {
-    return (
-      <div className="rounded-md border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900">
-        {reader.error ?? '文章不存在。'}
-      </div>
-    )
+    return <div className="alert alert-error">{reader.error ?? '文章不存在。'}</div>
   }
 
   return (
-    <div className="grid gap-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <button
-          type="button"
-          onClick={onBack}
-          className="inline-flex h-10 items-center gap-2 rounded-md border border-neutral-200 px-3 text-sm"
-        >
-          <ArrowLeft size={16} />
+    <div className="stack stack-md">
+      <div className="reader-toolbar row-between">
+        <button type="button" onClick={onBack} className="btn btn-ghost btn-sm">
+          <ArrowLeft size={16} aria-hidden="true" />
           返回文库
         </button>
         <button
           type="button"
           onClick={() => void reader.finishReading(reader.comments.length)}
-          className="inline-flex h-10 items-center gap-2 rounded-md bg-emerald-700 px-3 text-sm font-medium text-white"
+          className="btn btn-primary btn-sm"
         >
-          <BookOpenCheck size={16} />
+          <BookOpenCheck size={16} aria-hidden="true" />
           完成阅读
         </button>
       </div>
 
-      <section className="rounded-md border border-neutral-200 bg-white p-5">
-        <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="card">
+        <div className="row-between" style={{ flexWrap: 'wrap', marginBottom: 'var(--space-4)' }}>
           <div>
-            <h2 className="text-2xl font-semibold">{reader.article.title}</h2>
-            <p className="mt-1 text-sm text-neutral-600">
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-xl)', fontWeight: 700 }}>
+              {reader.article.title}
+            </h2>
+            <p style={{ marginTop: 'var(--space-1)', fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>
               {reader.article.difficultyLevel} / {reader.article.cefrLevel} · {reader.article.wordCount} 词
               {reader.article.topicTag ? ` · ${reader.article.topicTag}` : ''}
             </p>
           </div>
-          <p className="text-sm text-neutral-600">查词 {reader.lookupCount} 次</p>
+          <p style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>查词 {reader.lookupCount} 次</p>
         </div>
 
-        <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_280px]">
-          <ArticleText content={reader.article.content} onWordClick={(word, index, text) => void handleWordClick(word, index, text)} />
+        <div className="reader-layout">
+          <ArticleText
+            content={reader.article.content}
+            activeWord={lookup.selectedWord}
+            onWordClick={(word, index, text) => void handleWordClick(word, index, text)}
+          />
           <WordPopover
             word={lookup.selectedWord}
             definition={lookup.definition}
             loading={lookup.loading}
+            knownRate={lookup.lookupMeta?.estimatedKnownRate}
+            personalDifficulty={lookup.lookupMeta?.personalDifficulty}
             onClose={lookup.clear}
           />
         </div>
-      </section>
+      </div>
 
       <VocabExtractPanel
         items={vocab.items}

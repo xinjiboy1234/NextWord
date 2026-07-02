@@ -38,55 +38,64 @@ export function WordCard() {
   }
 
   if (session.loading) {
-    return <div className="rounded-md border border-neutral-200 bg-white p-6 text-sm text-neutral-600">正在加载今日单词...</div>
+    return <div className="card"><p className="text-sm" style={{ color: 'var(--muted)' }}>正在加载今日单词...</p></div>
   }
 
   if (session.error) {
     return (
-      <section className="rounded-md border border-rose-200 bg-rose-50 p-6">
-        <p className="text-sm text-rose-900">{session.error}</p>
-        <button type="button" onClick={session.reload} className="mt-4 inline-flex h-11 items-center gap-2 rounded-md bg-rose-700 px-4 text-sm font-semibold text-white">
-          <RotateCcw size={18} aria-hidden="true" />
+      <div className="alert alert-error">
+        <p>{session.error}</p>
+        <button type="button" onClick={session.reload} className="btn btn-primary btn-sm" style={{ marginTop: 'var(--space-3)' }}>
+          <RotateCcw size={16} aria-hidden="true" />
           重试
         </button>
-      </section>
+      </div>
     )
   }
 
   if (session.completed || !session.currentWord) {
     return (
-      <section className="rounded-md border border-neutral-200 bg-white p-6">
-        <h2 className="text-2xl font-semibold">今日新词完成</h2>
-        <p className="mt-2 text-sm text-neutral-600">当前没有更多新词。可以刷新词库或等待复习队列。</p>
-        <button type="button" onClick={session.reload} className="mt-5 inline-flex h-11 items-center gap-2 rounded-md bg-emerald-700 px-4 text-sm font-semibold text-white">
-          <RotateCcw size={18} aria-hidden="true" />
+      <div className="card celebration-card" style={{ textAlign: 'center' }}>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-xl)', fontWeight: 700 }}>今日新词完成</h2>
+        <p style={{ color: 'var(--muted)', fontSize: 'var(--text-sm)', marginTop: 'var(--space-2)' }}>
+          当前没有更多新词。可以刷新词库或等待复习队列。
+        </p>
+        <button type="button" onClick={session.reload} className="btn btn-primary" style={{ marginTop: 'var(--space-5)' }}>
+          <RotateCcw size={16} aria-hidden="true" />
           重新加载
         </button>
-      </section>
+      </div>
     )
   }
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
-      <div className="grid gap-4">
-        <div className="rounded-md border border-neutral-200 bg-white p-4">
-          <div className="mb-3 flex items-center justify-between text-sm text-neutral-600">
-            <span>第 {session.index + 1} / {session.total} 个</span>
+    <div className="grid-2-1">
+      <div className="stack stack-md">
+        <div className="card" style={{ padding: 'var(--space-4)' }}>
+          <div className="row-between" style={{ marginBottom: 'var(--space-3)', fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>
+            <span className="mono-label" style={{ textTransform: 'none', letterSpacing: 0 }}>
+              第 {session.index + 1} / {session.total} 个
+            </span>
             <span>{session.progress}%</span>
           </div>
           <ProgressBar value={session.progress} />
         </div>
 
         <WordDisplay word={session.currentWord} />
-        <AnswerInput value={answer} onChange={setAnswer} onSubmit={() => void submit('Fuzzy')} disabled={learning.submitting || submitted} />
+        <AnswerInput
+          value={answer}
+          onChange={setAnswer}
+          onSubmit={() => void submit('Fuzzy')}
+          disabled={learning.submitting || submitted}
+        />
 
         {!submitted ? (
-          <div className="rounded-md border border-neutral-200 bg-white p-5">
-            <h3 className="mb-3 text-sm font-semibold text-neutral-800">主观熟练度</h3>
+          <div className="card">
+            <h3 className="mono-label" style={{ marginBottom: 'var(--space-3)', textTransform: 'none' }}>主观熟练度</h3>
             <RatingButtons disabled={learning.submitting} onRate={(rating) => void submit(rating)} />
           </div>
         ) : (
-          <div className="rounded-md border border-neutral-200 bg-white p-5">
+          <div className="card">
             <StepNavigator
               index={session.index}
               total={session.total}
@@ -100,16 +109,16 @@ export function WordCard() {
         )}
       </div>
 
-      <aside className="grid content-start gap-4">
+      <aside className="stack stack-md">
         <FeedbackArea result={learning.result} error={learning.error} />
-        <section className="rounded-md border border-neutral-200 bg-white p-5">
-          <h3 className="text-base font-semibold">本轮目标</h3>
-          <ul className="mt-3 grid gap-2 text-sm text-neutral-700">
+        <div className="side-panel">
+          <h4 className="side-panel-title">本轮目标</h4>
+          <ul className="stack stack-sm" style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)', paddingLeft: '1.1em' }}>
             <li>先回忆中文含义。</li>
             <li>提交后根据实际熟练度选择记住、模糊或不会。</li>
             <li>系统会写入日志并计算下次复习时间。</li>
           </ul>
-        </section>
+        </div>
       </aside>
     </div>
   )

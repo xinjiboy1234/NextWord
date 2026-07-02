@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sign in · NextWord</title>
+  <link rel="stylesheet" href="../css/tokens.css" />
+  <link rel="stylesheet" href="../css/app.css" />
+  <style>
+    .auth-page {
+      min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      padding: var(--space-6);
+    }
+    .auth-card {
+      width: 100%; max-width: 420px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: var(--space-8);
+      animation: authIn 0.4s var(--ease-spring);
+    }
+    @keyframes authIn {
+      from { opacity: 0; transform: translateY(16px) scale(0.97); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .auth-brand {
+      display: flex; align-items: center; gap: var(--space-3);
+      font-family: var(--font-display);
+      font-size: var(--text-xl);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: var(--space-8);
+      justify-content: center;
+    }
+    .auth-brand svg { width: 32px; height: 32px; color: var(--brand); }
+    .auth-tabs { margin-bottom: var(--space-6); }
+    .auth-error {
+      background: var(--danger-soft);
+      color: var(--danger);
+      padding: var(--space-3);
+      border-radius: var(--radius-md);
+      font-size: var(--text-sm);
+      margin-bottom: var(--space-4);
+      display: none;
+    }
+    .auth-error.visible { display: block; animation: authIn 0.2s var(--ease-standard); }
+    .auth-fields { display: flex; flex-direction: column; gap: var(--space-4); }
+    .auth-submit { margin-top: var(--space-6); width: 100%; }
+    .auth-footer {
+      text-align: center;
+      margin-top: var(--space-6);
+      font-size: var(--text-sm);
+      color: var(--muted);
+    }
+    .auth-footer a {
+      color: var(--fg);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="auth-page">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
+      NextWord
+    </div>
+
+    <div class="tabs auth-tabs" role="tablist">
+      <button class="tab active" role="tab" data-tab="login" aria-selected="true">Log in</button>
+      <button class="tab" role="tab" data-tab="register" aria-selected="false">Register</button>
+    </div>
+
+    <div class="auth-error" id="authError"></div>
+
+    <!-- Login Form -->
+    <form id="loginForm" class="auth-fields" autocomplete="on">
+      <div class="field">
+        <label for="loginEmail">Email</label>
+        <input id="loginEmail" class="input" type="email" placeholder="you@example.com" autocomplete="email" />
+      </div>
+      <div class="field">
+        <label for="loginPassword">Password</label>
+        <input id="loginPassword" class="input" type="password" placeholder="••••••" autocomplete="current-password" />
+      </div>
+      <button type="submit" class="btn btn-primary auth-submit">Log in</button>
+    </form>
+
+    <!-- Register Form -->
+    <form id="registerForm" class="auth-fields" autocomplete="on" style="display:none;">
+      <div class="field">
+        <label for="regName">Nickname <span style="color:var(--meta);">(optional)</span></label>
+        <input id="regName" class="input" type="text" placeholder="Your name" autocomplete="name" />
+      </div>
+      <div class="field">
+        <label for="regEmail">Email</label>
+        <input id="regEmail" class="input" type="email" placeholder="you@example.com" autocomplete="email" />
+      </div>
+      <div class="field">
+        <label for="regPassword">Password <span style="color:var(--meta);">(min 6 characters)</span></label>
+        <input id="regPassword" class="input" type="password" placeholder="••••••" minlength="6" autocomplete="new-password" />
+      </div>
+      <button type="submit" class="btn btn-primary auth-submit">Create account</button>
+    </form>
+
+    <div class="auth-footer">
+      <a href="manage.html">System settings</a>
+    </div>
+  </div>
+</div>
+
+<script>
+  const tabs = document.querySelectorAll('.tab');
+  const loginForm = document.getElementById('loginForm');
+  const registerForm = document.getElementById('registerForm');
+  const authError = document.getElementById('authError');
+
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected','false'); });
+      tab.classList.add('active');
+      tab.setAttribute('aria-selected','true');
+      const mode = tab.dataset.tab;
+      loginForm.style.display = mode === 'login' ? '' : 'none';
+      registerForm.style.display = mode === 'register' ? '' : 'none';
+      authError.classList.remove('visible');
+    });
+  });
+
+  function showError(msg) {
+    authError.textContent = msg;
+    authError.classList.add('visible');
+  }
+
+  loginForm.addEventListener('submit', e => {
+    e.preventDefault();
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    if (!email || !password) { showError('Please fill in both fields.'); return; }
+    authError.classList.remove('visible');
+    const btn = loginForm.querySelector('button');
+    btn.textContent = 'Signing in…';
+    btn.disabled = true;
+    setTimeout(() => {
+      btn.textContent = 'Welcome back! ✓';
+      btn.style.background = 'var(--success)';
+      setTimeout(() => {
+        window.location.href = '../index.html';
+      }, 400);
+    }, 600);
+  });
+
+  registerForm.addEventListener('submit', e => {
+    e.preventDefault();
+    const name = document.getElementById('regName').value.trim();
+    const email = document.getElementById('regEmail').value.trim();
+    const password = document.getElementById('regPassword').value;
+    if (!email || !password) { showError('Email and password are required.'); return; }
+    if (password.length < 6) { showError('Password must be at least 6 characters.'); return; }
+    authError.classList.remove('visible');
+    const btn = registerForm.querySelector('button');
+    btn.textContent = 'Creating account…';
+    btn.disabled = true;
+    setTimeout(() => {
+      btn.textContent = 'Account created! ✓';
+      btn.style.background = 'var(--success)';
+      setTimeout(() => {
+        window.location.href = 'assessment.html';
+      }, 400);
+    }, 600);
+  });
+</script>
+
+</body>
+</html>

@@ -4,38 +4,46 @@ interface WordPopoverProps {
   word: string | null
   definition: WordDefinition | null
   loading: boolean
+  knownRate?: number | null
+  personalDifficulty?: number | null
   onClose: () => void
 }
 
-export function WordPopover({ word, definition, loading, onClose }: WordPopoverProps) {
+export function WordPopover({ word, definition, loading, knownRate, personalDifficulty, onClose }: WordPopoverProps) {
   if (!word) return null
 
   return (
-    <aside className="rounded-md border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h3 className="text-lg font-semibold text-emerald-900">{word}</h3>
-          {definition?.phonetics && <p className="text-sm text-emerald-800">{definition.phonetics}</p>}
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded-md border border-emerald-300 px-2 py-1 text-xs text-emerald-900"
-        >
-          关闭
-        </button>
+    <aside className="word-popover-panel">
+      <button type="button" className="popover-close" onClick={onClose} aria-label="关闭">
+        ×
+      </button>
+      <div style={{ paddingRight: 'var(--space-6)' }}>
+        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-lg)', fontWeight: 700 }}>{word}</h3>
+        {definition?.phonetics ? (
+          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-sm)', color: 'var(--muted)', marginTop: 4 }}>
+            {definition.phonetics}
+          </p>
+        ) : null}
+        {knownRate != null && (
+          <p style={{ fontSize: 'var(--text-xs)', color: 'var(--muted)', marginTop: 4 }}>
+            熟悉度 {(knownRate * 100).toFixed(0)}%
+            {personalDifficulty != null ? ` · 个人难度 ${personalDifficulty}` : ''}
+          </p>
+        )}
       </div>
 
       {loading ? (
-        <p className="mt-3 text-sm text-emerald-800">查词中...</p>
+        <p style={{ marginTop: 'var(--space-3)', fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>查词中...</p>
       ) : (
-        <div className="mt-3 space-y-2 text-sm text-emerald-950">
+        <div className="stack stack-sm" style={{ marginTop: 'var(--space-3)', fontSize: 'var(--text-sm)' }}>
           {definition?.meanings.map((meaning, index) => (
             <p key={index}>{meaning.definition}</p>
           ))}
-          {definition?.specialUsage && (
-            <p className="rounded-md bg-white/70 p-2 text-emerald-900">{definition.specialUsage}</p>
-          )}
+          {definition?.specialUsage ? (
+            <p style={{ padding: 'var(--space-3)', background: 'var(--border-soft)', borderRadius: 'var(--radius-md)' }}>
+              {definition.specialUsage}
+            </p>
+          ) : null}
         </div>
       )}
     </aside>

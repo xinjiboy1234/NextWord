@@ -1,7 +1,8 @@
 import { BookOpen, RefreshCcw } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api/client'
 import { endpoints } from '../api/endpoints'
+import { Badge } from '../components/ui/Badge'
 import type { Word } from '../types/models'
 
 interface HomeProps {
@@ -12,6 +13,8 @@ export function Home({ onStart }: HomeProps) {
   const [words, setWords] = useState<Word[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
+  const [selectedId, setSelectedId] = useState<string | null>(null)
 
   async function load() {
     setLoading(true)
@@ -30,69 +33,99 @@ export function Home({ onStart }: HomeProps) {
     void load()
   }, [])
 
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return words
+    return words.filter((word) =>
+      word.lemma.toLowerCase().includes(q)
+      || word.meanings.some((m) => m.toLowerCase().includes(q)),
+    )
+  }, [words, search])
+
+  const selected = words.find((w) => w.id === selectedId) ?? null
+
   return (
-    <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
-      <section className="rounded-md border border-neutral-200 bg-white p-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="wb-layout">
+      <div>
+        <div className="section-header row-between" style={{ flexWrap: 'wrap' }}>
           <div>
-            <h2 className="text-2xl font-semibold">核心词库</h2>
-            <p className="mt-1 text-sm text-neutral-600">MVP 种子词汇和后续新增词会显示在这里。</p>
+            <h2>词库</h2>
+            <p>完整词条列表，点击单词查看详情。</p>
           </div>
-          <button
-            type="button"
-            onClick={onStart}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-emerald-700 px-4 text-sm font-semibold text-white"
-          >
-            <BookOpen size={18} aria-hidden="true" />
+          <button type="button" onClick={onStart} className="btn btn-primary btn-sm">
+            <BookOpen size={16} aria-hidden="true" />
             开始学习
           </button>
         </div>
 
-        {error && <p className="mt-4 rounded-md bg-rose-50 p-3 text-sm text-rose-900">{error}</p>}
-        {loading ? (
-          <p className="mt-6 text-sm text-neutral-600">加载中...</p>
-        ) : (
-          <div className="mt-5 grid gap-3">
-            {words.map((word) => (
-              <article key={word.id} className="rounded-md border border-neutral-200 p-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <h3 className="text-lg font-semibold">{word.lemma}</h3>
-                    <p className="text-sm text-neutral-600">{word.partOfSpeech} · {word.phonetics}</p>
-                  </div>
-                  <span className="rounded border border-neutral-200 px-2 py-1 text-xs font-medium text-neutral-700">
-                    {word.difficultyLevel} / {word.cefrLevel}
-                  </span>
-                </div>
-                <p className="mt-3 text-sm text-neutral-700">{word.meanings.join('；')}</p>
-              </article>
-            ))}
-          </div>
-        )}
-      </section>
+        <div style={{ marginBottom: 'var(--space-4)' }}>
+          <input
+            className="input"
+            type="search"
+            placeholder="搜索单词或释义…"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+        </div>
 
-      <aside className="rounded-md border border-neutral-200 bg-white p-5">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">词库操作</h2>
-          <button
-            type="button"
-            onClick={() => void load()}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-neutral-200 text-neutral-700"
-            aria-label="刷新词库"
-          >
-            <RefreshCcw size={18} aria-hidden="true" />
+        {error ? <div className="alert alert-error">{error}</div> : null}
+        {loading ? (
+          <p style={{ color: 'var(--muted)', fontSize: 'var(--text-sm)' }}>加载中...</p>
+        ) : (
+          <table className="wb-table">
+            <thead>
+              <tr>
+                <th>单词</th>
+                <th>音标</th>
+                <th>释义</th>
+                <th>等级</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((word) => (
+                <tr
+                  key={word.id}
+                  className={selectedId === word.id ? 'selected' : undefined}
+                  onClick={() => setSelectedId(word.id)}
+                >
+                  <td className="wb-lemma">{word.lemma}</td>
+                  <td className="wb-phonetic">{word.phonetics}</td>
+                  <td>{word.meanings.join('；')}</td>
+                  <td><Badge variant="muted">{word.cefrLevel}</Badge></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      <aside className="side-panel">
+        <div className="row-between">
+          <h4 className="side-panel-title" style={{ margin: 0, border: 'none', padding: 0 }}>摘要</h4>
+          <button type="button" onClick={() => void load()} className="btn btn-ghost btn-sm" aria-label="刷新词库">
+            <RefreshCcw size={16} />
           </button>
         </div>
-        <dl className="mt-4 grid gap-3 text-sm">
-          <div className="flex justify-between border-b border-neutral-100 pb-2">
-            <dt className="text-neutral-600">总词数</dt>
-            <dd className="font-semibold">{words.length}</dd>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-3xl)', fontWeight: 700, marginTop: 'var(--space-4)' }}>
+          {words.length}
+        </div>
+        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>总词条数</p>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-xl)', fontWeight: 700, marginTop: 'var(--space-4)' }}>
+          {words.filter((w) => w.isCore).length}
+        </div>
+        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>核心词汇</p>
+
+        <h4 className="side-panel-title" style={{ marginTop: 'var(--space-6)' }}>单词详情</h4>
+        {selected ? (
+          <div className="stack stack-sm" style={{ fontSize: 'var(--text-sm)' }}>
+            <p style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-lg)', fontWeight: 700 }}>{selected.lemma}</p>
+            <p className="wb-phonetic">{selected.phonetics}</p>
+            <p>{selected.meanings.join('；')}</p>
+            <Badge variant="muted">{selected.difficultyLevel} / {selected.cefrLevel}</Badge>
           </div>
-          <div className="flex justify-between border-b border-neutral-100 pb-2">
-            <dt className="text-neutral-600">核心词</dt>
-            <dd className="font-semibold">{words.filter((word) => word.isCore).length}</dd>
-          </div>
-        </dl>
+        ) : (
+          <p style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>点击左侧单词查看详情。</p>
+        )}
       </aside>
     </div>
   )

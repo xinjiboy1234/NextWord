@@ -27,21 +27,21 @@ export function StepNavigator({
   const progress = total > 0 ? Math.round(((index + 1) / total) * 100) : 0
 
   return (
-    <div className="grid gap-3">
+    <div className="stack stack-sm">
       {showProgress && total > 0 && (
-        <div className="flex items-center justify-between text-sm text-neutral-600">
+        <div className="row-between" style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>
           <span>第 {index + 1} / {total} 题</span>
           <span>{progress}%</span>
         </div>
       )}
       {showProgress && total > 0 && <ProgressBar value={progress} />}
-      <div className="flex flex-wrap gap-2">
+      <div className="row" style={{ flexWrap: 'wrap' }}>
         {onPrevious && (
           <button
             type="button"
             onClick={onPrevious}
             disabled={!canPrevious}
-            className="inline-flex h-10 items-center gap-1 rounded-md border border-neutral-200 bg-white px-4 text-sm font-medium text-neutral-700 hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-40"
+            className="btn btn-secondary"
           >
             <ChevronLeft size={18} aria-hidden="true" />
             {previousLabel}
@@ -51,7 +51,7 @@ export function StepNavigator({
           type="button"
           onClick={onNext}
           disabled={!canNext}
-          className="inline-flex h-10 items-center gap-1 rounded-md bg-emerald-700 px-4 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-neutral-300"
+          className="btn btn-primary"
         >
           {nextLabel}
           <ChevronRight size={18} aria-hidden="true" />

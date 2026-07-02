@@ -17,24 +17,26 @@ export function ScoreCard({ rating }: ScoreCardProps) {
   }
 
   return (
-    <section className="rounded-md border border-neutral-200 bg-white p-5">
-      <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold">评分</h3>
-        <span className="grid h-10 w-10 place-items-center rounded-md bg-emerald-700 text-lg font-semibold text-white">{rating.overallGrade}</span>
+    <div className="side-panel">
+      <div className="row-between" style={{ marginBottom: 'var(--space-4)' }}>
+        <h3 style={{ fontWeight: 540 }}>评分</h3>
+        <span className="score-card" style={{ padding: 'var(--space-2) var(--space-3)' }}>
+          <span className="score-value" style={{ fontSize: 'var(--text-xl)' }}>{rating.overallGrade}</span>
+        </span>
       </div>
-      <div className="mt-4 grid gap-3">
+      <div className="stack stack-sm">
         {scoreLabels.map(([key, label]) => (
-          <div key={key} className="grid gap-1">
-            <div className="flex justify-between text-sm">
-              <span className="text-neutral-700">{label}</span>
-              <span className="font-medium">{rating[key]} / 5</span>
+          <div key={key}>
+            <div className="row-between" style={{ fontSize: 'var(--text-sm)', marginBottom: 4 }}>
+              <span>{label}</span>
+              <span style={{ fontFamily: 'var(--font-mono)' }}>{rating[key]} / 5</span>
             </div>
-            <div className="h-2 rounded-full bg-neutral-100">
-              <div className="h-2 rounded-full bg-emerald-700" style={{ width: `${rating[key] * 20}%` }} />
+            <div className="progress-bar">
+              <div className="progress-bar-fill brand" style={{ width: `${rating[key] * 20}%` }} />
             </div>
           </div>
         ))}
       </div>
-    </section>
+    </div>
   )
 }

@@ -13,7 +13,7 @@ const scenes = [
 
 export function SceneSelector({ value, onChange }: SceneSelectorProps) {
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="scene-group">
       {scenes.map((scene) => {
         const Icon = scene.icon
         const active = value === scene.id
@@ -22,11 +22,9 @@ export function SceneSelector({ value, onChange }: SceneSelectorProps) {
             key={scene.id}
             type="button"
             onClick={() => onChange(scene.id)}
-            className={`inline-flex h-10 items-center gap-2 rounded-md border px-3 text-sm font-medium ${
-              active ? 'border-emerald-700 bg-emerald-700 text-white' : 'border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-100'
-            }`}
+            className={`scene-btn${active ? ' active' : ''}`}
           >
-            <Icon size={16} aria-hidden="true" />
+            <Icon size={16} aria-hidden="true" style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
             {scene.label}
           </button>
         )

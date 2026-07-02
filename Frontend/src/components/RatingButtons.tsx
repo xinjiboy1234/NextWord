@@ -7,14 +7,14 @@ interface RatingButtonsProps {
 }
 
 const buttons: Array<{ rating: AssessmentResult; label: string; icon: typeof Check; className: string }> = [
-  { rating: 'Remembered', label: '记住', icon: Check, className: 'border-emerald-700 bg-emerald-700 text-white' },
-  { rating: 'Fuzzy', label: '模糊', icon: HelpCircle, className: 'border-amber-500 bg-amber-50 text-amber-900' },
-  { rating: 'Forgot', label: '不会', icon: X, className: 'border-rose-600 bg-rose-50 text-rose-900' },
+  { rating: 'Remembered', label: '记住', icon: Check, className: 'remember' },
+  { rating: 'Fuzzy', label: '模糊', icon: HelpCircle, className: 'fuzzy' },
+  { rating: 'Forgot', label: '不会', icon: X, className: 'forgot' },
 ]
 
 export function RatingButtons({ disabled, onRate }: RatingButtonsProps) {
   return (
-    <div className="grid gap-2 sm:grid-cols-3">
+    <div className="rating-group">
       {buttons.map((button) => {
         const Icon = button.icon
         return (
@@ -23,7 +23,7 @@ export function RatingButtons({ disabled, onRate }: RatingButtonsProps) {
             type="button"
             disabled={disabled}
             onClick={() => onRate(button.rating)}
-            className={`inline-flex h-11 items-center justify-center gap-2 rounded-md border px-3 text-sm font-semibold disabled:opacity-50 ${button.className}`}
+            className={`rating-btn ${button.className}`}
           >
             <Icon size={18} aria-hidden="true" />
             {button.label}

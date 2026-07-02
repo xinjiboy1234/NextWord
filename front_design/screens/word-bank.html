@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /><title>Word Bank · NextWord</title>
+<link rel="stylesheet" href="../css/tokens.css" /><link rel="stylesheet" href="../css/app.css" />
+<style>
+  .wb-layout { display:grid; grid-template-columns:1fr 240px; gap:var(--space-6); align-items:start; }
+  @media (max-width:900px) { .wb-layout { grid-template-columns:1fr; } }
+  .search-bar { margin-bottom:var(--space-4); }
+  .wb-table { width:100%; border-collapse:collapse; font-size:var(--text-sm); }
+  .wb-table th,.wb-table td { padding:var(--space-3) var(--space-3); text-align:left; border-bottom:1px solid var(--border); }
+  .wb-table th { font-family:var(--font-mono); font-size:var(--text-xs); letter-spacing:0.04em; text-transform:uppercase; color:var(--meta); }
+  .wb-table tbody tr { cursor:pointer; }
+  .wb-table tbody tr:hover { background:var(--accent-active); }
+  .wb-lemma { font-weight:540; }
+  .wb-phonetic { font-family:var(--font-mono); font-size:var(--text-xs); color:var(--muted); }
+</style></head>
+<body>
+
+<div class="app-shell"><div class="main-area" style="margin-left:0;">
+<header class="topbar"><a href="../index.html" class="btn btn-ghost btn-sm">← Dashboard</a><span class="topbar-greeting" style="margin-left:auto;">Word Bank</span></header>
+<main class="content">
+
+<div class="wb-layout">
+  <div>
+    <div class="section-header"><h2>All Words</h2><p>Complete lemma list. Click any word for details.</p></div>
+
+    <div class="search-bar"><input class="input" type="text" id="wbSearch" placeholder="Search words…" /></div>
+
+    <table class="wb-table" id="wbTable">
+      <thead><tr><th>Lemma</th><th>Phonetic</th><th>Meaning</th><th>Level</th><th></th></tr></thead>
+      <tbody id="wbBody">
+        <tr><td class="wb-lemma">elucidate</td><td class="wb-phonetic">/ɪˈluːsɪdeɪt/</td><td>阐明，解释</td><td><span class="badge badge-info">B2</span></td><td><button class="btn btn-ghost btn-sm">Learn</button></td></tr>
+        <tr><td class="wb-lemma">ubiquitous</td><td class="wb-phonetic">/juːˈbɪkwɪtəs/</td><td>无处不在的</td><td><span class="badge badge-info">B2</span></td><td><button class="btn btn-ghost btn-sm">Learn</button></td></tr>
+        <tr><td class="wb-lemma">pragmatic</td><td class="wb-phonetic">/præɡˈmætɪk/</td><td>务实的</td><td><span class="badge badge-info">B2</span></td><td><button class="btn btn-ghost btn-sm">Learn</button></td></tr>
+        <tr><td class="wb-lemma">ambiguous</td><td class="wb-phonetic">/æmˈbɪɡjuəs/</td><td>模棱两可的</td><td><span class="badge badge-info">B1</span></td><td><button class="btn btn-ghost btn-sm">Learn</button></td></tr>
+        <tr><td class="wb-lemma">scrutinize</td><td class="wb-phonetic">/ˈskruːtɪnaɪz/</td><td>仔细审查</td><td><span class="badge badge-info">B2</span></td><td><button class="btn btn-ghost btn-sm">Learn</button></td></tr>
+        <tr><td class="wb-lemma">benevolent</td><td class="wb-phonetic">/bəˈnevələnt/</td><td>仁慈的</td><td><span class="badge badge-muted">B1</span></td><td><button class="btn btn-ghost btn-sm">Learn</button></td></tr>
+        <tr><td class="wb-lemma">ephemeral</td><td class="wb-phonetic">/ɪˈfemərəl/</td><td>短暂的</td><td><span class="badge badge-muted">C1</span></td><td><button class="btn btn-ghost btn-sm">Learn</button></td></tr>
+        <tr><td class="wb-lemma">tenacious</td><td class="wb-phonetic">/tɪˈneɪʃəs/</td><td>坚韧的</td><td><span class="badge badge-muted">B2</span></td><td><button class="btn btn-ghost btn-sm">Learn</button></td></tr>
+        <tr><td class="wb-lemma">eloquent</td><td class="wb-phonetic">/ˈeləkwənt/</td><td>雄辩的</td><td><span class="badge badge-muted">C1</span></td><td><button class="btn btn-ghost btn-sm">Learn</button></td></tr>
+        <tr><td class="wb-lemma">autonomy</td><td class="wb-phonetic">/ɔːˈtɑːnəmi/</td><td>自主权</td><td><span class="badge badge-info">B2</span></td><td><button class="btn btn-ghost btn-sm">Learn</button></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <aside class="side-panel">
+    <h4 class="side-panel-title">Summary</h4>
+    <div style="font-family:var(--font-display);font-size:var(--text-3xl);font-weight:700;">847</div>
+    <p style="font-size:var(--text-sm);color:var(--muted);">total entries</p>
+    <div style="font-family:var(--font-display);font-size:var(--text-xl);font-weight:700;margin-top:var(--space-4);">312</div>
+    <p style="font-size:var(--text-sm);color:var(--muted);">core vocabulary</p>
+    <button class="btn btn-ghost btn-sm" style="margin-top:var(--space-4);" onclick="location.reload()">Refresh ↻</button>
+
+    <h4 class="side-panel-title" style="margin-top:var(--space-6);">Word Detail</h4>
+    <div id="wbDetail">
+      <p style="font-size:var(--text-sm);color:var(--muted);">Click a word to see details.</p>
+    </div>
+  </aside>
+</div>
+
+</main></div></div>
+
+<nav class="bottombar"><div class="bottombar-inner">
+  <button class="bottombar-tab" onclick="window.location.href='../index.html'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Learn</button>
+  <button class="bottombar-tab" onclick="window.location.href='spelling.html'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="8"/></svg>Practice</button>
+  <button class="bottombar-tab" onclick="window.location.href='article-library.html'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>Read</button>
+  <button class="bottombar-tab" onclick="window.location.href='profile.html'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Profile</button>
+</div></nav>
+
+<script>
+  document.getElementById('wbSearch').addEventListener('input', function() {
+    const q = this.value.toLowerCase();
+    document.querySelectorAll('#wbBody tr').forEach(tr => {
+      tr.style.display = tr.textContent.toLowerCase().includes(q) ? '' : 'none';
+    });
+  });
+
+  document.querySelectorAll('#wbBody tr').forEach(tr => {
+    tr.addEventListener('click', function(e) {
+      if (e.target.tagName === 'BUTTON') return;
+      const cells = this.querySelectorAll('td');
+      document.getElementById('wbDetail').innerHTML = `
+        <p style="font-family:var(--font-display);font-size:var(--text-lg);font-weight:700;">${cells[0].textContent}</p>
+        <p style="font-family:var(--font-mono);font-size:var(--text-sm);color:var(--muted);">${cells[1].textContent}</p>
+        <p style="font-weight:540;margin-top:8px;">${cells[2].textContent}</p>
+        <button class="btn btn-primary btn-sm" style="margin-top:12px;" onclick="window.location.href='word-card.html'">Start learning</button>
+      `;
+    });
+  });
+</script>
+</body></html>

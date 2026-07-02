@@ -11,6 +11,11 @@ public interface IAssessmentScoringService
     CefrLevel MapSentenceAverage(double averageScore);
     CefrLevel MapReadingAccuracy(double accuracyPercent, int lookupCount, int wordCount);
     FinalLevelResult CalculateFinalLevel(StepScoreResult vocab, StepScoreResult spelling, StepScoreResult sentence, StepScoreResult reading);
+    int MapVocabToScore(double accuracyPercent);
+    int MapSpellingToScore(double accuracyPercent);
+    int MapSentenceToScore(double averageScore);
+    int MapReadingToScore(double accuracyPercent, int lookupCount, int wordCount);
+    FinalScoreResult CalculateFinalScores(StepScoreResult vocab, StepScoreResult spelling, StepScoreResult sentence, StepScoreResult reading);
 }
 
 public interface IChallengePackGenerator
@@ -37,7 +42,37 @@ public interface IAssessmentService
 
 public interface IChallengeService
 {
-    Task<ChallengePack> StartChallengeAsync(Guid userId, bool confirmationChallenge, CancellationToken cancellationToken);
-    Task<ChallengeRecord> SubmitChallengeAsync(Guid userId, ChallengeType type, double vocabScore, double sentenceScore, double readingScore, bool confirmationChallenge, CancellationToken cancellationToken);
+    Task<ChallengeStartResponse> StartChallengeAsync(Guid userId, bool confirmationChallenge, CancellationToken cancellationToken);
+    Task<ChallengeSubmitResponse> SubmitChallengeAsync(Guid userId, ChallengeSubmitRequest request, CancellationToken cancellationToken);
     Task<IReadOnlyList<ChallengeRecord>> GetRecentAsync(Guid userId, int count, CancellationToken cancellationToken);
 }
+
+public sealed record ChallengeSubmitRequest(
+    Guid ChallengeSessionId,
+    ChallengeType ChallengeType,
+    IReadOnlyList<int> VocabAnswers,
+    string SentenceAnswer,
+    string TargetWord,
+    string Scene,
+    Guid? SentenceWordId,
+    int ReadingSelectedIndex,
+    int LookupCount);
+
+public sealed record ChallengeStartResponse(Guid ChallengeSessionId, ChallengePackClientView Pack);
+
+public sealed record ChallengePackClientView(
+    IReadOnlyList<VocabQuizQuestionClient> Vocabulary,
+    SentenceQuizQuestion Sentence,
+    ReadingQuizQuestionClient Reading,
+    string AttemptedLevel);
+
+public sealed record VocabQuizQuestionClient(string Word, IReadOnlyList<string> Options, string Difficulty);
+public sealed record ReadingQuizQuestionClient(Guid ArticleId, string Question, IReadOnlyList<string> Options, string ArticleExcerpt);
+
+public sealed record ChallengeSubmitResponse(
+    bool Passed,
+    double TotalScore,
+    int VocabularyScore,
+    int WritingScore,
+    int ReadingScore,
+    long? EvaluationReportId);

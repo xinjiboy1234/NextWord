@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../api/client'
 import { endpoints } from '../api/endpoints'
-import type { Word } from '../types/models'
+import type { DailyWordItem } from '../types/score'
 
 export function useWordSession() {
-  const [words, setWords] = useState<Word[]>([])
+  const [words, setWords] = useState<DailyWordItem[]>([])
   const [index, setIndex] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -13,7 +13,7 @@ export function useWordSession() {
     setLoading(true)
     setError(null)
     try {
-      const response = await api.get<Word[]>(endpoints.dailyWords, { params: { count: 8 } })
+      const response = await api.get<DailyWordItem[]>(endpoints.dailyWords, { params: { count: 10 } })
       setWords(response.data)
       setIndex(0)
     } catch {

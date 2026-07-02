@@ -18,6 +18,10 @@ public sealed class UserWordRelationship
     public DateTimeOffset? LastReviewDate { get; set; }
     public DateTimeOffset NextReviewDue { get; set; } = DateTimeOffset.UtcNow.AddDays(1);
 
+    public double EstimatedKnownRate { get; set; } = 0.5;
+    public int? PersonalDifficulty { get; set; }
+    public DateTimeOffset? PersonalUpdatedAt { get; set; }
+
     public User? User { get; set; }
     public Word? Word { get; set; }
 }

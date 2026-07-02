@@ -44,6 +44,30 @@ public static class DependencyInjection
         services.AddSingleton<IJwtTokenService, JwtTokenService>();
         services.Configure<AuthOptions>(configuration.GetSection("Auth"));
         services.Configure<LlmSentenceRatingOptions>(configuration.GetSection(LlmSentenceRatingOptions.SectionName));
+        services.Configure<ScoreMappingOptions>(configuration.GetSection(ScoreMappingOptions.SectionName));
+        services.Configure<ChallengeThresholdsOptions>(configuration.GetSection(ChallengeThresholdsOptions.SectionName));
+        services.Configure<SearchOptions>(configuration.GetSection(SearchOptions.SectionName));
+        services.AddSingleton<IWebSearchService>(sp => new DuckDuckGoSearchService(
+            new HttpClient { Timeout = TimeSpan.FromSeconds(8) },
+            sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<SearchOptions>>(),
+            sp.GetRequiredService<ILogger<DuckDuckGoSearchService>>()));
+        services.AddScoped<ILearningToolHandler, ProfileScoresToolHandler>();
+        services.AddScoped<ILearningToolHandler, SearchWebToolHandler>();
+        services.AddScoped<ILearningToolHandler, ReadingLookupToolHandler>();
+        services.AddScoped<ILearningToolHandler, DailyWordsToolHandler>();
+        services.AddScoped<ILearningToolHandler, EvaluationLatestToolHandler>();
+        services.AddScoped<ILearningToolHandler, ChallengeRecentToolHandler>();
+        services.AddScoped<ILearningToolHandler, RecentLearningToolHandler>();
+        services.AddScoped<ILearningToolRegistry, LearningToolRegistry>();
+        services.AddSingleton<IScoreMappingService>(sp =>
+            new ScoreMappingService(sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<ScoreMappingOptions>>().Value));
+        services.AddScoped<IScoreProfileService, ScoreProfileService>();
+        services.AddScoped<IBackgroundJobService, BackgroundJobService>();
+        services.AddScoped<IEvaluationReportService, EvaluationReportService>();
+        services.AddScoped<SentenceLlmScoringWorker>();
+        services.AddScoped<IReadingLookupService, ReadingLookupService>();
+        services.AddScoped<IDailyWordSelectionService, DailyWordSelectionService>();
+        services.AddScoped<IUserFeedbackService, UserFeedbackService>();
         services.AddScoped<IUserLlmProviderFactory, UserLlmProviderFactory>();
         services.AddScoped<IReviewQueueService, ReviewQueueService>();
         services.AddScoped<ISentenceService, SentenceService>();
@@ -86,6 +110,7 @@ public static class DependencyInjection
 
         services.AddHostedService<ReviewReminderWorker>();
         services.AddHostedService<LevelCheckWorker>();
+        services.AddHostedService<BackgroundJobWorker>();
 
         return services;
     }

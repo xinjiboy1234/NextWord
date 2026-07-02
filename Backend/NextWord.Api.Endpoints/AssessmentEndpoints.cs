@@ -76,17 +76,22 @@ public static class ChallengeEndpoints
             return Results.Ok(pack);
         });
 
-        group.MapPost("/submit", async (HttpContext http, ChallengeSubmitRequest request, IUserRepository users, IChallengeService challenge, CancellationToken ct) =>
+        group.MapPost("/submit", async (HttpContext http, ChallengeSubmitBody request, IUserRepository users, IChallengeService challenge, CancellationToken ct) =>
         {
             var resolved = await UserResolver.ResolveAsync(http, request.UserId, users, ct);
             if (resolved is null) return Results.Unauthorized();
             var record = await challenge.SubmitChallengeAsync(
                 resolved.Id,
-                request.ChallengeType,
-                request.VocabularyScore,
-                request.SentenceScore,
-                request.ReadingScore,
-                request.ConfirmationChallenge,
+                new ChallengeSubmitRequest(
+                    request.ChallengeSessionId,
+                    request.ChallengeType,
+                    request.VocabAnswers,
+                    request.SentenceAnswer,
+                    request.TargetWord,
+                    request.Scene,
+                    request.SentenceWordId,
+                    request.ReadingSelectedIndex,
+                    request.LookupCount),
                 ct);
             return Results.Ok(record);
         });
@@ -128,10 +133,14 @@ public static class LevelEndpoints
 public sealed record AssessmentUserRequest(Guid? UserId);
 public sealed record StepSubmitRequest(string AnswersJson);
 public sealed record ChallengeStartRequest(Guid? UserId, bool ConfirmationChallenge = false);
-public sealed record ChallengeSubmitRequest(
+public sealed record ChallengeSubmitBody(
     Guid? UserId,
+    Guid ChallengeSessionId,
     ChallengeType ChallengeType,
-    double VocabularyScore,
-    double SentenceScore,
-    double ReadingScore,
-    bool ConfirmationChallenge = false);
+    IReadOnlyList<int> VocabAnswers,
+    string SentenceAnswer,
+    string TargetWord,
+    string Scene,
+    Guid? SentenceWordId,
+    int ReadingSelectedIndex,
+    int LookupCount);

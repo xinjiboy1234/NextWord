@@ -2,22 +2,51 @@ import { useCallback, useState } from 'react'
 import { api } from '../api/client'
 import { endpoints } from '../api/endpoints'
 import type { WordDefinition } from '../types/article'
+import type { ReadingLookupResult } from '../types/score'
+
+function mapLookupToDefinition(result: ReadingLookupResult, context?: string): WordDefinition {
+  return {
+    word: result.word,
+    phonetics: result.phonetic ?? '',
+    meanings: [{ definition: result.contextDefinition, isContextual: true, context: context ?? '' }],
+    collocations: [],
+    exampleSentences: [],
+    specialUsage: result.offline ? '离线释义' : '',
+    difficultyLevel: 'Intermediate',
+    cefrLevel: 'B1',
+  }
+}
 
 export function useWordLookup(articleId: string | null) {
   const [definition, setDefinition] = useState<WordDefinition | null>(null)
+  const [lookupMeta, setLookupMeta] = useState<ReadingLookupResult | null>(null)
   const [selectedWord, setSelectedWord] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
   const lookup = useCallback(async (word: string, context?: string) => {
-    if (!articleId) return
     setSelectedWord(word)
     setLoading(true)
     try {
-      const response = await api.post<WordDefinition>(endpoints.articleLookup(articleId), {
+      const { data } = await api.post<ReadingLookupResult>(endpoints.readingLookup, {
         word,
-        context,
+        sentence: context ?? '',
+        articleId: articleId ?? null,
       })
-      setDefinition(response.data)
+      setLookupMeta(data)
+      setDefinition(mapLookupToDefinition(data, context))
+    } catch {
+      const fallback: ReadingLookupResult = {
+        word,
+        contextDefinition: word,
+        intrinsicScore: null,
+        personalDifficulty: null,
+        estimatedKnownRate: 0.5,
+        phonetic: null,
+        offline: true,
+        confidence: null,
+      }
+      setLookupMeta(fallback)
+      setDefinition(mapLookupToDefinition(fallback, context))
     } finally {
       setLoading(false)
     }
@@ -25,8 +54,9 @@ export function useWordLookup(articleId: string | null) {
 
   function clear() {
     setDefinition(null)
+    setLookupMeta(null)
     setSelectedWord(null)
   }
 
-  return { definition, selectedWord, loading, lookup, clear }
+  return { definition, lookupMeta, selectedWord, loading, lookup, clear }
 }

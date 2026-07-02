@@ -41,6 +41,38 @@ public sealed class AssessmentScoringService : IAssessmentScoringService
         return new FinalLevelResult(vocabLevel, spellingLevel, sentenceLevel, readingLevel, overall);
     }
 
+    public int MapVocabToScore(double accuracyPercent) => Math.Clamp((int)Math.Round(accuracyPercent), 0, 100);
+
+    public int MapSpellingToScore(double accuracyPercent) => Math.Clamp((int)Math.Round(accuracyPercent), 0, 100);
+
+    public int MapSentenceToScore(double averageScore) =>
+        Math.Clamp((int)Math.Round(averageScore / 5.0 * 100), 0, 100);
+
+    public int MapReadingToScore(double accuracyPercent, int lookupCount, int wordCount)
+    {
+        var score = MapVocabToScore(accuracyPercent);
+        if (wordCount > 0 && lookupCount > wordCount * 0.15)
+        {
+            score = Math.Max(0, score - 10);
+        }
+
+        return score;
+    }
+
+    public FinalScoreResult CalculateFinalScores(
+        StepScoreResult vocab,
+        StepScoreResult spelling,
+        StepScoreResult sentence,
+        StepScoreResult reading)
+    {
+        var vocabScore = MapVocabToScore(vocab.RawScore);
+        var spellingScore = MapSpellingToScore(spelling.RawScore);
+        var writingScore = MapSentenceToScore(sentence.RawScore);
+        var readingScore = MapVocabToScore(reading.RawScore);
+        var overall = Math.Min(vocabScore, Math.Min(writingScore, readingScore));
+        return new FinalScoreResult(vocabScore, spellingScore, writingScore, readingScore, overall);
+    }
+
     private static CefrLevel MapByThresholds(double value, double[] upperBoundsExclusive)
     {
         var levels = new[] { CefrLevel.A1, CefrLevel.A2, CefrLevel.B1, CefrLevel.B2, CefrLevel.C1 };

@@ -1,4 +1,3 @@
-import { BarChart3, CalendarDays, Target } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { api } from '../api/client'
 import { endpoints } from '../api/endpoints'
@@ -27,58 +26,53 @@ export function Progress() {
   }, [])
 
   if (loading) {
-    return <div className="rounded-md border border-neutral-200 bg-white p-6 text-sm text-neutral-600">正在加载进度...</div>
+    return <div className="card"><p style={{ color: 'var(--muted)', fontSize: 'var(--text-sm)' }}>正在加载进度...</p></div>
   }
 
   if (error || !progress) {
-    return <div className="rounded-md border border-rose-200 bg-rose-50 p-6 text-sm text-rose-900">{error ?? '暂无进度。'}</div>
+    return <div className="alert alert-error">{error ?? '暂无进度。'}</div>
   }
 
   const stats = [
-    { label: '已学词', value: progress.totalLearned, icon: Target },
-    { label: '待复习', value: progress.dueReviews, icon: CalendarDays },
-    { label: '正确率', value: `${progress.accuracyPercent}%`, icon: BarChart3 },
+    { label: '已学词', value: progress.totalLearned },
+    { label: '待复习', value: progress.dueReviews },
+    { label: '正确率', value: `${progress.accuracyPercent}%` },
+    { label: '连续打卡', value: `${progress.streakDays} 天` },
   ]
 
   return (
-    <div className="grid gap-5">
-      <section className="rounded-md border border-neutral-200 bg-white p-5">
-        <h2 className="text-2xl font-semibold">{progress.displayName}</h2>
-        <p className="mt-1 text-sm text-neutral-600">总体等级 {progress.overallLevel}，词汇等级 {progress.vocabLevel}</p>
-      </section>
+    <div className="stack stack-md">
+      <div className="section-header">
+        <h2>{progress.displayName}</h2>
+        <p>总体等级 {progress.overallLevel}，词汇等级 {progress.vocabLevel}</p>
+      </div>
 
-      <section className="grid gap-3 sm:grid-cols-3">
-        {stats.map((stat) => {
-          const Icon = stat.icon
-          return (
-            <article key={stat.label} className="rounded-md border border-neutral-200 bg-white p-5">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-neutral-600">{stat.label}</p>
-                <Icon size={20} className="text-emerald-700" aria-hidden="true" />
-              </div>
-              <p className="mt-3 text-3xl font-semibold">{stat.value}</p>
-            </article>
-          )
-        })}
-      </section>
+      <div className="stat-grid">
+        {stats.map((stat) => (
+          <div key={stat.label} className="stat-item">
+            <div className="stat-num">{stat.value}</div>
+            <div className="stat-desc">{stat.label}</div>
+          </div>
+        ))}
+      </div>
 
-      <section className="rounded-md border border-neutral-200 bg-white p-5">
-        <h3 className="text-base font-semibold">学习日志</h3>
-        <dl className="mt-4 grid gap-3 text-sm">
-          <div className="flex justify-between border-b border-neutral-100 pb-2">
-            <dt className="text-neutral-600">总记录</dt>
-            <dd className="font-semibold">{progress.totalLogs}</dd>
+      <div className="card">
+        <h3 style={{ fontWeight: 540, marginBottom: 'var(--space-4)' }}>学习日志</h3>
+        <dl className="stack stack-sm" style={{ fontSize: 'var(--text-sm)' }}>
+          <div className="activity-stat">
+            <dt>总记录</dt>
+            <dd className="val">{progress.totalLogs}</dd>
           </div>
-          <div className="flex justify-between border-b border-neutral-100 pb-2">
-            <dt className="text-neutral-600">连续天数</dt>
-            <dd className="font-semibold">{progress.streakDays}</dd>
+          <div className="activity-stat">
+            <dt>连续天数</dt>
+            <dd className="val">{progress.streakDays}</dd>
           </div>
-          <div className="flex justify-between">
-            <dt className="text-neutral-600">最后学习</dt>
-            <dd className="font-semibold">{progress.lastStudyDate ?? '尚未开始'}</dd>
+          <div className="activity-stat" style={{ borderBottom: 'none' }}>
+            <dt>最后学习</dt>
+            <dd className="val">{progress.lastStudyDate ?? '尚未开始'}</dd>
           </div>
         </dl>
-      </section>
+      </div>
     </div>
   )
 }

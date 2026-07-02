@@ -35,6 +35,7 @@ public static class LearningEndpoints
             relationship.TimesLearned += 1;
             relationship.TimesCorrect += isCorrect ? 1 : 0;
             relationship.MasteryScore = Math.Clamp(relationship.MasteryScore + ScoreDelta(request.Rating, isCorrect), 0, 100);
+            ApplyKnownRateEma(relationship, request.Rating, isCorrect);
             sm2.ApplyReview(relationship, request.Rating, DateTimeOffset.UtcNow);
 
             var log = new WordLearningLog
@@ -88,6 +89,31 @@ public static class LearningEndpoints
             _ when isCorrect => 5,
             _ => -5
         };
+    }
+
+    private static void ApplyKnownRateEma(UserWordRelationship relationship, AssessmentResult rating, bool isCorrect)
+    {
+        var delta = rating switch
+        {
+            AssessmentResult.Remembered when isCorrect => 0.15,
+            AssessmentResult.Fuzzy => 0.05,
+            AssessmentResult.Forgot => -0.2,
+            _ when isCorrect => 0.08,
+            _ => -0.1
+        };
+        relationship.EstimatedKnownRate = Math.Clamp(relationship.EstimatedKnownRate + delta, 0, 1);
+
+        var personal = relationship.PersonalDifficulty ?? 50;
+        if (rating == AssessmentResult.Forgot || !isCorrect)
+        {
+            relationship.PersonalDifficulty = Math.Clamp(personal + 5, 0, 100);
+        }
+        else if (rating == AssessmentResult.Remembered && isCorrect)
+        {
+            relationship.PersonalDifficulty = Math.Clamp(personal - 3, 0, 100);
+        }
+
+        relationship.PersonalUpdatedAt = DateTimeOffset.UtcNow;
     }
 }
 

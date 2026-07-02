@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /><title>Levels · NextWord</title>
+<link rel="stylesheet" href="../css/tokens.css" /><link rel="stylesheet" href="../css/app.css" />
+<style>
+  .level-hero { text-align:center; padding:var(--space-8) 0; }
+  .overall-level {
+    display:inline-flex; align-items:center; justify-content:center;
+    width:96px; height:96px; border-radius:50%;
+    background:var(--fg); color:var(--bg);
+    font-family:var(--font-display); font-size:var(--text-3xl); font-weight:700;
+  }
+  .dim-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:var(--space-4); margin-top:var(--space-6); }
+  .dim-card { text-align:center; padding:var(--space-6); border:1px solid var(--border); border-radius:var(--radius-md); }
+  .dim-card .badge-level {
+    display:inline-flex; align-items:center; justify-content:center;
+    width:56px; height:56px; border-radius:50%;
+    background:var(--fg); color:var(--bg);
+    font-family:var(--font-display); font-size:var(--text-xl); font-weight:700; margin-bottom:var(--space-3);
+  }
+  .history-table { width:100%; border-collapse:collapse; font-size:var(--text-sm); margin-top:var(--space-6); }
+  .history-table th,.history-table td { padding:var(--space-3) var(--space-4); text-align:left; border-bottom:1px solid var(--border); }
+  .history-table th { font-family:var(--font-mono); font-size:var(--text-xs); letter-spacing:0.04em; text-transform:uppercase; color:var(--meta); }
+  .upgrade-badge { background:var(--success-soft); color:var(--success); }
+  @media (max-width:600px) { .dim-grid { grid-template-columns:repeat(2,1fr); } }
+</style></head>
+<body>
+
+<div class="app-shell"><div class="main-area" style="margin-left:0;">
+<header class="topbar"><a href="../index.html" class="btn btn-ghost btn-sm">← Dashboard</a><span class="topbar-greeting" style="margin-left:auto;">Levels</span></header>
+<main class="content">
+
+<section class="level-hero">
+  <p class="mono-label">Your Level</p>
+  <div class="overall-level" style="margin:var(--space-4) auto;">B1</div>
+  <p style="font-family:var(--font-display);font-size:var(--text-lg);font-weight:540;margin-top:var(--space-3);">Intermediate</p>
+  <p style="color:var(--muted);font-size:var(--text-sm);max-width:36ch;margin:4px auto 0;">You can handle most everyday situations and express opinions on familiar topics.</p>
+  <span class="badge badge-info" style="margin-top:var(--space-3);">Upgrade candidate: B1 → B2</span>
+</section>
+
+<div class="section-header"><h2>Skill Dimensions</h2></div>
+<div class="dim-grid">
+  <div class="dim-card"><div class="badge-level">B1</div><p style="font-weight:540;">Vocabulary</p><p style="font-size:var(--text-xs);color:var(--muted);">~2,500 word families</p></div>
+  <div class="dim-card"><div class="badge-level">A2</div><p style="font-weight:540;">Spelling</p><p style="font-size:var(--text-xs);color:var(--muted);">Common patterns</p></div>
+  <div class="dim-card"><div class="badge-level">B1</div><p style="font-weight:540;">Compose</p><p style="font-size:var(--text-xs);color:var(--muted);">Connected text</p></div>
+  <div class="dim-card"><div class="badge-level">B2</div><p style="font-weight:540;">Reading</p><p style="font-size:var(--text-xs);color:var(--muted);">Complex texts</p></div>
+</div>
+
+<div class="section-header" style="margin-top:var(--space-8);"><h2>Level History</h2></div>
+<table class="history-table">
+  <thead><tr><th>Date</th><th>Dimension</th><th>Change</th><th>Reason</th></tr></thead>
+  <tbody>
+    <tr><td>Jun 20, 2026</td><td>Reading</td><td><span class="badge badge-info">B1 → B2</span></td><td style="color:var(--muted);">Assessment upgrade</td></tr>
+    <tr><td>Jun 15, 2026</td><td>Vocabulary</td><td><span class="badge badge-success">A2 → B1</span></td><td style="color:var(--muted);">Challenge completion</td></tr>
+    <tr><td>Jun 01, 2026</td><td>Overall</td><td><span class="badge badge-success">A2 → B1</span></td><td style="color:var(--muted);">Initial assessment</td></tr>
+  </tbody>
+</table>
+
+</main></div></div>
+
+<nav class="bottombar"><div class="bottombar-inner">
+  <button class="bottombar-tab" onclick="window.location.href='../index.html'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Learn</button>
+  <button class="bottombar-tab" onclick="window.location.href='spelling.html'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="8"/></svg>Practice</button>
+  <button class="bottombar-tab" onclick="window.location.href='article-library.html'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>Read</button>
+  <button class="bottombar-tab" onclick="window.location.href='profile.html'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Profile</button>
+</div></nav>
+</body></html>

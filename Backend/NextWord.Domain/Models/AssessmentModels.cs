@@ -24,7 +24,20 @@ public sealed record FinalLevelResult(
     CefrLevel SpellingLevel,
     CefrLevel SentenceLevel,
     CefrLevel ReadingLevel,
-    CefrLevel OverallLevel);
+    CefrLevel OverallLevel,
+    int? VocabularyScore = null,
+    int? SpellingScore = null,
+    int? WritingScore = null,
+    int? ReadingScore = null,
+    int? OverallScore = null,
+    long? EvaluationReportId = null);
+
+public sealed record FinalScoreResult(
+    int VocabularyScore,
+    int SpellingScore,
+    int WritingScore,
+    int ReadingScore,
+    int OverallScore);
 
 public sealed record UpgradeCheckResult(
     bool IsCandidate,

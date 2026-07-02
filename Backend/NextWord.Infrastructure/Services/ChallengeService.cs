@@ -1,4 +1,6 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using NextWord.Domain.Entities;
 using NextWord.Domain.Enums;
 using NextWord.Domain.Interfaces;
@@ -11,9 +13,16 @@ public sealed class ChallengeService(
     ApplicationDbContext db,
     IChallengePackGenerator packGenerator,
     ILevelEngine levelEngine,
-    IUserRepository users) : IChallengeService
+    IUserRepository users,
+    IScoreProfileService scoreProfile,
+    IAssessmentScoringService scoring,
+    ISentenceService sentenceService,
+    IEvaluationReportService evaluationReports,
+    IOptions<ChallengeThresholdsOptions> thresholds) : IChallengeService
 {
-    public async Task<ChallengePack> StartChallengeAsync(Guid userId, bool confirmationChallenge, CancellationToken cancellationToken)
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+
+    public async Task<ChallengeStartResponse> StartChallengeAsync(Guid userId, bool confirmationChallenge, CancellationToken cancellationToken)
     {
         var progress = await users.GetOrCreateProgressAsync(userId, cancellationToken);
         if (confirmationChallenge)
@@ -22,69 +31,110 @@ public sealed class ChallengeService(
             await db.SaveChangesAsync(cancellationToken);
         }
 
-        return await packGenerator.GenerateAsync(userId, progress.OverallLevel, confirmationChallenge, cancellationToken);
+        var pack = await packGenerator.GenerateAsync(userId, progress.OverallLevel, confirmationChallenge, cancellationToken);
+        var session = new ChallengeSession
+        {
+            UserId = userId,
+            PackJson = JsonSerializer.Serialize(pack, JsonOptions),
+            ConfirmationChallenge = confirmationChallenge,
+            ExpiresAt = DateTimeOffset.UtcNow.AddHours(2)
+        };
+        db.ChallengeSessions.Add(session);
+        await db.SaveChangesAsync(cancellationToken);
+
+        var clientView = new ChallengePackClientView(
+            pack.Vocabulary.Select(q => new VocabQuizQuestionClient(q.Word, q.Options, q.Difficulty.ToString())).ToList(),
+            pack.Sentence,
+            new ReadingQuizQuestionClient(pack.Reading.ArticleId, pack.Reading.Question, pack.Reading.Options, pack.Reading.ArticleExcerpt),
+            pack.AttemptedLevel.ToString());
+
+        return new ChallengeStartResponse(session.Id, clientView);
     }
 
-    public async Task<ChallengeRecord> SubmitChallengeAsync(
-        Guid userId,
-        ChallengeType type,
-        double vocabScore,
-        double sentenceScore,
-        double readingScore,
-        bool confirmationChallenge,
-        CancellationToken cancellationToken)
+    public async Task<ChallengeSubmitResponse> SubmitChallengeAsync(Guid userId, ChallengeSubmitRequest request, CancellationToken cancellationToken)
     {
-        var progress = await users.GetOrCreateProgressAsync(userId, cancellationToken);
-        var passed = vocabScore >= 60 && sentenceScore >= 3.5 && readingScore >= 100;
-        var total = Math.Round((vocabScore + sentenceScore * 20 + readingScore) / 3, 1);
+        var session = await db.ChallengeSessions.FirstOrDefaultAsync(item => item.Id == request.ChallengeSessionId && item.UserId == userId, cancellationToken)
+            ?? throw new InvalidOperationException("Challenge session not found.");
 
+        if (session.ExpiresAt < DateTimeOffset.UtcNow)
+        {
+            throw new InvalidOperationException("Challenge session expired.");
+        }
+
+        var pack = JsonSerializer.Deserialize<ChallengePack>(session.PackJson, JsonOptions)
+            ?? throw new InvalidOperationException("Invalid challenge pack.");
+
+        var vocabCorrect = pack.Vocabulary.Select((q, i) => i < request.VocabAnswers.Count && request.VocabAnswers[i] == q.CorrectIndex).Count(x => x);
+        var vocabAccuracy = pack.Vocabulary.Count == 0 ? 0 : (double)vocabCorrect / pack.Vocabulary.Count * 100;
+        var vocabScore = scoring.MapVocabToScore(vocabAccuracy);
+
+        var sentenceLog = await sentenceService.RateAsync(
+            userId,
+            request.SentenceWordId,
+            request.TargetWord,
+            request.SentenceAnswer,
+            request.Scene,
+            pack.AttemptedLevel.ToString(),
+            cancellationToken);
+        var sentenceAverage = (sentenceLog.GrammarScore + sentenceLog.NaturalScore + sentenceLog.VocabularyScore + sentenceLog.RelevanceScore) / 4.0;
+        var writingScore = scoring.MapSentenceToScore(sentenceAverage);
+
+        var readingCorrect = request.ReadingSelectedIndex == pack.Reading.CorrectIndex;
+        var readingAccuracy = readingCorrect ? 100.0 : 0.0;
+        var readingScore = scoring.MapReadingToScore(readingAccuracy, request.LookupCount, pack.Reading.ArticleExcerpt.Length / 5);
+
+        var options = thresholds.Value;
+        var passed = vocabAccuracy / 100.0 >= options.VocabAccuracyMin
+            && writingScore >= options.WritingScoreMin
+            && readingScore >= options.ReadingScoreMin;
+
+        var total = Math.Round((vocabScore + writingScore + readingScore) / 3.0, 1);
         var record = new ChallengeRecord
         {
             UserId = userId,
-            ChallengeType = type,
+            ChallengeType = request.ChallengeType,
             VocabularyScore = vocabScore,
-            SentenceScore = sentenceScore,
+            SentenceScore = sentenceAverage,
             ReadingScore = readingScore,
             TotalScore = total,
             Passed = passed,
-            AttemptedLevel = confirmationChallenge ? levelEngine.GetNextLevel(progress.OverallLevel) : progress.OverallLevel
+            AttemptedLevel = pack.AttemptedLevel
         };
         db.ChallengeRecords.Add(record);
 
-        if (confirmationChallenge)
+        var progress = await users.GetOrCreateProgressAsync(userId, cancellationToken);
+        if (session.ConfirmationChallenge)
         {
             progress.IsLevelLocked = false;
             if (passed)
             {
-                var from = progress.OverallLevel;
-                var to = levelEngine.GetNextLevel(from);
-                progress.OverallLevel = to;
-                progress.VocabLevel = to;
-                progress.ReadingLevel = to;
-                progress.SentenceLevel = to;
-                progress.LevelStartDate = DateOnly.FromDateTime(DateTime.UtcNow);
-                db.LevelHistories.Add(new LevelHistory
-                {
-                    UserId = userId,
-                    FromLevel = from,
-                    ToLevel = to,
-                    Reason = LevelChangeReason.Upgrade
-                });
-            }
-            else
-            {
-                db.LevelHistories.Add(new LevelHistory
-                {
-                    UserId = userId,
-                    FromLevel = progress.OverallLevel,
-                    ToLevel = progress.OverallLevel,
-                    Reason = LevelChangeReason.Rollback
-                });
+                await scoreProfile.ApplyUpdateAsync(
+                    new ProfileUpdateCommand(
+                        userId,
+                        "ChallengePass",
+                        null,
+                        new ProfileScoreDelta(options.UpgradeDelta, options.UpgradeDelta, options.UpgradeDelta, null),
+                        $"challenge:pass:{session.Id}"),
+                    cancellationToken);
             }
         }
 
         await db.SaveChangesAsync(cancellationToken);
-        return record;
+
+        long? reportId = null;
+        if (session.ConfirmationChallenge)
+        {
+            reportId = await evaluationReports.EnqueueForUserAsync(
+                userId,
+                passed ? "ChallengePass" : "ChallengeFail",
+                null,
+                cancellationToken);
+        }
+
+        db.ChallengeSessions.Remove(session);
+        await db.SaveChangesAsync(cancellationToken);
+
+        return new ChallengeSubmitResponse(passed, total, vocabScore, writingScore, readingScore, reportId);
     }
 
     public async Task<IReadOnlyList<ChallengeRecord>> GetRecentAsync(Guid userId, int count, CancellationToken cancellationToken)
@@ -97,14 +147,14 @@ public sealed class ChallengeService(
     }
 }
 
-public sealed class LevelDashboardService(ApplicationDbContext db, ILevelEngine levelEngine)
+public sealed class LevelDashboardService(ApplicationDbContext db, ILevelEngine levelEngine, IScoreProfileService scoreProfile)
 {
     public async Task<LevelDashboardDto> GetDashboardAsync(Guid userId, CancellationToken cancellationToken)
     {
         var progress = await db.UserProgress.AsNoTracking().FirstOrDefaultAsync(item => item.UserId == userId, cancellationToken);
         if (progress is null)
         {
-            return new LevelDashboardDto(CefrLevel.A1, CefrLevel.A1, CefrLevel.A1, CefrLevel.A1, CefrLevel.A1, false, false, []);
+            return new LevelDashboardDto(CefrLevel.A1, CefrLevel.A1, CefrLevel.A1, CefrLevel.A1, CefrLevel.A1, false, false, [], null);
         }
 
         var histories = await db.LevelHistories.AsNoTracking()
@@ -120,6 +170,7 @@ public sealed class LevelDashboardService(ApplicationDbContext db, ILevelEngine 
             .ToListAsync(cancellationToken);
 
         var upgrade = levelEngine.EvaluateUpgradeCandidate(progress, recentChallenges);
+        var scores = await scoreProfile.GetScoresAsync(userId, cancellationToken);
         return new LevelDashboardDto(
             progress.OverallLevel,
             progress.VocabLevel,
@@ -128,7 +179,8 @@ public sealed class LevelDashboardService(ApplicationDbContext db, ILevelEngine 
             progress.ReadingLevel,
             progress.HasCompletedInitialAssessment,
             upgrade.IsCandidate,
-            histories);
+            histories,
+            scores);
     }
 
     public async Task<IReadOnlyList<LevelHistory>> GetHistoryAsync(Guid userId, CancellationToken cancellationToken)
@@ -148,4 +200,5 @@ public sealed record LevelDashboardDto(
     CefrLevel ReadingLevel,
     bool HasCompletedInitialAssessment,
     bool UpgradeCandidate,
-    IReadOnlyList<LevelHistory> RecentHistory);
+    IReadOnlyList<LevelHistory> RecentHistory,
+    UserProfileScores? Scores);
