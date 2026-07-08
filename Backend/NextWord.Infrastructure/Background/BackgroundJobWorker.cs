@@ -21,11 +21,12 @@ public sealed class BackgroundJobWorker(IServiceScopeFactory scopeFactory, ILogg
                 var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
                 var evaluation = scope.ServiceProvider.GetRequiredService<IEvaluationReportService>();
 
-                var jobs = await db.BackgroundJobs
+                var jobs = (await db.BackgroundJobs
                     .Where(job => job.Status == "Pending")
+                    .ToListAsync(stoppingToken))
                     .OrderBy(job => job.CreatedAt)
                     .Take(5)
-                    .ToListAsync(stoppingToken);
+                    .ToList();
 
                 foreach (var job in jobs)
                 {
@@ -41,6 +42,11 @@ public sealed class BackgroundJobWorker(IServiceScopeFactory scopeFactory, ILogg
                         {
                             var sentenceWorker = scope.ServiceProvider.GetRequiredService<SentenceLlmScoringWorker>();
                             await sentenceWorker.ProcessAsync(job, stoppingToken);
+                        }
+                        else if (job.JobType == "ReAnnotation")
+                        {
+                            var reannotation = scope.ServiceProvider.GetRequiredService<ReAnnotationWorker>();
+                            await reannotation.ProcessAsync(job, stoppingToken);
                         }
 
                         job.Status = "Completed";

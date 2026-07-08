@@ -9,6 +9,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
+      - ./Backend/docker/postgres-init.sql:/docker-entrypoint-initdb.d/01-create-test-db.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U nextword -d nextword"]
       interval: 5s
@@ -39,6 +40,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       Database__Provider: PostgreSql
+      Database__AutoMigrate: "true"
       ConnectionStrings__PostgreSql: Host=postgres;Port=5432;Database=nextword;Username=nextword;Password=nextword
       Cache__Provider: Redis
       ConnectionStrings__Redis: redis:6379

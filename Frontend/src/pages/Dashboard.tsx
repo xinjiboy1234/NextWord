@@ -84,8 +84,8 @@ export function Dashboard({ progress, onNavigate }: DashboardProps) {
   return (
     <div>
       <div className="welcome-strip">
-        <h1>学习中心</h1>
-        <p>选择模块开始今日练习，共 {items.length} 个学习模块。</p>
+        <h1>首页</h1>
+        <p>选择模块开始今日练习。</p>
       </div>
 
       <div className="module-grid">

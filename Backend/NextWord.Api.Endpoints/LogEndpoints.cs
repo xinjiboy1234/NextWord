@@ -46,20 +46,22 @@ public static class LogEndpoints
             }
 
             var take = Math.Clamp(count ?? 12, 1, 30);
-            var sentenceLogs = await db.SentenceLogs
+            var sentenceLogs = (await db.SentenceLogs
                 .AsNoTracking()
                 .Where(log => log.UserId == resolvedUserId)
+                .ToListAsync(ct))
                 .OrderByDescending(log => log.Timestamp)
                 .Take(take)
                 .Select(log => new RecentLogDto("sentence", log.TargetWord, log.OverallGrade, log.Timestamp))
-                .ToListAsync(ct);
-            var spellingLogs = await db.SpellingLogs
+                .ToList();
+            var spellingLogs = (await db.SpellingLogs
                 .AsNoTracking()
                 .Where(log => log.UserId == resolvedUserId)
+                .ToListAsync(ct))
                 .OrderByDescending(log => log.Timestamp)
                 .Take(take)
                 .Select(log => new RecentLogDto("spelling", log.CorrectSpelling, log.IsCorrect ? "correct" : "missed", log.Timestamp))
-                .ToListAsync(ct);
+                .ToList();
 
             return Results.Ok(sentenceLogs.Concat(spellingLogs).OrderByDescending(log => log.Timestamp).Take(take));
         });

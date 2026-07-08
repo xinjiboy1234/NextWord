@@ -21,21 +21,14 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddNextWordInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
-        var provider = configuration["Database:Provider"] ?? "Sqlite";
-        var connectionString = configuration.GetConnectionString(provider) ?? "Data Source=nextword-dev.db";
+        var connectionString = configuration.GetConnectionString("PostgreSql")
+            ?? "Host=localhost;Port=5432;Database=nextword;Username=nextword;Password=nextword";
 
         services.AddDbContext<ApplicationDbContext>(options =>
         {
-            if (string.Equals(provider, "PostgreSql", StringComparison.OrdinalIgnoreCase))
-            {
-                options.UseNpgsql(connectionString);
-            }
-            else
-            {
-                options.UseSqlite(connectionString);
-                // 迁移快照按 PostgreSQL 设计；SQLite 开发库跳过 pending model 严格校验。
-                options.ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning));
-            }
+            options.UseNpgsql(connectionString);
+            // 模型快照与历史 SQLite 迁移存在差异；Development 仍允许 MigrateAsync 继续。
+            options.ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning));
         });
 
         services.AddScoped<IWordRepository, WordRepository>();
@@ -64,6 +57,8 @@ public static class DependencyInjection
         services.AddScoped<IScoreProfileService, ScoreProfileService>();
         services.AddScoped<IBackgroundJobService, BackgroundJobService>();
         services.AddScoped<IEvaluationReportService, EvaluationReportService>();
+        services.AddScoped<EvaluationDataAssembler>();
+        services.AddScoped<ReAnnotationWorker>();
         services.AddScoped<SentenceLlmScoringWorker>();
         services.AddScoped<IReadingLookupService, ReadingLookupService>();
         services.AddScoped<IDailyWordSelectionService, DailyWordSelectionService>();
@@ -110,6 +105,7 @@ public static class DependencyInjection
 
         services.AddHostedService<ReviewReminderWorker>();
         services.AddHostedService<LevelCheckWorker>();
+        services.AddHostedService<ProfileScoreSnapshotWorker>();
         services.AddHostedService<BackgroundJobWorker>();
 
         return services;

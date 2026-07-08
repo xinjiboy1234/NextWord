@@ -1,19 +1,22 @@
 import { useEffect, useRef, useState } from 'react'
 import { AssessmentTimeline } from '../components/AssessmentTimeline'
 import { OptionTags } from '../components/OptionTags'
+import { Progress } from '../components/ui/Progress'
 import { StepNavigator } from '../components/StepNavigator'
 import { useAssessmentFlow } from '../hooks/useAssessmentFlow'
 
 interface InitialAssessmentProps {
   autoStart?: boolean
+  immersive?: boolean
   onComplete?: () => void
+  onStepChange?: (step: number) => void
 }
 
 function denseAnswers<T>(count: number, answers: T[], isFilled: (value: T | undefined) => boolean) {
   return Array.from({ length: count }, (_, index) => answers[index]).every(isFilled)
 }
 
-export function InitialAssessment({ autoStart = false, onComplete }: InitialAssessmentProps) {
+export function InitialAssessment({ autoStart = false, immersive = false, onComplete, onStepChange }: InitialAssessmentProps) {
   const flow = useAssessmentFlow()
   const autoStarted = useRef(false)
   const [vocabIndex, setVocabIndex] = useState(0)
@@ -31,6 +34,10 @@ export function InitialAssessment({ autoStart = false, onComplete }: InitialAsse
   vocabAnswersRef.current = vocabAnswers
   spellingAnswersRef.current = spellingAnswers
   sentenceAnswersRef.current = sentenceAnswers
+
+  useEffect(() => {
+    onStepChange?.(flow.step)
+  }, [flow.step, onStepChange])
 
   useEffect(() => {
     if (!autoStart || autoStarted.current || flow.assessmentId) {
@@ -141,10 +148,11 @@ export function InitialAssessment({ autoStart = false, onComplete }: InitialAsse
   }
 
   const displayError = localError ?? flow.stepError
+  const sectionClass = immersive ? 'onboarding-card' : 'card'
 
   if (!flow.assessmentId) {
     return (
-      <section className="card">
+      <section className={sectionClass}>
         <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-xl)', fontWeight: 700 }}>首次水平测评</h2>
         <p style={{ marginTop: 'var(--space-2)', fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>5 步测评：词汇 → 拼写 → 造句 → 阅读 → 定级</p>
         {flow.error && <p className="alert alert-error" style={{ marginTop: 'var(--space-3)' }}>{flow.error}</p>}
@@ -166,7 +174,10 @@ export function InitialAssessment({ autoStart = false, onComplete }: InitialAsse
   }
 
   return (
-    <section className="card stack stack-md">
+    <section className={`${sectionClass} stack stack-md`}>
+      {immersive ? (
+        <Progress value={flow.step} max={5} label={`测评进度 ${flow.step}/5`} />
+      ) : null}
       <AssessmentTimeline
         steps={flow.steps}
         currentStep={flow.step}

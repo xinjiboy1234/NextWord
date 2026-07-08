@@ -18,6 +18,14 @@ public static class AssessmentEndpoints
             return Results.Ok(new { assessmentId = item.Id, status = item.Status.ToString() });
         });
 
+        group.MapPost("/initial/skip", async (HttpContext http, AssessmentUserRequest request, IUserRepository users, IAssessmentService assessment, CancellationToken ct) =>
+        {
+            var user = await ResolveUserAsync(http, request.UserId, users, ct);
+            if (user is null) return Results.Unauthorized();
+            await assessment.SkipInitialAsync(user.Id, ct);
+            return Results.Ok(new { skipped = true, defaultLevel = "A2" });
+        });
+
         group.MapGet("/{assessmentId:guid}/step/{step:int}", async (Guid assessmentId, int step, IAssessmentService assessment, CancellationToken ct) =>
         {
             if (!Enum.IsDefined(typeof(AssessmentStepType), step))

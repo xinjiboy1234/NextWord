@@ -1,5 +1,60 @@
 # NextWord 开发日志
 
+## 2026-07-06 — 全环境切换 PostgreSQL（移除 SQLite）
+
+### 需求
+开发、默认、生产环境统一使用 PostgreSQL，不再使用 SQLite。
+
+### 实现
+- `appsettings.json` / `appsettings.Development.json`：`Database:Provider` → `PostgreSql`，移除 `Sqlite` 连接串
+- `DependencyInjection.cs`：固定 `UseNpgsql`，移除 SQLite 分支；保留 `PendingModelChangesWarning` 忽略（模型快照与历史迁移仍有差异）
+- 移除 `Microsoft.EntityFrameworkCore.Sqlite` 包引用
+- 新增 `appsettings.Testing.json`（集成测试库 `nextword_test`）
+- 单元/集成测试改为 PostgreSQL；docker init 脚本创建 `nextword_test` / `nextword_unit_test`
+- 测试库 bootstrap：`EnsureCreated` + 首次运行重建库
+
+### 验收
+- [x] `dotnet build` 通过
+- [x] `dotnet test` 45 通过（需 `docker compose up -d postgres`）
+
+### 本地开发
+```powershell
+docker compose up -d postgres
+cd Backend/NextWord.Api
+dotnet run
+```
+Development 启动时自动 `MigrateAsync()` 到 `nextword` 库。
+
+---
+
+## 2026-07-06 — SQLite 排序修复 + 生产 SQL 迁移流程
+
+### 需求
+- 开发环境：`BackgroundJobWorker` SQLite 不支持 `DateTimeOffset` SQL ORDER BY
+- Docker/生产：`PendingModelChangesWarning`（Snapshot 被 `AddScoreKernelM1` 污染为 SQLite 类型）
+- 生产 Schema 改为 SQL 脚本迁移，发布前本地抽取
+
+### 实现
+- 7 个文件改为先 `ToListAsync()` 再内存排序（BackgroundJob / Challenge / Spelling / LearningTool / Endpoints）
+- `ApplicationDbContextFactory`（Design-Time 默认 Npgsql）
+- EF 迁移 `20260706132041_AlignPostgresModelSnapshot`（TEXT → uuid/timestamptz 等）
+- `Scripts/generate-migration-sql.ps1` → 输出 `Scripts/Migrations/Upgrade_Idempotent.sql`
+- `Program.cs`：仅 Development 自动 `MigrateAsync()`；Production 走 SQL
+- `Scripts/Migrations/README.md` 发布 runbook
+
+### 验收
+- [x] `dotnet ef migrations has-pending-model-changes`（PostgreSql）→ No changes
+- [x] `dotnet test` 45 通过
+- [x] `Upgrade_Idempotent.sql` 已生成
+
+### 生产部署
+1. `.\Backend\Scripts\generate-migration-sql.ps1`
+2. `psql "$DATABASE_URL" -f Backend/Scripts/Migrations/Upgrade_Idempotent.sql`
+3. 可选：`Upgrade_ScoreBackfill.sql`
+4. 部署 API（Production 不自动 Migrate）
+
+---
+
 ## 2026-06-30 — Score 内核 v1 批量落地
 
 ### 需求
@@ -29,10 +84,25 @@
 - [x] `dotnet ef database update`（含 ChallengeSessions）
 
 ### 未完成 / 已知缺口
-- T-005 staging backfill drill、T-043 日快照 worker、T-055 反馈按钮
-- 评估报告仍为模板，非 LLM 结构化 + 工具预取
-- Annotation singleflight / ReAnnotation worker
-- Release Blockers B1–B8 正式 sign-off、E2E 挑战流更新、CEFR read-path audit
+- T-005 staging backfill drill 实际执行（脚本与 README 已就绪）
+- 评估报告 LLM 结构化（已有 toolPrefetch 字段）
+- Annotation lookup singleflight
+- Release Blockers B1–B8 正式 sign-off
+
+---
+
+## 2026-06-30 — Score 内核收尾（T-043 / FR-7 / E2E）
+
+### 实现
+- `ProfileScoreSnapshotWorker` 日批 + `GET /api/profile/scores/history`
+- `ReAnnotationWorker` + `UserFeedbackService`（DefinitionWrong / MarkKnown / ExcludeWord）
+- `EvaluationDataAssembler` 预取工具数据写入报告
+- 前端 `FeedbackButton`、`useDisplaySettings` CEFR toggle
+- E2E `challenge.spec.ts`；`docs/AUDIT-cefr-read-path.md`；`Scripts/README_BackfillDrill.md`
+
+### 验收
+- [x] `dotnet test` 45 通过
+- [x] `npm run build` 通过
 
 ---
 

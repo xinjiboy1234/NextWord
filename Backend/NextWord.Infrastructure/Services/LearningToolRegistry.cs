@@ -77,11 +77,13 @@ public sealed class EvaluationLatestToolHandler(ApplicationDbContext db) : ILear
 
     public async Task<object> ExecuteAsync(JsonElement args, Guid userId, CancellationToken cancellationToken)
     {
-        return await db.EvaluationReports.AsNoTracking()
+        var latest = (await db.EvaluationReports.AsNoTracking()
             .Where(item => item.UserId == userId)
+            .ToListAsync(cancellationToken))
             .OrderByDescending(item => item.CreatedAt)
-            .FirstOrDefaultAsync(cancellationToken)
-            ?? (object)new { status = "none" };
+            .FirstOrDefault();
+
+        return latest ?? (object)new { status = "none" };
     }
 }
 
@@ -92,11 +94,12 @@ public sealed class ChallengeRecentToolHandler(ApplicationDbContext db) : ILearn
     public async Task<object> ExecuteAsync(JsonElement args, Guid userId, CancellationToken cancellationToken)
     {
         var limit = args.TryGetProperty("limit", out var limitEl) ? limitEl.GetInt32() : 5;
-        return await db.ChallengeRecords.AsNoTracking()
+        return (await db.ChallengeRecords.AsNoTracking()
             .Where(item => item.UserId == userId)
+            .ToListAsync(cancellationToken))
             .OrderByDescending(item => item.Timestamp)
             .Take(limit)
-            .ToListAsync(cancellationToken);
+            .ToList();
     }
 }
 
@@ -107,11 +110,12 @@ public sealed class RecentLearningToolHandler(ApplicationDbContext db) : ILearni
     public async Task<object> ExecuteAsync(JsonElement args, Guid userId, CancellationToken cancellationToken)
     {
         var limit = args.TryGetProperty("limit", out var limitEl) ? limitEl.GetInt32() : 10;
-        return await db.WordLearningLogs.AsNoTracking()
+        return (await db.WordLearningLogs.AsNoTracking()
             .Where(item => item.UserId == userId)
+            .ToListAsync(cancellationToken))
             .OrderByDescending(item => item.Timestamp)
             .Take(limit)
             .Select(item => new { item.WordId, item.Rating, item.IsCorrect, item.Timestamp })
-            .ToListAsync(cancellationToken);
+            .ToList();
     }
 }

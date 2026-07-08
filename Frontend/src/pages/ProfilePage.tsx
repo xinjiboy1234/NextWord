@@ -1,13 +1,17 @@
-import { LogOut } from 'lucide-react'
+import { LogOut, Settings } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { api } from '../api/client'
 import { endpoints } from '../api/endpoints'
 import { Badge } from '../components/ui/Badge'
+import { Switch } from '../components/ui/Switch'
 import { useAuth } from '../contexts/AuthContext'
+import { useDisplaySettings } from '../hooks/useDisplaySettings'
 import type { UserProfile } from '../types/auth'
 
 export function ProfilePage() {
   const { logout, user } = useAuth()
+  const { showCefr, setShowCefr } = useDisplaySettings()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -70,6 +74,23 @@ export function ProfilePage() {
       </div>
 
       <div className="section-header">
+        <h2>显示设置</h2>
+      </div>
+      <div className="card stack stack-sm">
+        <label className="row-between" style={{ cursor: 'pointer' }}>
+          <span style={{ fontSize: 'var(--text-sm)' }}>显示 CEFR 等级标签</span>
+          <Switch
+            checked={showCefr}
+            onCheckedChange={setShowCefr}
+            aria-label="显示 CEFR 等级标签"
+          />
+        </label>
+        <p style={{ fontSize: 'var(--text-xs)', color: 'var(--muted)' }}>
+          关闭后侧栏与等级页优先展示 Score 数值。
+        </p>
+      </div>
+
+      <div className="section-header">
         <h2>学习统计</h2>
       </div>
       <div className="stat-grid">
@@ -79,6 +100,19 @@ export function ProfilePage() {
             <div className="stat-desc">{stat.label}</div>
           </div>
         ))}
+      </div>
+
+      <div className="section-header" style={{ marginTop: 'var(--space-8)' }}>
+        <h2>高级</h2>
+      </div>
+      <div className="card">
+        <Link to="/manage" className="profile-manage-link row-between">
+          <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+            <Settings size={18} aria-hidden="true" />
+            管理后台
+          </span>
+          <span style={{ color: 'var(--muted)', fontSize: 'var(--text-sm)' }}>LLM 设置、词库等</span>
+        </Link>
       </div>
     </div>
   )

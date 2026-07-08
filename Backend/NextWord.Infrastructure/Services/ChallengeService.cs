@@ -139,11 +139,12 @@ public sealed class ChallengeService(
 
     public async Task<IReadOnlyList<ChallengeRecord>> GetRecentAsync(Guid userId, int count, CancellationToken cancellationToken)
     {
-        return await db.ChallengeRecords.AsNoTracking()
+        return (await db.ChallengeRecords.AsNoTracking()
             .Where(record => record.UserId == userId)
+            .ToListAsync(cancellationToken))
             .OrderByDescending(record => record.Timestamp)
             .Take(Math.Clamp(count, 1, 30))
-            .ToListAsync(cancellationToken);
+            .ToList();
     }
 }
 
@@ -157,17 +158,19 @@ public sealed class LevelDashboardService(ApplicationDbContext db, ILevelEngine 
             return new LevelDashboardDto(CefrLevel.A1, CefrLevel.A1, CefrLevel.A1, CefrLevel.A1, CefrLevel.A1, false, false, [], null);
         }
 
-        var histories = await db.LevelHistories.AsNoTracking()
+        var histories = (await db.LevelHistories.AsNoTracking()
             .Where(item => item.UserId == userId)
+            .ToListAsync(cancellationToken))
             .OrderByDescending(item => item.Timestamp)
             .Take(10)
-            .ToListAsync(cancellationToken);
+            .ToList();
 
-        var recentChallenges = await db.ChallengeRecords.AsNoTracking()
+        var recentChallenges = (await db.ChallengeRecords.AsNoTracking()
             .Where(item => item.UserId == userId)
+            .ToListAsync(cancellationToken))
             .OrderByDescending(item => item.Timestamp)
             .Take(5)
-            .ToListAsync(cancellationToken);
+            .ToList();
 
         var upgrade = levelEngine.EvaluateUpgradeCandidate(progress, recentChallenges);
         var scores = await scoreProfile.GetScoresAsync(userId, cancellationToken);
@@ -185,10 +188,11 @@ public sealed class LevelDashboardService(ApplicationDbContext db, ILevelEngine 
 
     public async Task<IReadOnlyList<LevelHistory>> GetHistoryAsync(Guid userId, CancellationToken cancellationToken)
     {
-        return await db.LevelHistories.AsNoTracking()
+        return (await db.LevelHistories.AsNoTracking()
             .Where(item => item.UserId == userId)
+            .ToListAsync(cancellationToken))
             .OrderByDescending(item => item.Timestamp)
-            .ToListAsync(cancellationToken);
+            .ToList();
     }
 }
 

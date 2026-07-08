@@ -30,11 +30,12 @@ public sealed class BackgroundJobService(ApplicationDbContext db) : IBackgroundJ
 
     public async Task ProcessPendingAsync(CancellationToken cancellationToken)
     {
-        var jobs = await db.BackgroundJobs
+        var jobs = (await db.BackgroundJobs
             .Where(job => job.Status == "Pending")
+            .ToListAsync(cancellationToken))
             .OrderBy(job => job.CreatedAt)
             .Take(10)
-            .ToListAsync(cancellationToken);
+            .ToList();
 
         foreach (var job in jobs)
         {

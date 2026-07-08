@@ -8,14 +8,9 @@ namespace NextWord.UnitTests;
 
 public class ScoreProfileServiceTests
 {
-    private static (ApplicationDbContext Db, ScoreProfileService Service) CreateContext()
+    private static async Task<(ApplicationDbContext Db, ScoreProfileService Service)> CreateContextAsync()
     {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseSqlite("Data Source=:memory:")
-            .Options;
-        var db = new ApplicationDbContext(options);
-        db.Database.OpenConnection();
-        db.Database.EnsureCreated();
+        var db = await PostgresTestDatabase.CreateContextAsync();
         var mapping = new ScoreMappingService(new ScoreMappingOptions());
         var service = new ScoreProfileService(db, mapping);
         return (db, service);
@@ -24,7 +19,10 @@ public class ScoreProfileServiceTests
     [Fact]
     public async Task ApplyUpdate_absolute_writes_scores_and_legacy_levels()
     {
-        var (db, service) = CreateContext();
+        await using var db = await PostgresTestDatabase.CreateContextAsync();
+        var mapping = new ScoreMappingService(new ScoreMappingOptions());
+        var service = new ScoreProfileService(db, mapping);
+
         var userId = Guid.NewGuid();
         db.Users.Add(new Domain.Entities.User { Id = userId, DisplayName = "Test" });
         await db.SaveChangesAsync();
@@ -50,7 +48,10 @@ public class ScoreProfileServiceTests
     [Fact]
     public async Task ApplyUpdate_is_idempotent()
     {
-        var (db, service) = CreateContext();
+        await using var db = await PostgresTestDatabase.CreateContextAsync();
+        var mapping = new ScoreMappingService(new ScoreMappingOptions());
+        var service = new ScoreProfileService(db, mapping);
+
         var userId = Guid.NewGuid();
         db.Users.Add(new Domain.Entities.User { Id = userId, DisplayName = "Test" });
         await db.SaveChangesAsync();

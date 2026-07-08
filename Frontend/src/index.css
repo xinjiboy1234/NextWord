@@ -3,8 +3,13 @@
 @import "./styles/app.css";
 @import "./styles/overrides.css";
 
+.root {
+  isolation: isolate;
+}
+
 body {
   margin: 0;
+  position: relative;
 }
 
 button:disabled {

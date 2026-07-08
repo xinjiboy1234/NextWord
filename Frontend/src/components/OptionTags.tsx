@@ -1,3 +1,5 @@
+import { RadioGroup } from './ui/RadioGroup'
+
 interface OptionTagsProps {
   options: string[]
   selectedIndex?: number
@@ -6,24 +8,18 @@ interface OptionTagsProps {
 }
 
 export function OptionTags({ options, selectedIndex, onSelect, disabled = false }: OptionTagsProps) {
+  const radioOptions = options.map((option, index) => ({
+    value: String(index),
+    label: option,
+  }))
+
   return (
-    <div className="option-tags" role="radiogroup" aria-label="选项">
-      {options.map((option, index) => {
-        const selected = selectedIndex === index
-        return (
-          <button
-            key={`${index}-${option}`}
-            type="button"
-            role="radio"
-            aria-checked={selected}
-            disabled={disabled}
-            onClick={() => onSelect(index)}
-            className={`option-tag${selected ? ' selected' : ''}`}
-          >
-            {option}
-          </button>
-        )
-      })}
-    </div>
+    <RadioGroup
+      name="option-tags"
+      value={selectedIndex !== undefined ? String(selectedIndex) : undefined}
+      onValueChange={(value) => onSelect(Number(value))}
+      options={radioOptions}
+      disabled={disabled}
+    />
   )
 }

@@ -504,14 +504,14 @@ graph TD
 
 - [~] T-020 WordAnnotation append-only + singleflight — 基础实体；singleflight 未完整
 - [x] T-021 ReadingLookupService + LLM context
-- [~] T-022 AnnotationWorker + ReAnnotation from feedback — UserFeedbackService 已接；ReAnnotation worker 待补
+- [x] T-022 AnnotationWorker + ReAnnotation from feedback
 - [x] T-023 DuckDuckGo client + CN flag（Search.Enabled 可关）
-- [~] T-024 LLM structured validators + golden mocks — 模板报告；结构化 LLM 待补
+- [~] T-024 LLM structured validators + golden mocks — 模板报告 + toolPrefetch；结构化 LLM 待补
 
 #### 层 3 — 评价与 Coach
 
 - [x] T-030 ToolRegistry 7 handlers + `/api/tools`
-- [~] T-031 EvaluationDataAssembler — 内联于 EvaluationReportService
+- [x] T-031 EvaluationDataAssembler（工具预取注入报告）
 - [x] T-032 EvaluationReportWorker + merge validator（模板版）
 - [~] T-033 ReadingAssistant → shared handlers — 独立路径保留
 - [x] T-034 DB BackgroundJob infrastructure
@@ -521,7 +521,7 @@ graph TD
 - [x] T-040 UserWordRelationship EMA on interactions
 - [x] T-041 DailyWordSelectionService + fallback
 - [x] T-042 UserFeedbackProcessor
-- [ ] T-043 ProfileScoreSnapshot daily worker
+- [x] T-043 ProfileScoreSnapshot daily worker + `/api/profile/scores/history`
 
 #### 层 5 — 前端
 
@@ -530,17 +530,17 @@ graph TD
 - [x] T-052 InitialAssessment flow（Score 展示）
 - [x] T-053 WordPopover states（context lookup + 熟悉度）
 - [x] T-054 Home daily + challenge 真实 UI（FR-6 A）
-- [ ] T-055 FeedbackButton + settings CEFR toggle
+- [x] T-055 FeedbackButton + settings CEFR toggle
 
 #### 层 6 — 质量门禁
 
 - [ ] T-060 单元测试套件（§8）
 - [ ] T-061 集成测试套件
-- [ ] T-062 Playwright E2E
+- [ ] T-062 Playwright E2E — challenge.spec 已加，待 CI 跑通
 - [ ] T-063 Load test lookup singleflight
 - [ ] T-064 Manual eval harness 200 context + 100 reports
 - [ ] T-065 OTel metrics + alerts
-- [ ] T-066 CEFR read path grep audit
+- [x] T-066 CEFR read path grep audit — `docs/AUDIT-cefr-read-path.md`
 - [ ] T-067 Release blocker sign-off
 
 ---

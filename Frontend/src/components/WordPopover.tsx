@@ -1,4 +1,5 @@
 import type { WordDefinition } from '../types/article'
+import { FeedbackButton } from './FeedbackButton'
 
 interface WordPopoverProps {
   word: string | null
@@ -46,6 +47,7 @@ export function WordPopover({ word, definition, loading, knownRate, personalDiff
           ) : null}
         </div>
       )}
+      {word ? <FeedbackButton word={word} disabled={loading} /> : null}
     </aside>
   )
 }

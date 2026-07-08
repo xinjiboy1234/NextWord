@@ -12,10 +12,9 @@ import { getGreeting } from '../../lib/greeting'
 import { pathForView, viewFromPathname } from '../../navigation/routes'
 import {
   BOTTOM_TABS,
-  SIDEBAR_LEARNING,
-  SIDEBAR_MANAGE,
-  SIDEBAR_PROGRESS,
+  PRIMARY_NAV,
   VIEW_TITLES,
+  isNavActive,
   type AppView,
 } from '../../navigation/views'
 
@@ -23,8 +22,6 @@ const SIDEBAR_EXPANDED_KEY = 'nextword.sidebar.expanded'
 
 interface AppShellProps {
   displayName: string
-  overallLevel?: string
-  overallScore?: number | null
   showBackButton?: boolean
   onBack: () => void
   children: React.ReactNode
@@ -39,8 +36,6 @@ const BOTTOM_ICONS: Record<string, typeof LayoutGrid> = {
 
 export function AppShell({
   displayName,
-  overallLevel,
-  overallScore,
   showBackButton,
   onBack,
   children,
@@ -85,11 +80,10 @@ export function AppShell({
           <span>NextWord</span>
         </div>
 
-        <nav className="sidebar-nav" aria-label="学习导航">
-          <p className="sidebar-section-label">学习</p>
-          {SIDEBAR_LEARNING.map((item) => {
+        <nav className="sidebar-nav" aria-label="主导航">
+          {PRIMARY_NAV.map((item) => {
             const Icon = item.icon
-            const active = view === item.id
+            const active = isNavActive(view, item.id)
             return (
               <button
                 key={item.id}
@@ -102,57 +96,7 @@ export function AppShell({
               </button>
             )
           })}
-
-          <p className="sidebar-section-label">进度</p>
-          {SIDEBAR_PROGRESS.map((item) => {
-            const Icon = item.icon
-            return (
-              <button
-                key={item.id}
-                type="button"
-                className={view === item.id ? 'active' : undefined}
-                onClick={() => onNavigate(item.id)}
-              >
-                <Icon size={20} aria-hidden="true" />
-                <span>{item.label}</span>
-              </button>
-            )
-          })}
-
-          <div className="sidebar-divider" />
-
-          <div className="sidebar-nav-manage">
-            <button
-              type="button"
-              className={view === SIDEBAR_MANAGE.id ? 'active' : undefined}
-              onClick={() => onNavigate(SIDEBAR_MANAGE.id)}
-            >
-              <SIDEBAR_MANAGE.icon size={20} aria-hidden="true" />
-              <span>{SIDEBAR_MANAGE.label}</span>
-            </button>
-          </div>
         </nav>
-
-        <div className="sidebar-footer">
-          <button
-            type="button"
-            className="sidebar-user"
-            onClick={() => onNavigate('profile')}
-          >
-            <div className="sidebar-avatar">{displayName.slice(0, 1).toUpperCase()}</div>
-            <div className="sidebar-user-info">
-              <div className="sidebar-user-name">
-                <span>{displayName}</span>
-              </div>
-              <div className="sidebar-user-level">
-                <span>
-                  {overallLevel ? `CEFR ${overallLevel}` : '等级待测评'}
-                  {overallScore != null ? ` · Score ${overallScore.toFixed(0)}` : ''}
-                </span>
-              </div>
-            </div>
-          </button>
-        </div>
       </aside>
 
       <div className="main-area">
@@ -160,25 +104,18 @@ export function AppShell({
           {showBackButton ? (
             <button type="button" className="btn btn-ghost btn-sm" onClick={onBack}>
               <ChevronLeft size={16} aria-hidden="true" />
-              返回首页
+              返回
             </button>
           ) : (
             <span className="topbar-greeting">
               {getGreeting()}，<strong>{displayName}</strong>
-              {!isDashboard && pageTitle ? ` · ${pageTitle}` : ' · 今天也要坚持学习'}
+              {!isDashboard && pageTitle ? ` · ${pageTitle}` : ''}
             </span>
           )}
           <div className="topbar-actions">
             {!isDashboard && showBackButton && pageTitle ? (
               <span className="topbar-greeting">{pageTitle}</span>
             ) : null}
-            <button
-              type="button"
-              className="btn btn-ghost btn-sm"
-              onClick={() => onNavigate('profile')}
-            >
-              个人主页
-            </button>
           </div>
         </header>
 
@@ -189,10 +126,7 @@ export function AppShell({
         <div className="bottombar-inner">
           {BOTTOM_TABS.map((tab) => {
             const Icon = BOTTOM_ICONS[tab.id] ?? tab.icon
-            const active =
-              view === tab.id
-              || (tab.id === 'reading' && view === 'reading')
-              || (tab.id === 'learn' && (view === 'learn' || view === 'spelling' || view === 'sentence'))
+            const active = isNavActive(view, tab.id)
             return (
               <button
                 key={tab.id}

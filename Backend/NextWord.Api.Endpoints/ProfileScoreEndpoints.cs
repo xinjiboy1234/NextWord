@@ -1,6 +1,6 @@
+using Microsoft.EntityFrameworkCore;
 using NextWord.Domain.Interfaces;
-using NextWord.Domain.Models;
-using NextWord.Domain.Services;
+using NextWord.Infrastructure.Data;
 
 namespace NextWord.Api.Endpoints;
 
@@ -21,6 +21,25 @@ public static class ProfileScoreEndpoints
             var profile = await scores.GetScoresAsync(user.Id, ct);
             return Results.Ok(ProfileScoresDto.From(profile));
         });
+
+        group.MapGet("/scores/history", async (HttpContext http, Guid? userId, int? days, IUserRepository users, ApplicationDbContext db, CancellationToken ct) =>
+        {
+            var user = await UserResolver.ResolveAsync(http, userId, users, ct);
+            if (user is null)
+            {
+                return Results.Unauthorized();
+            }
+
+            var window = Math.Clamp(days ?? 30, 1, 365);
+            var since = DateOnly.FromDateTime(DateTimeOffset.UtcNow.UtcDateTime.AddDays(-window));
+            var snapshots = await db.ProfileScoreSnapshots.AsNoTracking()
+                .Where(item => item.UserId == user.Id && item.Date >= since)
+                .OrderByDescending(item => item.Date)
+                .Select(item => new ProfileScoreSnapshotDto(item.Date, item.ScoresJson))
+                .ToListAsync(ct);
+
+            return Results.Ok(snapshots);
+        });
     }
 }
 
@@ -34,7 +53,7 @@ public sealed record ProfileScoresDto(
     string? CefrDisplay,
     DateTimeOffset? UpdatedAt)
 {
-    public static ProfileScoresDto From(UserProfileScores scores) =>
+    public static ProfileScoresDto From(Domain.Models.UserProfileScores scores) =>
         new(
             scores.Vocabulary,
             scores.Reading,
@@ -45,3 +64,5 @@ public sealed record ProfileScoresDto(
             scores.CefrDisplay,
             scores.UpdatedAt);
 }
+
+public sealed record ProfileScoreSnapshotDto(DateOnly Date, string ScoresJson);

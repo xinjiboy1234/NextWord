@@ -77,10 +77,12 @@ public sealed class SpellingService(ApplicationDbContext db, ISm2Service sm2) : 
 
     private async Task<bool> HasPreviousSpellingMissAsync(Guid userId, Guid wordId, CancellationToken cancellationToken)
     {
-        return await db.SpellingLogs
+        var latest = (await db.SpellingLogs
             .Where(log => log.UserId == userId && log.WordId == wordId)
+            .ToListAsync(cancellationToken))
             .OrderByDescending(log => log.Timestamp)
-            .Take(1)
-            .AnyAsync(log => !log.IsCorrect, cancellationToken);
+            .FirstOrDefault();
+
+        return latest is not null && !latest.IsCorrect;
     }
 }

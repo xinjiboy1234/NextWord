@@ -10,7 +10,8 @@ namespace NextWord.Infrastructure.Services;
 public sealed class EvaluationReportService(
     ApplicationDbContext db,
     IScoreProfileService scoreProfile,
-    IBackgroundJobService backgroundJobs) : IEvaluationReportService
+    IBackgroundJobService backgroundJobs,
+    EvaluationDataAssembler assembler) : IEvaluationReportService
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
@@ -50,9 +51,11 @@ public sealed class EvaluationReportService(
         var scores = JsonSerializer.Deserialize<UserProfileScores>(report.InputSnapshotJson, JsonOptions)
             ?? throw new InvalidOperationException("Invalid snapshot.");
 
+        var assembly = await assembler.AssembleAsync(report.UserId, cancellationToken);
+
         var strengths = new List<string>();
         var weaknesses = new List<string>();
-        if (scores.Vocabulary >= scores.Reading)
+        if ((scores.Vocabulary ?? 0) >= (scores.Reading ?? 0))
         {
             strengths.Add($"词汇能力较强（{scores.Vocabulary} 分）");
             weaknesses.Add($"阅读相对薄弱（{scores.Reading} 分）");
@@ -80,7 +83,16 @@ public sealed class EvaluationReportService(
                 vocabulary = scores.Vocabulary,
                 reading = scores.Reading,
                 writing = scores.Writing,
-                overall = scores.Overall
+                overall = scores.Overall,
+                recentLearningCount = CountArray(assembly.RecentLearning),
+                challengeCount = CountArray(assembly.ChallengeHistory),
+                searchHits = assembly.SearchEvidence.Count
+            },
+            toolPrefetch = new
+            {
+                assembly.RecentLearning,
+                assembly.ChallengeHistory,
+                searchEvidence = assembly.SearchEvidence
             },
             profileSnapshot = scores
         };
@@ -88,5 +100,15 @@ public sealed class EvaluationReportService(
         report.ContentJson = JsonSerializer.Serialize(content, JsonOptions);
         report.Status = "Ready";
         await db.SaveChangesAsync(cancellationToken);
+    }
+
+    private static int CountArray(object value)
+    {
+        if (value is System.Collections.ICollection collection)
+        {
+            return collection.Count;
+        }
+
+        return 0;
     }
 }

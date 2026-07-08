@@ -38,6 +38,7 @@ public interface IAssessmentService
     Task<StepScoreResult> SubmitStepAsync(Guid assessmentId, AssessmentStepType step, string answersJson, CancellationToken cancellationToken);
     Task<FinalLevelResult?> CompleteInitialAsync(Guid assessmentId, CancellationToken cancellationToken);
     Task<Assessment?> GetAsync(Guid assessmentId, CancellationToken cancellationToken);
+    Task SkipInitialAsync(Guid userId, CancellationToken cancellationToken);
 }
 
 public interface IChallengeService

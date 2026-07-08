@@ -1,42 +1,28 @@
 # NextWord — 待办清单
 
-> 更新：2026-06-30（Score 内核 v1 批量落地）
+> 更新：2026-07-06（全环境 PostgreSQL）
 
-## Score 内核 v1（见 `docs/SPEC-ai-learning-implementation.md`）
-
-### 已完成（核心路径）
-- [x] Layer 0：M1 迁移、ScoreMapping、ScoreProfile、EffectiveDifficulty
-- [x] Layer 1：初测 complete → Profile；挑战 FR-6 A 服务端计分
-- [x] Layer 2：ReadingLookup、DailyWordSelection（Score 驱动）
-- [x] Layer 3：BackgroundJob、EvaluationReport（模板）、SentenceLlmScoring
-- [x] FR-5 DuckDuckGo + ToolRegistry（7 handlers，`/api/tools`）
-- [x] 前端：Score 类型/hooks、LevelDashboard、ChallengeMode、查词 AI、AppShell Score
-
-### 待收尾（非阻塞开发，发布前需关）
-- [ ] T-005 Backfill staging 验证 + rollback drill
-- [ ] T-043 ProfileScoreSnapshot 日批 worker
-- [ ] T-055 阅读/词卡 FeedbackButton + CEFR 展示 toggle
-- [ ] 评估报告 LLM 结构化 + EvaluationDataAssembler 工具预取
-- [ ] Annotation singleflight + ReAnnotationWorker
-- [ ] Release Blockers B1–B8 sign-off（`SPEC-ai-learning-risk-register.md`）
-- [ ] E2E：挑战新 submit API；`npm run test:e2e` CI 接入
-- [ ] CEFR read-path grep audit（F-5）
-
----
-
-## 前端 UX
+## Score 内核 v1
 
 ### 已完成
-- [x] App Shell + React Router
-- [x] 挑战历史 `ChallengeRecentList`
-- [x] Score 内核前端接线
+- [x] Layer 0–5 核心 + ToolRegistry + DuckDuckGo
+- [x] T-043 日快照 worker + scores/history API
+- [x] ReAnnotation worker + FR-7 FeedbackButton
+- [x] EvaluationDataAssembler 工具预取
+- [x] CEFR 展示 toggle（Profile 设置）
+- [x] E2E `challenge.spec.ts`（API 级）
+- [x] CEFR read-path audit 文档
+- [x] Backfill drill 操作说明 `Backend/Scripts/README_BackfillDrill.md`
 
-### 待做
-- [ ] 全流程手动验证（初测 → 等级面板 → 挑战 → 阅读查词）
-- [ ] `UserAvatar` / `ErrorBoundary` 旧色类清理（低优先级）
+### 待收尾（发布前）
+- [ ] T-005 staging 环境实际执行 backfill drill 并填记录表
+- [ ] 评估报告 LLM 结构化（当前模板 + toolPrefetch）
+- [ ] Annotation lookup singleflight
+- [ ] Release Blockers B1–B8 sign-off
+- [ ] `npm run test:e2e` 全绿（需本地 API :5108）
 
 ## 验收
 
-- [x] `dotnet test` 45 通过
+- [x] `dotnet test` 45 通过（PostgreSQL，`docker compose up -d postgres`）
 - [x] `npm run build` 通过
-- [ ] `npm run test:e2e`（需本地 API + 挑战流用例更新）
+- [ ] `npm run test:e2e`

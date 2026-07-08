@@ -24,10 +24,11 @@ public static class ScoreKernelEndpoints
         {
             var user = await UserResolver.ResolveAsync(http, userId, users, ct);
             if (user is null) return Results.Unauthorized();
-            var report = await db.EvaluationReports.AsNoTracking()
+            var report = (await db.EvaluationReports.AsNoTracking()
                 .Where(item => item.UserId == user.Id)
+                .ToListAsync(ct))
                 .OrderByDescending(item => item.CreatedAt)
-                .FirstOrDefaultAsync(ct);
+                .FirstOrDefault();
             return report is null ? Results.NotFound() : Results.Ok(report);
         });
 

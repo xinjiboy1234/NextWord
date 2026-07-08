@@ -40,57 +40,13 @@ export async function loginAsTestUser(page: Page, request: APIRequestContext) {
 
 export async function skipInitialAssessment(request: APIRequestContext, token: string) {
   const headers = { Authorization: `Bearer ${token}` }
-
-  const start = await request.post(`${API_BASE}/api/assessment/initial/start`, {
+  const response = await request.post(`${API_BASE}/api/assessment/initial/skip`, {
     headers,
     data: {},
   })
-  if (!start.ok()) {
-    throw new Error(`Start assessment failed: ${start.status()}`)
+  if (!response.ok()) {
+    throw new Error(`Skip assessment failed: ${response.status()} ${await response.text()}`)
   }
-  const { assessmentId } = await start.json() as { assessmentId: string }
-
-  for (const step of [1, 2, 3, 4]) {
-    const questionsRes = await request.get(`${API_BASE}/api/assessment/${assessmentId}/step/${step}`, { headers })
-    if (!questionsRes.ok()) {
-      throw new Error(`Get step ${step} failed: ${questionsRes.status()}`)
-    }
-    const questions = await questionsRes.json()
-    const answersJson = buildAssessmentAnswers(step, questions)
-
-    const submit = await request.post(`${API_BASE}/api/assessment/${assessmentId}/step/${step}`, {
-      headers,
-      data: { answersJson },
-    })
-    if (!submit.ok()) {
-      throw new Error(`Submit step ${step} failed: ${submit.status()}`)
-    }
-  }
-
-  const complete = await request.post(`${API_BASE}/api/assessment/${assessmentId}/complete`, { headers })
-  if (!complete.ok()) {
-    throw new Error(`Complete assessment failed: ${complete.status()}`)
-  }
-}
-
-function buildAssessmentAnswers(step: number, questions: unknown): string {
-  if (step === 1) {
-    const items = questions as Array<{ correctIndex: number }>
-    return JSON.stringify(items.map((item) => item.correctIndex))
-  }
-  if (step === 2) {
-    const items = questions as Array<{ correctSpelling: string }>
-    return JSON.stringify(items.map((item) => item.correctSpelling))
-  }
-  if (step === 3) {
-    const items = questions as unknown[]
-    return JSON.stringify(items.map(() => 'This is a complete practice sentence for testing.'))
-  }
-  if (step === 4) {
-    const payload = questions as { question: { correctIndex: number } }
-    return JSON.stringify({ selectedIndex: payload.question.correctIndex, lookupCount: 0 })
-  }
-  return '[]'
 }
 
 export async function dismissOnboarding(page: Page) {

@@ -2,6 +2,7 @@ import { BookOpenText } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api/client'
 import { endpoints } from '../api/endpoints'
+import { Select } from '../components/ui/Select'
 import type { ArticleSummary, DifficultyLevel } from '../types/article'
 
 interface ArticleLibraryProps {
@@ -59,17 +60,17 @@ export function ArticleLibrary({ onOpen }: ArticleLibraryProps) {
         </div>
         <div className="field" style={{ minWidth: 160 }}>
           <label htmlFor="article-level">难度筛选</label>
-          <select
-            id="article-level"
+          <Select
             value={level}
-            onChange={(event) => setLevel(event.target.value as DifficultyLevel | 'All')}
-            className="select"
-          >
-            <option value="All">{LEVEL_LABELS.All}</option>
-            <option value="Basic">{LEVEL_LABELS.Basic}</option>
-            <option value="Intermediate">{LEVEL_LABELS.Intermediate}</option>
-            <option value="Advanced">{LEVEL_LABELS.Advanced}</option>
-          </select>
+            onValueChange={(value) => setLevel(value as DifficultyLevel | 'All')}
+            options={[
+              { value: 'All', label: LEVEL_LABELS.All },
+              { value: 'Basic', label: LEVEL_LABELS.Basic },
+              { value: 'Intermediate', label: LEVEL_LABELS.Intermediate },
+              { value: 'Advanced', label: LEVEL_LABELS.Advanced },
+            ]}
+            aria-label="难度筛选"
+          />
         </div>
       </div>
 

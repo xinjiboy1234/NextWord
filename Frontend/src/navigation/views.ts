@@ -9,6 +9,7 @@ import {
   PenLine,
   Repeat,
   Settings,
+  User,
 } from 'lucide-react'
 
 export type AppView =
@@ -36,6 +37,17 @@ interface NavItem {
   icon: LucideIcon
 }
 
+/** 2C 主导航：首页 / 练习 / 阅读 / 我的 */
+export const PRIMARY_NAV: NavItem[] = [
+  { id: 'dashboard', label: '首页', icon: LayoutGrid },
+  { id: 'learn', label: '练习', icon: BookOpen },
+  { id: 'reading', label: '阅读', icon: BookOpenText },
+  { id: 'profile', label: '我的', icon: User },
+]
+
+export const BOTTOM_TABS = PRIMARY_NAV
+
+/** @deprecated 保留供 Dashboard 等引用 */
 export const SIDEBAR_LEARNING: NavItem[] = [
   { id: 'dashboard', label: '学习中心', icon: LayoutGrid },
   { id: 'learn', label: '学习', icon: BookOpen },
@@ -52,16 +64,8 @@ export const SIDEBAR_PROGRESS: NavItem[] = [
 
 export const SIDEBAR_MANAGE: NavItem = { id: 'manage', label: '管理', icon: Settings }
 
-export const BOTTOM_TABS: { id: AppView; label: string; icon: LucideIcon }[] = [
-  { id: 'dashboard', label: '学习', icon: LayoutGrid },
-  { id: 'learn', label: '练习', icon: BookOpen },
-  { id: 'reading', label: '阅读', icon: BookOpenText },
-  { id: 'profile', label: '我的', icon: GraduationCap },
-]
-
-/** 底栏「我的」用 profile；图标在 AppShell 内替换为 User */
 export const VIEW_TITLES: Partial<Record<AppView, string>> = {
-  dashboard: '学习中心',
+  dashboard: '首页',
   learn: '背单词',
   spelling: '拼写练习',
   sentence: '造句工作室',
@@ -72,6 +76,16 @@ export const VIEW_TITLES: Partial<Record<AppView, string>> = {
   review: '复习队列',
   home: '词库',
   progress: '学习进度',
-  profile: '个人主页',
+  profile: '我的',
   manage: '管理',
+}
+
+export function isPracticeView(view: AppView): boolean {
+  return view === 'learn' || view === 'spelling' || view === 'sentence'
+}
+
+export function isNavActive(view: AppView, target: AppView): boolean {
+  if (target === 'learn') return isPracticeView(view)
+  if (target === 'reading') return view === 'reading'
+  return view === target
 }

@@ -211,6 +211,33 @@ public sealed class AssessmentService(
             .FirstOrDefaultAsync(item => item.Id == assessmentId, cancellationToken);
     }
 
+    public async Task SkipInitialAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        var inProgress = await db.Assessments
+            .Where(item => item.UserId == userId
+                && item.Type == AssessmentType.Initial
+                && item.Status == AssessmentStatus.InProgress)
+            .ToListAsync(cancellationToken);
+
+        foreach (var assessment in inProgress)
+        {
+            assessment.Status = AssessmentStatus.Completed;
+            assessment.EndAt = DateTimeOffset.UtcNow;
+            assessment.FinalLevel = CefrLevel.A2;
+        }
+
+        var progress = await users.GetOrCreateProgressAsync(userId, cancellationToken);
+        progress.HasCompletedInitialAssessment = true;
+        progress.OverallLevel = CefrLevel.A2;
+        progress.VocabLevel = CefrLevel.A2;
+        progress.SpellingLevel = CefrLevel.A2;
+        progress.SentenceLevel = CefrLevel.A2;
+        progress.ReadingLevel = CefrLevel.A2;
+        progress.LevelStartDate = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
     private async Task<IReadOnlyList<VocabQuizQuestion>> BuildVocabQuestionsAsync(CancellationToken cancellationToken)
     {
         var words = (await db.Words.AsNoTracking().ToListAsync(cancellationToken))

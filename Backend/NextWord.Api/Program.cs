@@ -16,7 +16,7 @@ builder.Services.AddOpenApi();
 builder.Services.AddMemoryCache();
 builder.Services.Configure<HostOptions>(options =>
 {
-    // Worker 异常不应拖垮 API 进程（SQLite 开发环境尤其常见）
+    // Worker 异常不应拖垮 API 进程
     options.BackgroundServiceExceptionBehavior = BackgroundServiceExceptionBehavior.Ignore;
 });
 builder.Services.AddHealthChecks()
@@ -84,7 +84,23 @@ if (!app.Environment.IsEnvironment("Testing"))
     using (var scope = app.Services.CreateScope())
     {
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        await db.Database.MigrateAsync();
+
+        // Development / AutoMigrate：先 EF 迁移（InitialCreate 等），再 PG 幂等补丁（Score 内核）
+        var autoMigrate = app.Configuration.GetValue<bool>("Database:AutoMigrate");
+        if (app.Environment.IsDevelopment() || autoMigrate)
+        {
+            try
+            {
+                await db.Database.MigrateAsync();
+            }
+            catch (Exception ex) when (ex is DbUpdateException or Npgsql.PostgresException)
+            {
+                // AddScoreKernelM1 含 SQLite ALTER，在已有 PostgreSQL schema 上可能失败；由补丁补齐
+            }
+
+            await PostgreSqlSchemaPatcher.ApplyAsync(db);
+        }
+
         await SeedData.InitializeAsync(db);
     }
 }
