@@ -95,8 +95,27 @@ CREATE TABLE IF NOT EXISTS "ChallengeSessions" (
 );
 CREATE INDEX IF NOT EXISTS "IX_ChallengeSessions_UserId_CreatedAt" ON "ChallengeSessions" ("UserId", "CreatedAt");
 
+-- WordDifficultyAnnotations: AddScoreKernelM1 新增列（EF 迁移含 SQLite ALTER，PG 上需幂等补齐）
+ALTER TABLE "WordDifficultyAnnotations" ADD COLUMN IF NOT EXISTS "DimensionsJson" character varying(2000);
+ALTER TABLE "WordDifficultyAnnotations" ADD COLUMN IF NOT EXISTS "IntrinsicScore" integer;
+ALTER TABLE "WordDifficultyAnnotations" ADD COLUMN IF NOT EXISTS "IsCurrent" boolean NOT NULL DEFAULT false;
+ALTER TABLE "WordDifficultyAnnotations" ADD COLUMN IF NOT EXISTS "PromptVersion" character varying(40);
+ALTER TABLE "WordDifficultyAnnotations" ADD COLUMN IF NOT EXISTS "SchemaVersion" integer NOT NULL DEFAULT 0;
+ALTER TABLE "WordDifficultyAnnotations" ADD COLUMN IF NOT EXISTS "SourcesJson" character varying(4000);
+ALTER TABLE "WordDifficultyAnnotations" ADD COLUMN IF NOT EXISTS "Version" integer NOT NULL DEFAULT 0;
+
+-- UserWordRelationships: AddScoreKernelM1 新增列
+ALTER TABLE "UserWordRelationships" ADD COLUMN IF NOT EXISTS "EstimatedKnownRate" double precision NOT NULL DEFAULT 0;
+ALTER TABLE "UserWordRelationships" ADD COLUMN IF NOT EXISTS "PersonalDifficulty" integer;
+ALTER TABLE "UserWordRelationships" ADD COLUMN IF NOT EXISTS "PersonalUpdatedAt" timestamp with time zone;
+
+-- ArticleVocabMappings: 音标与例句缓存
+ALTER TABLE "ArticleVocabMappings" ADD COLUMN IF NOT EXISTS "Phonetics" character varying(64) NOT NULL DEFAULT '';
+ALTER TABLE "ArticleVocabMappings" ADD COLUMN IF NOT EXISTS "ExamplesJson" text;
+
 INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
 VALUES
     ('20260630154336_AddScoreKernelM1', '10.0.9'),
-    ('20260630160631_AddChallengeSession', '10.0.9')
+    ('20260630160631_AddChallengeSession', '10.0.9'),
+    ('20260708161532_AddArticleVocabPhoneticsAndExamples', '10.0.9')
 ON CONFLICT ("MigrationId") DO NOTHING;
