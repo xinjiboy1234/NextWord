@@ -1,8 +1,10 @@
 import { LogOut, Settings } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { api } from '../api/client'
 import { endpoints } from '../api/endpoints'
+import { LevelPanel } from '../components/LevelPanel'
+import { ProgressDetail } from '../components/ProgressDetail'
 import { Badge } from '../components/ui/Badge'
 import { Switch } from '../components/ui/Switch'
 import { useAuth } from '../contexts/AuthContext'
@@ -12,6 +14,7 @@ import type { UserProfile } from '../types/auth'
 export function ProfilePage() {
   const { logout, user } = useAuth()
   const { showCefr, setShowCefr } = useDisplaySettings()
+  const location = useLocation()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -33,6 +36,15 @@ export function ProfilePage() {
     void loadProfile()
   }, [])
 
+  useEffect(() => {
+    const hash = location.hash.slice(1)
+    if (!hash) return
+    const timer = window.setTimeout(() => {
+      document.getElementById(hash)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 100)
+    return () => window.clearTimeout(timer)
+  }, [location.hash, loading])
+
   if (loading) {
     return <p className="text-sm" style={{ color: 'var(--muted)' }}>正在加载个人主页...</p>
   }
@@ -40,13 +52,6 @@ export function ProfilePage() {
   if (error || !profile) {
     return <div className="alert alert-error">{error ?? '暂无数据。'}</div>
   }
-
-  const stats = [
-    { label: '已学词', value: profile.totalLearned },
-    { label: '待复习', value: profile.dueReviews },
-    { label: '正确率', value: `${profile.accuracyPercent}%` },
-    { label: '连续打卡', value: `${profile.streakDays} 天` },
-  ]
 
   return (
     <div>
@@ -73,7 +78,17 @@ export function ProfilePage() {
         </button>
       </div>
 
-      <div className="section-header">
+      <div id="profile-level" className="section-header" style={{ marginTop: 'var(--space-8)' }}>
+        <h2>等级</h2>
+      </div>
+      <LevelPanel />
+
+      <div id="profile-progress" className="section-header" style={{ marginTop: 'var(--space-8)' }}>
+        <h2>学习进度</h2>
+      </div>
+      <ProgressDetail data={profile} />
+
+      <div className="section-header" style={{ marginTop: 'var(--space-8)' }}>
         <h2>显示设置</h2>
       </div>
       <div className="card stack stack-sm">
@@ -88,18 +103,6 @@ export function ProfilePage() {
         <p style={{ fontSize: 'var(--text-xs)', color: 'var(--muted)' }}>
           关闭后侧栏与等级页优先展示 Score 数值。
         </p>
-      </div>
-
-      <div className="section-header">
-        <h2>学习统计</h2>
-      </div>
-      <div className="stat-grid">
-        {stats.map((stat) => (
-          <div key={stat.label} className="stat-item">
-            <div className="stat-num">{stat.value}</div>
-            <div className="stat-desc">{stat.label}</div>
-          </div>
-        ))}
       </div>
 
       <div className="section-header" style={{ marginTop: 'var(--space-8)' }}>

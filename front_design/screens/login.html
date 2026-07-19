@@ -77,31 +77,31 @@
     <div class="auth-error" id="authError"></div>
 
     <!-- Login Form -->
-    <form id="loginForm" class="auth-fields" autocomplete="on">
+    <form id="loginForm" class="auth-fields" autocomplete="off">
       <div class="field">
         <label for="loginEmail">Email</label>
-        <input id="loginEmail" class="input" type="email" placeholder="you@example.com" autocomplete="email" />
+        <input id="loginEmail" class="input" type="email" placeholder="you@example.com" autocomplete="off" />
       </div>
       <div class="field">
         <label for="loginPassword">Password</label>
-        <input id="loginPassword" class="input" type="password" placeholder="••••••" autocomplete="current-password" />
+        <input id="loginPassword" class="input" type="password" placeholder="••••••" autocomplete="off" />
       </div>
       <button type="submit" class="btn btn-primary auth-submit">Log in</button>
     </form>
 
     <!-- Register Form -->
-    <form id="registerForm" class="auth-fields" autocomplete="on" style="display:none;">
+    <form id="registerForm" class="auth-fields" autocomplete="off" style="display:none;">
       <div class="field">
         <label for="regName">Nickname <span style="color:var(--meta);">(optional)</span></label>
-        <input id="regName" class="input" type="text" placeholder="Your name" autocomplete="name" />
+        <input id="regName" class="input" type="text" placeholder="Your name" autocomplete="off" />
       </div>
       <div class="field">
         <label for="regEmail">Email</label>
-        <input id="regEmail" class="input" type="email" placeholder="you@example.com" autocomplete="email" />
+        <input id="regEmail" class="input" type="email" placeholder="you@example.com" autocomplete="off" />
       </div>
       <div class="field">
         <label for="regPassword">Password <span style="color:var(--meta);">(min 6 characters)</span></label>
-        <input id="regPassword" class="input" type="password" placeholder="••••••" minlength="6" autocomplete="new-password" />
+        <input id="regPassword" class="input" type="password" placeholder="••••••" minlength="6" autocomplete="off" />
       </div>
       <button type="submit" class="btn btn-primary auth-submit">Create account</button>
     </form>

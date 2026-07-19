@@ -12,9 +12,23 @@ public sealed class LlmChatClientProvider(IChatClient chatClient, LlmMockProvide
         return fallback.RateDifficultyAsync(request, cancellationToken);
     }
 
-    public Task<DefinitionResponse> GetDefinitionAsync(DefinitionRequest request, CancellationToken cancellationToken)
+    public async Task<DefinitionResponse> GetDefinitionAsync(DefinitionRequest request, CancellationToken cancellationToken)
     {
-        return fallback.GetDefinitionAsync(request, cancellationToken);
+        try
+        {
+            var response = await chatClient.GetResponseAsync(
+                [
+                    new ChatMessage(ChatRole.System, "You return compact, valid JSON for contextual word definitions."),
+                    new ChatMessage(ChatRole.User, LlmPromptFactory.BuildDefinitionPrompt(request))
+                ],
+                new ChatOptions { Temperature = 0.1f, MaxOutputTokens = 800 },
+                cancellationToken);
+            return LlmResponseParser.ParseDefinition(response.Text, request.Word, request.Context);
+        }
+        catch
+        {
+            return await fallback.GetDefinitionAsync(request, cancellationToken);
+        }
     }
 
     public async Task<SentenceRatingResponse> RateSentenceAsync(SentenceRatingRequest request, CancellationToken cancellationToken)
@@ -50,7 +64,7 @@ public sealed class LlmChatClientProvider(IChatClient chatClient, LlmMockProvide
                     new ChatMessage(ChatRole.System, "You return compact, valid JSON for vocabulary extraction."),
                     new ChatMessage(ChatRole.User, LlmPromptFactory.BuildVocabExtractPrompt(request))
                 ],
-                new ChatOptions { Temperature = 0.1f, MaxOutputTokens = 1200 },
+                new ChatOptions { Temperature = 0.1f, MaxOutputTokens = 2000 },
                 cancellationToken);
             return LlmResponseParser.ParseVocabExtract(response.Text);
         }

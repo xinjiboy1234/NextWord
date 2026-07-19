@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace NextWord.Infrastructure.Data;
 
@@ -16,6 +17,7 @@ public sealed class ApplicationDbContextFactory : IDesignTimeDbContextFactory<Ap
 
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseNpgsql(connectionString)
+            .ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning))
             .Options;
 
         return new ApplicationDbContext(options);

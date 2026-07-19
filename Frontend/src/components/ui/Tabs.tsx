@@ -19,7 +19,7 @@ export function Tabs({
   value,
   onValueChange,
   items,
-  className = 'tabs',
+  className = 'tabs-root',
   listClassName = 'tabs',
 }: TabsProps) {
   return (

@@ -18,9 +18,7 @@ import { ChallengeMode } from './pages/ChallengeMode'
 import { Dashboard } from './pages/Dashboard'
 import { Home } from './pages/Home'
 import { InitialAssessment } from './pages/InitialAssessment'
-import { LevelDashboardPage } from './pages/LevelDashboard'
 import { ProfilePage } from './pages/ProfilePage'
-import { Progress } from './pages/Progress'
 import { ReviewQueue } from './pages/ReviewQueue'
 import { SentenceStudio } from './pages/SentenceStudio'
 import { SpellingMode } from './pages/SpellingMode'
@@ -95,7 +93,7 @@ function AuthenticatedApp() {
     if (target === 'assessment') navigate('/assessment')
     else if (target === 'challenge') navigate('/challenge')
     else if (target === 'home') navigate('/word-bank')
-    else navigate('/progress')
+    else navigate('/profile#profile-progress')
   }, [navigate])
 
   const showUpgradeCandidate = progress !== null
@@ -133,10 +131,10 @@ function AuthenticatedApp() {
         )}
       />
       <Route path="/challenge" element={<ChallengeMode />} />
-      <Route path="/level" element={<LevelDashboardPage />} />
+      <Route path="/level" element={<Navigate to="/profile#profile-level" replace />} />
       <Route path="/review" element={<ReviewQueue />} />
       <Route path="/word-bank" element={<Home onStart={() => navigate('/learn')} />} />
-      <Route path="/progress" element={<Progress />} />
+      <Route path="/progress" element={<Navigate to="/profile#profile-progress" replace />} />
       <Route path="/profile" element={<ProfilePage />} />
       <Route path="/manage" element={<ManagePage onNavigate={manageNavigate} />} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
@@ -196,7 +194,7 @@ function AuthenticatedApp() {
       {showUpgradeCandidate && (
         <UpgradeCandidateBanner
           currentLevel={progress?.overallLevel}
-          onOpenLevel={() => navigate('/level')}
+          onOpenLevel={() => navigate('/profile#profile-level')}
           onDismiss={() => {
             localStorage.setItem(UPGRADE_DISMISS_KEY, '1')
             setUpgradeDismissed(true)

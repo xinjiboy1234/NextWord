@@ -1,5 +1,27 @@
 # NextWord 开发日志
 
+## 2026-07-08 — 阅读查词例句与重点词汇增强
+
+### 需求
+- 查词/重点词：结构化双例句（文中场景 + 其他场景）+ 精髓说明，UI 点击「查看例句」展开
+- 文章级缓存：先查 `ArticleVocabMappings`，缺失再 LLM 并 upsert
+- 重点词汇提取：音标 + 用法例句持久化；存量数据按需 lazy backfill
+
+### 实现
+- `WordExample` 模型；`ArticleVocabMapping.Phonetics` / `ExamplesJson`
+- Prompt/Parser/Mock 结构化 examples；vocab extract 含 phonetics + usageExample
+- `ArticleVocabService.GetOrCreateWordDetailAsync` 统一缓存；`ReadingLookupService` 使用 `ArticleId`
+- 扩展 `ReadingLookupResponse`、`ArticleVocabMappingDto`；前端 WordPopover / VocabExtractPanel
+- Migration `20260708161532_AddArticleVocabPhoneticsAndExamples` + Upgrade/Rollback SQL
+
+### 验收
+- [x] `dotnet test` 54 通过
+- [x] `npm run build` 通过
+
+---
+
+# NextWord 开发日志
+
 ## 2026-07-06 — 全环境切换 PostgreSQL（移除 SQLite）
 
 ### 需求

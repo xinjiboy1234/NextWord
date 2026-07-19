@@ -75,6 +75,7 @@ export function SentenceCard({ userLevel = 'A2' }: SentenceCardProps) {
             className="textarea"
             style={{ marginTop: 'var(--space-4)', minHeight: 140 }}
             placeholder={`用 "${session.current.targetWord}" 造一个英文句子`}
+            autoComplete="off"
           />
 
           <div className="row" style={{ marginTop: 'var(--space-4)', flexWrap: 'wrap' }}>

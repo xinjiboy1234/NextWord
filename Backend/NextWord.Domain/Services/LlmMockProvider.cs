@@ -31,18 +31,19 @@ public sealed class LlmMockProvider(IModelProfileResolver modelProfileResolver) 
     {
         var key = request.Word.Trim().ToLowerInvariant();
         var rating = Ratings.GetValueOrDefault(key, DefaultRating);
-        var meanings = new[]
-        {
-            new Meaning($"{request.Word} 的常见中文含义", true, request.Context ?? string.Empty)
-        };
+        var useChinese = ExplanationLanguageHelper.IsChinese(
+            ExplanationLanguageHelper.Resolve(request.ExplanationLanguage, ExplanationLanguageHelper.Default));
+        var definition = useChinese
+            ? BuildChineseMockDefinition(key, request.Context)
+            : BuildEnglishMockDefinition(key, request.Context);
 
         return Task.FromResult(new DefinitionResponse(
             request.Word,
-            string.Empty,
-            meanings,
-            [$"{request.Word} phrase"],
-            [$"I learned the word {request.Word} today."],
-            "Mock definition for MVP.",
+            MockPhonetics.TryGetValue(key, out var phonetic) ? phonetic : $"/{key}/",
+            [new Meaning(definition, true, request.Context ?? string.Empty)],
+            useChinese ? [$"与 {key} 相关的搭配"] : [$"{key} collocation"],
+            BuildMockExamples(request.Word, request.Context, useChinese),
+            useChinese ? "注意该词在上下文中的具体用法。" : "Note how this word is used in context.",
             rating.Difficulty,
             rating.Cefr));
     }
@@ -103,6 +104,8 @@ public sealed class LlmMockProvider(IModelProfileResolver modelProfileResolver) 
 
     public Task<VocabExtractResponse> ExtractVocabAsync(VocabExtractRequest request, CancellationToken cancellationToken)
     {
+        var useChinese = ExplanationLanguageHelper.IsChinese(
+            ExplanationLanguageHelper.Resolve(request.ExplanationLanguage, ExplanationLanguageHelper.Default));
         var words = request.ArticleContent
             .Split([' ', '\n', '\r', '\t', '.', ',', ';', ':', '!', '?', '"', '(', ')'], StringSplitOptions.RemoveEmptyEntries)
             .Select(word => word.Trim().Trim('"', '\'', '—', '-').ToLowerInvariant())
@@ -119,8 +122,22 @@ public sealed class LlmMockProvider(IModelProfileResolver modelProfileResolver) 
                 var rating = Ratings.GetValueOrDefault(word, (DifficultyLevel.Intermediate, CefrLevel.B1, RecommendedAction.LearnNow));
                 return new KeyVocabItem(
                     word,
-                    $"Contextual meaning of \"{word}\" in this article.",
-                    "Mock special usage note.",
+                    MockPhonetics.TryGetValue(word, out var phonetic) ? phonetic : $"/{word}/",
+                    useChinese
+                        ? $"在本文中指「{word}」的上下文含义"
+                        : $"Contextual meaning of \"{word}\" in this article.",
+                    new WordExample(
+                        WordExampleKind.Contextual,
+                        $"The word \"{word}\" appears in this article.",
+                        useChinese
+                            ? "用法精髓：注意该词在本文语境中的具体含义。"
+                            : "Essence: notice how the word is used in this article."),
+                    new WordExample(
+                        WordExampleKind.General,
+                        $"I often hear \"{word}\" in daily conversation.",
+                        useChinese
+                            ? "其他场景：日常对话中的常见用法。"
+                            : "Other scenario: common everyday usage."),
                     rating.Item1,
                     rating.Item3);
             })
@@ -137,6 +154,69 @@ public sealed class LlmMockProvider(IModelProfileResolver modelProfileResolver) 
         var reply = $"This paragraph discusses \"{request.ParagraphText[..Math.Min(40, request.ParagraphText.Length)]}...\". " +
                     $"Regarding your comment: {request.CommentText.Trim()} — consider how the author uses context to clarify meaning.";
         return Task.FromResult(new CommentReplyResponse(reply));
+    }
+
+    private static string BuildChineseMockDefinition(string word, string? context)
+    {
+        if (MockChineseDefinitions.TryGetValue(word, out var definition))
+        {
+            return definition;
+        }
+
+        return string.IsNullOrWhiteSpace(context)
+            ? $"常见名词/动词，基本含义与「{word}」相关"
+            : $"在句中「{TruncateContext(context)}」里，指与「{word}」相关的含义";
+    }
+
+    private static string BuildEnglishMockDefinition(string word, string? context)
+    {
+        return string.IsNullOrWhiteSpace(context)
+            ? $"A common English word: {word}"
+            : $"In context \"{TruncateContext(context)}\", {word} refers to its contextual meaning.";
+    }
+
+    private static string TruncateContext(string context)
+    {
+        var trimmed = context.Trim();
+        return trimmed.Length <= 60 ? trimmed : $"{trimmed[..57]}...";
+    }
+
+    private static readonly Dictionary<string, string> MockChineseDefinitions =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["cart"] = "手推车；流动售货车（文中常指卖冰淇淋的小推车）",
+            ["park"] = "公园；供休闲活动的户外场所",
+            ["family"] = "家庭；一起生活的亲属群体",
+            ["ice"] = "冰；冷冻的水",
+            ["cream"] = "奶油；乳制品",
+        };
+
+    private static readonly Dictionary<string, string> MockPhonetics =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["cart"] = "/kɑːrt/",
+            ["park"] = "/pɑːrk/",
+            ["family"] = "/ˈfæməli/",
+            ["ice"] = "/aɪs/",
+            ["cream"] = "/kriːm/",
+        };
+
+    private static IReadOnlyList<WordExample> BuildMockExamples(string word, string? context, bool useChinese)
+    {
+        var contextualSentence = string.IsNullOrWhiteSpace(context)
+            ? $"We talked about {word} in class today."
+            : context.Trim();
+        return
+        [
+            new WordExample(
+                WordExampleKind.Contextual,
+                contextualSentence,
+                useChinese ? "贴合当前语境：注意该词在句中的具体含义。" : "Contextual usage in the current sentence."),
+            new WordExample(
+                WordExampleKind.General,
+                $"She used the word \"{word}\" in a different situation.",
+                useChinese ? "其他场景：展示该词在日常中的延伸用法。" : "General usage in another everyday scenario.")
+        ];
     }
 
     private static string ToCompleteSentence(string sentence)

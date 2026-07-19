@@ -34,6 +34,9 @@ export interface ReadingLookupResult {
   phonetic: string | null
   offline: boolean
   confidence: number | null
+  specialUsage?: string | null
+  examples?: Array<{ kind: string; sentence: string; explanation: string }>
+  fromCache?: boolean
 }
 
 export interface DailyWordItem {

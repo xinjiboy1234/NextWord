@@ -1,4 +1,5 @@
-import type { WordDefinition } from '../types/article'
+import { useEffect, useState } from 'react'
+import type { WordDefinition, WordExample } from '../types/article'
 import { FeedbackButton } from './FeedbackButton'
 
 interface WordPopoverProps {
@@ -10,11 +11,23 @@ interface WordPopoverProps {
   onClose: () => void
 }
 
+function exampleLabel(kind: WordExample['kind']) {
+  return kind === 'contextual' ? '文中场景' : '其他场景'
+}
+
 export function WordPopover({ word, definition, loading, knownRate, personalDifficulty, onClose }: WordPopoverProps) {
+  const [showExamples, setShowExamples] = useState(false)
+
+  useEffect(() => {
+    setShowExamples(false)
+  }, [word])
+
   if (!word) return null
 
+  const examples = definition?.examples ?? []
+
   return (
-    <aside className="word-popover-panel">
+    <div className="word-popover-panel">
       <button type="button" className="popover-close" onClick={onClose} aria-label="关闭">
         ×
       </button>
@@ -45,9 +58,37 @@ export function WordPopover({ word, definition, loading, knownRate, personalDiff
               {definition.specialUsage}
             </p>
           ) : null}
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() => setShowExamples((value) => !value)}
+            style={{ alignSelf: 'flex-start' }}
+          >
+            {showExamples ? '收起例句' : '查看例句'}
+          </button>
+          {showExamples ? (
+            <div className="stack stack-sm">
+              {examples.length > 0 ? (
+                examples.map((example, index) => (
+                  <div
+                    key={`${example.kind}-${index}`}
+                    style={{ padding: 'var(--space-3)', background: 'var(--border-soft)', borderRadius: 'var(--radius-md)' }}
+                  >
+                    <p style={{ fontSize: 'var(--text-xs)', color: 'var(--muted)', marginBottom: 4 }}>
+                      {exampleLabel(example.kind)}
+                    </p>
+                    <p style={{ fontStyle: 'italic' }}>{example.sentence}</p>
+                    <p style={{ marginTop: 4, color: 'var(--muted)' }}>{example.explanation}</p>
+                  </div>
+                ))
+              ) : (
+                <p style={{ color: 'var(--muted)' }}>该词在当前等级暂无合适例句。</p>
+              )}
+            </div>
+          ) : null}
         </div>
       )}
-      {word ? <FeedbackButton word={word} disabled={loading} /> : null}
-    </aside>
+      <FeedbackButton word={word} disabled={loading} />
+    </div>
   )
 }

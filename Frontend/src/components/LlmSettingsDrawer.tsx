@@ -131,6 +131,7 @@ export function LlmSettingsDrawer({ open, onClose }: LlmSettingsDrawerProps) {
             className="input"
             value={provider}
             onChange={(event) => setProvider(event.target.value)}
+            autoComplete="off"
           />
         </div>
         <div className="field">
@@ -140,6 +141,7 @@ export function LlmSettingsDrawer({ open, onClose }: LlmSettingsDrawerProps) {
             className="input"
             value={model}
             onChange={(event) => setModel(event.target.value)}
+            autoComplete="off"
           />
         </div>
         <div className="field">
@@ -149,6 +151,7 @@ export function LlmSettingsDrawer({ open, onClose }: LlmSettingsDrawerProps) {
             className="input"
             value={baseUrl}
             onChange={(event) => setBaseUrl(event.target.value)}
+            autoComplete="off"
           />
         </div>
         <div className="field">
@@ -160,6 +163,7 @@ export function LlmSettingsDrawer({ open, onClose }: LlmSettingsDrawerProps) {
             value={apiKey}
             onChange={(event) => setApiKey(event.target.value)}
             placeholder={hasApiKey && maskedApiKey ? `已配置 (${maskedApiKey})` : '输入 API Key'}
+            autoComplete="off"
           />
         </div>
         <p className="text-sm" style={{ color: 'var(--muted)' }}>

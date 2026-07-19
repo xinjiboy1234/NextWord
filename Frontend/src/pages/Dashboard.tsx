@@ -2,9 +2,7 @@ import type { LucideIcon } from 'lucide-react'
 import {
   BookOpen,
   BookOpenText,
-  GraduationCap,
   Keyboard,
-  LineChart,
   PenLine,
   Repeat,
 } from 'lucide-react'
@@ -32,7 +30,7 @@ export function Dashboard({ progress, onNavigate }: DashboardProps) {
   const items: DashboardItem[] = [
     {
       id: 'learn',
-      label: '学习',
+      label: '新词',
       description: '新词记忆，SM-2 间隔重复巩固词汇',
       icon: BookOpen,
       badge: stats.learn,
@@ -59,25 +57,11 @@ export function Dashboard({ progress, onNavigate }: DashboardProps) {
       badge: stats.reading,
     },
     {
-      id: 'level',
-      label: '等级',
-      description: '查看各技能维度的 CEFR 等级',
-      icon: GraduationCap,
-      badge: stats.level,
-    },
-    {
       id: 'review',
       label: '复习',
       description: '浏览到期复习队列，翻转卡片复习',
       icon: Repeat,
       badge: stats.review,
-    },
-    {
-      id: 'progress',
-      label: '进度',
-      description: '学习统计、连续打卡与活动记录',
-      icon: LineChart,
-      badge: stats.progress,
     },
   ]
 

@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from 'react'
 import { AnswerInput } from '../components/AnswerInput'
 import { FeedbackArea } from '../components/FeedbackArea'
 import { ProgressBar } from '../components/ProgressBar'
-import { RatingButtons } from '../components/RatingButtons'
 import { StepNavigator } from '../components/StepNavigator'
 import { WordDisplay } from '../components/WordDisplay'
 import { useLearningLog } from '../hooks/useLearningLog'
@@ -24,10 +23,33 @@ export function WordCard() {
     learning.reset()
   }, [session.currentWord?.id])
 
-  async function submit(rating: AssessmentResult = 'Fuzzy') {
+  function normalizeAnswer(value: string) {
+    return value.trim().toLowerCase().replaceAll('，', ',').replaceAll('。', '.')
+  }
+
+  function isAnswerCorrect(userAnswer: string, meanings: string[]) {
+    const normalized = normalizeAnswer(userAnswer)
+    if (!normalized) return false
+    return meanings.some((meaning) => {
+      const normalizedMeaning = normalizeAnswer(meaning)
+      return normalizedMeaning.includes(normalized) || normalized.includes(normalizedMeaning)
+    })
+  }
+
+  async function submitAnswer() {
     if (!session.currentWord || answer.trim().length === 0) return
+    const rating: AssessmentResult = isAnswerCorrect(answer, session.currentWord.meanings) ? 'Remembered' : 'Forgot'
     const elapsed = Date.now() - startedAt.current
     const result = await learning.submit(session.currentWord.id, answer, rating, elapsed)
+    if (result) {
+      setSubmitted(true)
+    }
+  }
+
+  async function markForgot() {
+    if (!session.currentWord || learning.submitting || submitted) return
+    const elapsed = Date.now() - startedAt.current
+    const result = await learning.submit(session.currentWord.id, '', 'Forgot', elapsed)
     if (result) {
       setSubmitted(true)
     }
@@ -69,32 +91,30 @@ export function WordCard() {
   }
 
   return (
-    <div className="grid-2-1">
-      <div className="stack stack-md">
-        <div className="card" style={{ padding: 'var(--space-4)' }}>
-          <div className="row-between" style={{ marginBottom: 'var(--space-3)', fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>
-            <span className="mono-label" style={{ textTransform: 'none', letterSpacing: 0 }}>
-              第 {session.index + 1} / {session.total} 个
-            </span>
-            <span>{session.progress}%</span>
-          </div>
-          <ProgressBar value={session.progress} />
+    <div className="stack stack-md" style={{ maxWidth: 720, margin: '0 auto', width: '100%' }}>
+      <div className="card" style={{ padding: 'var(--space-4)' }}>
+        <div className="row-between" style={{ marginBottom: 'var(--space-3)', fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>
+          <span className="mono-label" style={{ textTransform: 'none', letterSpacing: 0 }}>
+            第 {session.index + 1} / {session.total} 个
+          </span>
+          <span>{session.progress}%</span>
         </div>
+        <ProgressBar value={session.progress} />
+      </div>
 
-        <WordDisplay word={session.currentWord} />
+      <WordDisplay word={session.currentWord} />
+
+      {!submitted ? (
         <AnswerInput
           value={answer}
           onChange={setAnswer}
-          onSubmit={() => void submit('Fuzzy')}
-          disabled={learning.submitting || submitted}
+          onSubmit={() => void submitAnswer()}
+          onForgot={() => void markForgot()}
+          disabled={learning.submitting}
         />
-
-        {!submitted ? (
-          <div className="card">
-            <h3 className="mono-label" style={{ marginBottom: 'var(--space-3)', textTransform: 'none' }}>主观熟练度</h3>
-            <RatingButtons disabled={learning.submitting} onRate={(rating) => void submit(rating)} />
-          </div>
-        ) : (
+      ) : (
+        <>
+          <FeedbackArea result={learning.result} error={learning.error} />
           <div className="card">
             <StepNavigator
               index={session.index}
@@ -106,20 +126,8 @@ export function WordCard() {
               nextLabel="下一个"
             />
           </div>
-        )}
-      </div>
-
-      <aside className="stack stack-md">
-        <FeedbackArea result={learning.result} error={learning.error} />
-        <div className="side-panel">
-          <h4 className="side-panel-title">本轮目标</h4>
-          <ul className="stack stack-sm" style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)', paddingLeft: '1.1em' }}>
-            <li>先回忆中文含义。</li>
-            <li>提交后根据实际熟练度选择记住、模糊或不会。</li>
-            <li>系统会写入日志并计算下次复习时间。</li>
-          </ul>
-        </div>
-      </aside>
+        </>
+      )}
     </div>
   )
 }

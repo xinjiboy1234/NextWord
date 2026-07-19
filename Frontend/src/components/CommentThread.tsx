@@ -52,6 +52,7 @@ export function CommentThread({ articleId, comments, onAdded }: CommentThreadPro
             value={paragraphIndex}
             onChange={(event) => setParagraphIndex(Number(event.target.value))}
             className="input"
+            autoComplete="off"
           />
         </div>
         <div className="field">
@@ -62,6 +63,7 @@ export function CommentThread({ articleId, comments, onAdded }: CommentThreadPro
             onChange={(event) => setParagraphText(event.target.value)}
             rows={3}
             className="textarea"
+            autoComplete="off"
           />
         </div>
         <div className="field">
@@ -72,6 +74,7 @@ export function CommentThread({ articleId, comments, onAdded }: CommentThreadPro
             onChange={(event) => setCommentText(event.target.value)}
             rows={3}
             className="textarea"
+            autoComplete="off"
           />
         </div>
         <label className="row" style={{ fontSize: 'var(--text-sm)' }}>

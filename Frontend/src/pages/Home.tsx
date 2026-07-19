@@ -65,6 +65,7 @@ export function Home({ onStart }: HomeProps) {
             placeholder="搜索单词或释义…"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
+            autoComplete="off"
           />
         </div>
 

@@ -2,6 +2,13 @@ export type ArticleSource = 'Builtin' | 'Llm'
 export type DifficultyLevel = 'Basic' | 'Intermediate' | 'Advanced'
 export type CefrLevel = 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2'
 export type RecommendedAction = 'LearnNow' | 'ReviewLater' | 'ChallengeOnly'
+export type WordExampleKind = 'contextual' | 'general'
+
+export interface WordExample {
+  kind: WordExampleKind
+  sentence: string
+  explanation: string
+}
 
 export interface ArticleSummary {
   id: string
@@ -22,6 +29,8 @@ export interface ArticleVocabMapping {
   id: string
   wordLemma: string
   contextMeaning: string
+  phonetics: string
+  examples: WordExample[]
   specialUsage: string
   difficultyInContext: DifficultyLevel
   recommendedAction: RecommendedAction
@@ -43,7 +52,7 @@ export interface WordDefinition {
   phonetics: string
   meanings: Array<{ definition: string; isContextual: boolean; context: string }>
   collocations: string[]
-  exampleSentences: string[]
+  examples: WordExample[]
   specialUsage: string
   difficultyLevel: DifficultyLevel
   cefrLevel: CefrLevel
@@ -65,8 +74,10 @@ export interface ReadingAgentResponse {
   vocabExtract?: {
     keyVocab: Array<{
       word: string
+      phonetics: string
       contextMeaning: string
-      specialUsage: string
+      usageExample?: WordExample | null
+      generalExample?: WordExample | null
       difficulty: string
       action: string
     }>

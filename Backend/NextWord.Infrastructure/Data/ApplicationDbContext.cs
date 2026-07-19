@@ -307,6 +307,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.HasIndex(mapping => new { mapping.ArticleId, mapping.WordLemma }).IsUnique();
             entity.Property(mapping => mapping.WordLemma).HasMaxLength(80).IsRequired();
             entity.Property(mapping => mapping.ContextMeaning).HasMaxLength(500).IsRequired();
+            entity.Property(mapping => mapping.Phonetics).HasMaxLength(64);
+            entity.Property(mapping => mapping.ExamplesJson);
             entity.Property(mapping => mapping.SpecialUsage).HasMaxLength(500);
             entity.Property(mapping => mapping.DifficultyInContext).HasConversion<string>().HasMaxLength(32);
             entity.Property(mapping => mapping.RecommendedAction).HasConversion<string>().HasMaxLength(32);

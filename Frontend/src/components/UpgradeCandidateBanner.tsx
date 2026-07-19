@@ -22,7 +22,7 @@ export function UpgradeCandidateBanner({
       <Star size={20} aria-hidden="true" style={{ color: 'var(--info)', flexShrink: 0 }} />
       <p>
         <strong>升级候选：</strong>
-        {levelHint}。前往等级页查看详情或参加挑战测试。
+        {levelHint}。前往「我的」页面查看详情或参加挑战测试。
       </p>
       <button type="button" className="btn btn-sm btn-primary" onClick={onOpenLevel}>
         查看等级

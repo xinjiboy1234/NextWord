@@ -61,6 +61,16 @@ Development 使用 PostgreSQL + 启动时 `MigrateAsync()`，无需手动跑本�
 
 本地 Postgres：`docker compose up -d postgres`（默认库 `nextword`，测试库 `nextword_test`）。
 
+**空库初始化**（新建 volume 或手动清空后）：
+
+```powershell
+docker compose up -d postgres
+.\Backend\Scripts\bootstrap-dev-db.ps1          # 检查连接 + 应用 EF 迁移
+cd Backend/NextWord.Api; dotnet run             # 启动一次，自动 SeedData
+```
+
+Seed 内容：1 个默认用户、6 个单词、21 篇文章（见 `SeedData.cs`）。
+
 若迁移失败且需清空开发库：`docker compose down -v` 后重新 `up`。
 
 ## 迁移历史
@@ -71,4 +81,5 @@ Development 使用 PostgreSQL + 启动时 `MigrateAsync()`，无需手动跑本�
 | `20260623131945_AddUserSetting` | 用户设置 |
 | `20260630154336_AddScoreKernelM1` | Score 内核 |
 | `20260630160631_AddChallengeSession` | 挑战会话 |
+| `20260708161532_AddArticleVocabPhoneticsAndExamples` | 重点词/查词音标与例句缓存字段 |
 | `20260706132041_AlignPostgresModelSnapshot` | PG 列类型对齐 |

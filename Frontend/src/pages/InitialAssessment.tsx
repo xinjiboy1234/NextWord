@@ -248,6 +248,7 @@ export function InitialAssessment({ autoStart = false, immersive = false, onComp
                     setSpellingAnswers(next)
                   }}
                   placeholder="输入英文拼写"
+                  autoComplete="off"
                 />
               </label>
               <StepNavigator
@@ -285,6 +286,7 @@ export function InitialAssessment({ autoStart = false, immersive = false, onComp
                     setSentenceAnswers(next)
                   }}
                   placeholder="用该单词造一个句子"
+                  autoComplete="off"
                 />
               </label>
               <StepNavigator

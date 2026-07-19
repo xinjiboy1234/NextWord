@@ -21,6 +21,18 @@ public interface IReadingLookupService
 }
 
 public sealed record ReadingLookupRequest(string Word, string Sentence, Guid? ArticleId);
+
+public sealed record WordExampleDto(
+    string Kind,
+    string Sentence,
+    string Explanation)
+{
+    public static WordExampleDto FromModel(WordExample example) => new(
+        example.Kind.ToString().ToLowerInvariant(),
+        example.Sentence,
+        example.Explanation);
+}
+
 public sealed record ReadingLookupResponse(
     string Word,
     string ContextDefinition,
@@ -30,7 +42,10 @@ public sealed record ReadingLookupResponse(
     string? Phonetic,
     bool Offline,
     double? Confidence,
-    IReadOnlyList<SearchResultItem>? Sources);
+    IReadOnlyList<SearchResultItem>? Sources,
+    string? SpecialUsage,
+    IReadOnlyList<WordExampleDto>? Examples,
+    bool FromCache);
 
 public sealed record SearchResultItem(string Title, string Url, string Snippet);
 

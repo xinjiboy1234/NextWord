@@ -24,6 +24,14 @@ public static class LlmResponseParser
         return parsed.ToResponse();
     }
 
+    public static DefinitionResponse ParseDefinition(string content, string word, string? context)
+    {
+        var json = ExtractJson(content);
+        var parsed = JsonSerializer.Deserialize<DefinitionJson>(json, new JsonSerializerOptions(JsonSerializerDefaults.Web))
+            ?? throw new InvalidOperationException("LLM returned empty word definition.");
+        return parsed.ToResponse(word, context);
+    }
+
     public static VocabExtractResponse ParseVocabExtract(string content)
     {
         var json = ExtractJson(content);
@@ -32,12 +40,27 @@ public static class LlmResponseParser
         return new VocabExtractResponse(
             parsed.KeyVocab.Select(item => new KeyVocabItem(
                 item.Word,
+                item.Phonetics,
                 item.ContextMeaning,
-                item.SpecialUsage,
+                MapOptionalExample(item.UsageExample, WordExampleKind.Contextual),
+                MapOptionalExample(item.GeneralExample, WordExampleKind.General),
                 ParseDifficulty(item.Difficulty),
                 ParseAction(item.Action))).ToList(),
             parsed.SkippedBasic,
             parsed.SkippedRare);
+    }
+
+    private static WordExample? MapOptionalExample(WordExampleJsonDto? item, WordExampleKind kind)
+    {
+        if (item is null || string.IsNullOrWhiteSpace(item.Sentence))
+        {
+            return null;
+        }
+
+        return new WordExample(
+            kind,
+            item.Sentence.Trim(),
+            string.IsNullOrWhiteSpace(item.Explanation) ? item.Sentence.Trim() : item.Explanation.Trim());
     }
 
     private static DifficultyLevel ParseDifficulty(string value) =>

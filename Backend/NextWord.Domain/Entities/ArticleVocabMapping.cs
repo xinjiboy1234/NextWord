@@ -9,6 +9,9 @@ public sealed class ArticleVocabMapping
     public Guid? WordId { get; set; }
     public string WordLemma { get; set; } = string.Empty;
     public string ContextMeaning { get; set; } = string.Empty;
+    public string Phonetics { get; set; } = string.Empty;
+    /// <summary>Null means not yet enriched; "[]" means enriched with no suitable examples.</summary>
+    public string? ExamplesJson { get; set; }
     public string SpecialUsage { get; set; } = string.Empty;
     public DifficultyLevel DifficultyInContext { get; set; } = DifficultyLevel.Basic;
     public RecommendedAction RecommendedAction { get; set; } = RecommendedAction.LearnNow;

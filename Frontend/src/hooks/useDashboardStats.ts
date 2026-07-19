@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api/client'
 import { endpoints } from '../api/endpoints'
-import { nextCefrLevel } from '../lib/cefr'
 import type { ProgressSummary, Word } from '../types/models'
 import type { SentencePrompt } from '../types/sentence'
 
@@ -18,9 +17,7 @@ export interface DashboardStats {
   spelling: ModuleBadge
   sentence: ModuleBadge
   reading: ModuleBadge
-  level: ModuleBadge
   review: ModuleBadge
-  progress: ModuleBadge
 }
 
 const PLACEHOLDER: ModuleBadge = { text: '—', variant: 'muted' }
@@ -36,9 +33,7 @@ export function useDashboardStats(progress: ProgressSummary | null) {
     spelling: PLACEHOLDER,
     sentence: PLACEHOLDER,
     reading: PLACEHOLDER,
-    level: PLACEHOLDER,
     review: PLACEHOLDER,
-    progress: PLACEHOLDER,
   })
 
   useEffect(() => {
@@ -70,8 +65,6 @@ export function useDashboardStats(progress: ProgressSummary | null) {
       const sentenceCount =
         sentenceResult.status === 'fulfilled' ? sentenceResult.value.data.length : null
 
-      const nextLevel = nextCefrLevel(summary.overallLevel)
-
       setStats({
         loading: false,
         learn: badge(
@@ -87,16 +80,9 @@ export function useDashboardStats(progress: ProgressSummary | null) {
           'muted',
         ),
         reading: badge(summary.overallLevel || '—', 'muted'),
-        level: summary.isUpgradeCandidate && nextLevel
-          ? badge(`${summary.overallLevel} → ${nextLevel}`, 'info')
-          : badge(summary.overallLevel || '—', 'muted'),
         review: badge(
           summary.dueReviews > 0 ? `${summary.dueReviews} 待复习` : '暂无',
           summary.dueReviews > 0 ? 'warn' : 'muted',
-        ),
-        progress: badge(
-          summary.streakDays > 0 ? `连续 ${summary.streakDays} 天` : '开始打卡',
-          summary.streakDays > 0 ? 'success' : 'muted',
         ),
       })
     }

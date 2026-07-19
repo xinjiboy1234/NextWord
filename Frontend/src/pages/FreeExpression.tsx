@@ -47,6 +47,7 @@ export function FreeExpression({ userLevel = 'A2' }: FreeExpressionProps) {
           className="textarea"
           style={{ minHeight: 200 }}
           placeholder="Today I want to talk about..."
+          autoComplete="off"
         />
         {error ? <div className="alert alert-error">{error}</div> : null}
         <button

@@ -37,9 +37,8 @@ export function SpellingMode() {
   }
 
   return (
-    <div className="grid-2-1">
-      <section className="stack stack-md">
-        <div className="card">
+    <section className="stack stack-md">
+      <div className="card">
           <div className="row-between" style={{ alignItems: 'flex-start' }}>
             <div>
               <p className="mono-label" style={{ textTransform: 'none' }}>第 {session.index + 1} / {session.total} 个</p>
@@ -86,24 +85,13 @@ export function SpellingMode() {
               />
             )}
           </div>
-        </div>
-      </section>
 
-      <aside className="stack stack-md">
-        <div className="side-panel">
-          <h4 className="side-panel-title">例句</h4>
-          <ul className="stack stack-sm" style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)', lineHeight: 1.6 }}>
-            {session.currentWord.exampleSentences.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
+          {session.result && (
+            <div className={`alert ${session.result.isCorrect ? 'alert-success' : 'alert-error'}`} style={{ marginTop: 'var(--space-4)' }}>
+              {session.result.isCorrect ? '已写入复习成功记录' : '已加入更高优先级复习'}
+            </div>
+          )}
         </div>
-        {session.result && (
-          <div className={`alert ${session.result.isCorrect ? 'alert-success' : 'alert-error'}`}>
-            {session.result.isCorrect ? '已写入复习成功记录' : '已加入更高优先级复习'}
-          </div>
-        )}
-      </aside>
-    </div>
+    </section>
   )
 }

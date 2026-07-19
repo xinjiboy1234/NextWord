@@ -1,6 +1,9 @@
+using Microsoft.Extensions.Options;
 using NextWord.Domain.Entities;
 using NextWord.Domain.Enums;
 using NextWord.Domain.Interfaces;
+using NextWord.Domain.Models;
+using NextWord.Domain.Services;
 
 namespace NextWord.Api.Endpoints;
 
@@ -80,7 +83,9 @@ public static class ArticleEndpoints
 
         group.MapPost("/{id:guid}/lookup", async (
             Guid id,
+            HttpContext http,
             WordLookupRequest request,
+            IUserRepository users,
             IArticleVocabService vocab,
             CancellationToken ct) =>
         {
@@ -89,8 +94,14 @@ public static class ArticleEndpoints
                 return Results.BadRequest(new { message = "Word is required." });
             }
 
-            var definition = await vocab.LookupWordAsync(id, request.Word, request.Context, ct);
-            return definition is null ? Results.NotFound() : Results.Ok(definition);
+            var user = await UserResolver.ResolveAsync(http, request.UserId, users, ct);
+            if (user is null)
+            {
+                return Results.Unauthorized();
+            }
+
+            var detail = await vocab.LookupWordAsync(id, user.Id, request.Word, request.Context, ct);
+            return Results.Ok(DefinitionDto.FromResponse(detail.Definition, detail.FromCache));
         });
     }
 }
@@ -177,6 +188,7 @@ public static class ReadingAgentEndpoints
         app.MapPost("/api/reading/agent", async (
             ReadingAgentRequestBody request,
             IReadingAgentService agent,
+            IOptions<LlmSentenceRatingOptions> sentenceRatingOptions,
             CancellationToken ct) =>
         {
             if (string.IsNullOrWhiteSpace(request.Intent) || string.IsNullOrWhiteSpace(request.ArticleContent))
@@ -184,13 +196,17 @@ public static class ReadingAgentEndpoints
                 return Results.BadRequest(new { message = "Intent and article content are required." });
             }
 
+            var explanationLanguage = ExplanationLanguageHelper.Resolve(
+                null,
+                sentenceRatingOptions.Value.ExplanationLanguage);
             var response = await agent.AssistAsync(new Domain.Models.ReadingAgentRequest(
                 request.Intent,
                 request.ArticleTitle ?? "Untitled",
                 request.ArticleContent,
                 request.SelectedWord,
                 request.ParagraphText,
-                request.UserLevel ?? "A2"), ct);
+                request.UserLevel ?? "A2",
+                ExplanationLanguage: explanationLanguage), ct);
             return Results.Ok(response);
         }).WithTags("ReadingAgent");
     }
@@ -198,7 +214,7 @@ public static class ReadingAgentEndpoints
 
 public sealed record StartReadingRequest(Guid? UserId);
 public sealed record VocabExtractRequestBody(Guid? UserId);
-public sealed record WordLookupRequest(string Word, string? Context);
+public sealed record WordLookupRequest(string Word, string? Context, Guid? UserId);
 public sealed record FinishReadingRequest(int LookupCount, int CommentsCount);
 public sealed record AddCommentRequest(Guid? UserId, int ParagraphIndex, string? ParagraphText, string CommentText, bool RequestAiReply = false);
 public sealed record ReadingAgentRequestBody(string Intent, string? ArticleTitle, string ArticleContent, string? SelectedWord, string? ParagraphText, string? UserLevel);
@@ -249,6 +265,8 @@ public sealed record ArticleVocabMappingDto(
     Guid Id,
     string WordLemma,
     string ContextMeaning,
+    string Phonetics,
+    IReadOnlyList<WordExampleDto> Examples,
     string SpecialUsage,
     DifficultyLevel DifficultyInContext,
     RecommendedAction RecommendedAction,
@@ -258,11 +276,40 @@ public sealed record ArticleVocabMappingDto(
         mapping.Id,
         mapping.WordLemma,
         mapping.ContextMeaning,
+        mapping.Phonetics,
+        WordExampleJson.Deserialize(mapping.ExamplesJson)
+            .Select(example => WordExampleDto.FromModel(example))
+            .ToList(),
         mapping.SpecialUsage,
         mapping.DifficultyInContext,
         mapping.RecommendedAction,
         mapping.IsKeyVocab);
 }
+
+public sealed record DefinitionDto(
+    string Word,
+    string Phonetics,
+    IReadOnlyList<MeaningDto> Meanings,
+    IReadOnlyList<string> Collocations,
+    IReadOnlyList<WordExampleDto> Examples,
+    string SpecialUsage,
+    DifficultyLevel DifficultyLevel,
+    CefrLevel CefrLevel,
+    bool FromCache)
+{
+    public static DefinitionDto FromResponse(DefinitionResponse response, bool fromCache) => new(
+        response.Word,
+        response.Phonetics,
+        response.Meanings.Select(item => new MeaningDto(item.Definition, item.IsContextual, item.Context)).ToList(),
+        response.Collocations,
+        response.Examples.Select(WordExampleDto.FromModel).ToList(),
+        response.SpecialUsage,
+        response.DifficultyLevel,
+        response.CefrLevel,
+        fromCache);
+}
+
+public sealed record MeaningDto(string Definition, bool IsContextual, string Context);
 
 public sealed record ReadingLogDto(
     Guid Id,

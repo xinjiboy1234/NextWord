@@ -23,14 +23,26 @@ public sealed record DifficultyRating(
 public sealed record DefinitionRequest(
     string Word,
     string? Context = null,
-    LlmRequestOptions? Options = null);
+    LlmRequestOptions? Options = null,
+    string? ExplanationLanguage = null);
+
+public enum WordExampleKind
+{
+    Contextual,
+    General
+}
+
+public sealed record WordExample(
+    WordExampleKind Kind,
+    string Sentence,
+    string Explanation);
 
 public sealed record DefinitionResponse(
     string Word,
     string Phonetics,
     IReadOnlyList<Meaning> Meanings,
     IReadOnlyList<string> Collocations,
-    IReadOnlyList<string> ExampleSentences,
+    IReadOnlyList<WordExample> Examples,
     string SpecialUsage,
     DifficultyLevel DifficultyLevel,
     CefrLevel CefrLevel);
@@ -64,14 +76,21 @@ public sealed record VocabExtractRequest(
     string ArticleContent,
     string ArticleLevel,
     string UserLevel,
-    LlmRequestOptions? Options = null);
+    LlmRequestOptions? Options = null,
+    string? ExplanationLanguage = null);
 
 public sealed record KeyVocabItem(
     string Word,
+    string Phonetics,
     string ContextMeaning,
-    string SpecialUsage,
+    WordExample? UsageExample,
+    WordExample? GeneralExample,
     DifficultyLevel Difficulty,
     RecommendedAction Action);
+
+public sealed record ArticleWordDetailResult(
+    DefinitionResponse Definition,
+    bool FromCache);
 
 public sealed record VocabExtractResponse(
     IReadOnlyList<KeyVocabItem> KeyVocab,
@@ -94,7 +113,8 @@ public sealed record ReadingAgentRequest(
     string? ParagraphText,
     string UserLevel,
     Guid? UserId = null,
-    LlmRequestOptions? Options = null);
+    LlmRequestOptions? Options = null,
+    string? ExplanationLanguage = null);
 
 public sealed record ReadingAgentSkillCall(
     string SkillName,

@@ -1,6 +1,17 @@
 # NextWord — 待办清单
 
-> 更新：2026-07-06（全环境 PostgreSQL）
+> 更新：2026-07-08（阅读查词例句缓存）
+
+## 阅读模块
+
+### 已完成
+- [x] 查词/重点词结构化例句 + 文章级 DB 缓存
+- [x] 重点词汇音标与用法例句持久化
+- [x] 存量词汇 lazy backfill（缺 phonetics/examples 时补全）
+
+### 可选后续
+- [ ] 强制重新提取重点词汇（`force=true`）
+- [ ] 生产部署前审查 `20260708161532` 迁移 SQL（EF 生成了较大 Align 块）
 
 ## Score 内核 v1
 
@@ -23,6 +34,6 @@
 
 ## 验收
 
-- [x] `dotnet test` 45 通过（PostgreSQL，`docker compose up -d postgres`）
+- [x] `dotnet test` 54 通过（PostgreSQL，`docker compose up -d postgres`）
 - [x] `npm run build` 通过
 - [ ] `npm run test:e2e`

@@ -1,8 +1,17 @@
 import { useCallback, useState } from 'react'
 import { api } from '../api/client'
 import { endpoints } from '../api/endpoints'
-import type { WordDefinition } from '../types/article'
+import type { WordDefinition, WordExample } from '../types/article'
 import type { ReadingLookupResult } from '../types/score'
+
+function mapExamples(examples?: ReadingLookupResult['examples']): WordExample[] {
+  if (!examples?.length) return []
+  return examples.map((item) => ({
+    kind: item.kind === 'general' ? 'general' : 'contextual',
+    sentence: item.sentence,
+    explanation: item.explanation,
+  }))
+}
 
 function mapLookupToDefinition(result: ReadingLookupResult, context?: string): WordDefinition {
   return {
@@ -10,8 +19,8 @@ function mapLookupToDefinition(result: ReadingLookupResult, context?: string): W
     phonetics: result.phonetic ?? '',
     meanings: [{ definition: result.contextDefinition, isContextual: true, context: context ?? '' }],
     collocations: [],
-    exampleSentences: [],
-    specialUsage: result.offline ? '离线释义' : '',
+    examples: mapExamples(result.examples),
+    specialUsage: result.specialUsage ?? (result.offline ? '离线释义' : ''),
     difficultyLevel: 'Intermediate',
     cefrLevel: 'B1',
   }
@@ -44,6 +53,9 @@ export function useWordLookup(articleId: string | null) {
         phonetic: null,
         offline: true,
         confidence: null,
+        specialUsage: null,
+        examples: [],
+        fromCache: false,
       }
       setLookupMeta(fallback)
       setDefinition(mapLookupToDefinition(fallback, context))

@@ -1,0 +1,54 @@
+---
+description: EF Core 实体变更后必须执行迁移；数据库未连接则终止
+globs: Backend/**/Entities/**/*.cs,Backend/**/ApplicationDbContext.cs,Backend/**/Data/Migrations/**
+alwaysApply: false
+---
+
+# EF Core 迁移规范
+
+修改 `Entities/` 或 `ApplicationDbContext` 后，**必须**完成迁移流程；**禁止**只改实体不迁移。
+
+## 前置检查（必须）
+
+执行任何 EF 命令前，先确认 PostgreSQL 可连接：
+
+```powershell
+docker compose up -d postgres
+.\Backend\Scripts\ef-migrate.ps1 -Action list
+```
+
+若连接失败：**立即终止**，提醒用户启动 Postgres，**不要**继续 `migrations add` / `database update`。
+
+## 标准流程
+
+```powershell
+# 1. 创建迁移（实体有变更时）
+.\Backend\Scripts\ef-migrate.ps1 -Action add -Name <DescriptiveName>
+
+# 2. 审查生成的 Migration.cs（禁止盲目提交超大 diff）
+# 3. 应用到本地开发库
+.\Backend\Scripts\ef-migrate.ps1 -Action update
+
+# 4. 生成生产 SQL（发布前）
+.\Backend\Scripts\generate-migration-sql.ps1
+```
+
+## 交付物
+
+每次 schema 变更须提供：
+
+- EF Migration（`Data/Migrations/`）
+- `Scripts/Migrations/Upgrade_<MigrationId>.sql`
+- `Scripts/Migrations/Rollback_<MigrationId>.sql`
+- 更新 `Scripts/Migrations/README.md` 迁移历史表
+
+## 禁止事项
+
+- **禁止**删除 `Data/Migrations/` 下已提交的迁移文件
+- **禁止**在 csproj 中用 `<Folder Include="Data\Migrations\" />` 占位（会导致迁移文件不参与编译）
+- **禁止**跳过 `dotnet ef migrations add` 直接手改 Snapshot（除非增量极小且已审查 diff）
+- 若 `migrations add` 生成大量 `AlterColumn`（TEXT→uuid 等），说明 Snapshot 与 PG 不同步，需审查而非直接 apply
+
+## 连接串
+
+设计时默认：`ApplicationDbContextFactory` → `localhost:5432/nextword`（与 `appsettings.Development.json` 一致）。

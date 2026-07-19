@@ -20,13 +20,18 @@ public sealed class ReadingAssistantAgent(IUserLlmProviderFactory llmFactory, IL
         CommentReplyResponse? commentReply = null;
         var options = request.Options ?? new LlmRequestOptions("reading-agent", "reading_assist");
 
+        var explanationLanguage = ExplanationLanguageHelper.Resolve(
+            request.ExplanationLanguage,
+            ExplanationLanguageHelper.Default);
+
         if (intent is "lookup" or "explain" or "word" && !string.IsNullOrWhiteSpace(request.SelectedWord))
         {
             calls.Add(new ReadingAgentSkillCall(ReadingSkillRegistry.LookupWord, request.SelectedWord!));
             definition = await llm.GetDefinitionAsync(new DefinitionRequest(
                 request.SelectedWord!,
                 request.ParagraphText,
-                options), cancellationToken);
+                options,
+                explanationLanguage), cancellationToken);
 
             if (intent is "explain")
             {
@@ -41,7 +46,8 @@ public sealed class ReadingAssistantAgent(IUserLlmProviderFactory llmFactory, IL
                 request.ArticleContent,
                 request.UserLevel,
                 request.UserLevel,
-                options), cancellationToken);
+                options,
+                explanationLanguage), cancellationToken);
         }
         else if (intent is "comment" or "reply" && !string.IsNullOrWhiteSpace(request.ParagraphText))
         {
@@ -58,7 +64,8 @@ public sealed class ReadingAssistantAgent(IUserLlmProviderFactory llmFactory, IL
             definition = await llm.GetDefinitionAsync(new DefinitionRequest(
                 request.SelectedWord!,
                 request.ParagraphText,
-                options), cancellationToken);
+                options,
+                explanationLanguage), cancellationToken);
         }
 
         var message = BuildMessage(intent, definition, vocabExtract, commentReply);

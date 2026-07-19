@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using NextWord.Domain.Entities;
 using NextWord.Domain.Enums;
 using NextWord.Domain.Interfaces;
@@ -10,8 +11,9 @@ namespace NextWord.Infrastructure.Services;
 
 public sealed class ReadingLookupService(
     ApplicationDbContext db,
+    IArticleVocabService articleVocab,
     IUserLlmProviderFactory llmFactory,
-    IScoreProfileService scoreProfile) : IReadingLookupService
+    IOptions<LlmSentenceRatingOptions> sentenceRatingOptions) : IReadingLookupService
 {
     public async Task<ReadingLookupResponse> LookupAsync(Guid userId, ReadingLookupRequest request, CancellationToken cancellationToken)
     {
@@ -19,7 +21,6 @@ public sealed class ReadingLookupService(
         var word = await db.Words.AsNoTracking()
             .Include(item => item.LlmAnnotation)
             .FirstOrDefaultAsync(item => item.Lemma == lemma, cancellationToken);
-        var progress = await db.UserProgress.AsNoTracking().FirstOrDefaultAsync(item => item.UserId == userId, cancellationToken);
         var relationship = word is null
             ? null
             : await db.UserWordRelationships.AsNoTracking()
@@ -36,18 +37,47 @@ public sealed class ReadingLookupService(
             new ReadingDifficultyContext(null));
 
         var offline = false;
+        var fromCache = false;
         string contextDefinition;
+        string? phonetic = word?.Phonetics;
+        string? specialUsage = null;
+        IReadOnlyList<WordExampleDto>? examples = null;
+
         try
         {
-            var llm = await llmFactory.GetForUserAsync(userId, cancellationToken);
             var snippet = request.Sentence.Length > 500 ? request.Sentence[..500] : request.Sentence;
-            var definition = await llm.GetDefinitionAsync(new DefinitionRequest(
-                lemma,
-                snippet,
-                new LlmRequestOptions("reading-lookup", "reading_lookup")), cancellationToken);
+            DefinitionResponse definition;
+
+            if (request.ArticleId is Guid articleId)
+            {
+                var detail = await articleVocab.GetOrCreateWordDetailAsync(
+                    articleId,
+                    userId,
+                    lemma,
+                    snippet,
+                    cancellationToken);
+                definition = detail.Definition;
+                fromCache = detail.FromCache;
+            }
+            else
+            {
+                var explanationLanguage = ExplanationLanguageHelper.Resolve(
+                    null,
+                    sentenceRatingOptions.Value.ExplanationLanguage);
+                var llm = await llmFactory.GetForUserAsync(userId, cancellationToken);
+                definition = await llm.GetDefinitionAsync(new DefinitionRequest(
+                    lemma,
+                    snippet,
+                    new LlmRequestOptions("reading-lookup", "reading_lookup"),
+                    explanationLanguage), cancellationToken);
+            }
+
             contextDefinition = definition.Meanings.FirstOrDefault()?.Definition
                 ?? word?.Meanings.FirstOrDefault()
                 ?? lemma;
+            phonetic = string.IsNullOrWhiteSpace(definition.Phonetics) ? phonetic : definition.Phonetics;
+            specialUsage = definition.SpecialUsage;
+            examples = definition.Examples.Select(WordExampleDto.FromModel).ToList();
             offline = string.IsNullOrWhiteSpace(definition.Meanings.FirstOrDefault()?.Definition);
         }
         catch
@@ -67,10 +97,13 @@ public sealed class ReadingLookupService(
             intrinsic,
             relationship?.PersonalDifficulty ?? (relationship is null ? null : effective.Score),
             relationship?.EstimatedKnownRate ?? 0.5,
-            word?.Phonetics,
+            phonetic,
             offline,
             confidence,
-            null);
+            null,
+            specialUsage,
+            examples,
+            fromCache);
     }
 }
 

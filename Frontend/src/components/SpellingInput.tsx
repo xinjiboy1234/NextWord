@@ -9,6 +9,7 @@ export function SpellingInput({ value, disabled, onChange, onSubmit }: SpellingI
   return (
     <form
       className="field"
+      autoComplete="off"
       onSubmit={(event) => {
         event.preventDefault()
         onSubmit()

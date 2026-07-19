@@ -136,6 +136,7 @@ export function ChallengeMode() {
             disabled={submitting || Boolean(challenge.result)}
             onChange={(event) => setSentenceText(event.target.value)}
             placeholder="用目标词造句"
+            autoComplete="off"
           />
           <StepNavigator
             index={0}

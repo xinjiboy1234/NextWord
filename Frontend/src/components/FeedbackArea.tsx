@@ -12,18 +12,12 @@ export function FeedbackArea({ result, error }: FeedbackAreaProps) {
   }
 
   if (!result) {
-    return (
-      <div className="side-panel" style={{ borderStyle: 'dashed' }}>
-        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>
-          提交答案后会显示释义、例句和下次复习时间。
-        </p>
-      </div>
-    )
+    return null
   }
 
   const Icon = result.isCorrect ? CheckCircle2 : XCircle
   return (
-    <div className="side-panel">
+    <div className="card">
       <div className="row" style={{ marginBottom: 'var(--space-3)' }}>
         <Icon size={20} style={{ color: result.isCorrect ? 'var(--success)' : 'var(--danger)' }} aria-hidden="true" />
         <h3 style={{ fontWeight: 540 }}>{result.isCorrect ? '回答正确' : '需要复习'}</h3>

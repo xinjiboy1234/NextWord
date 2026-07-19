@@ -50,7 +50,7 @@ export function LoginPage() {
               panel: (
                 <>
                   {error ? <div className="auth-error">{error}</div> : null}
-                  <form className="auth-fields" onSubmit={handleSubmit}>
+                  <form className="auth-fields" onSubmit={handleSubmit} autoComplete="off">
                     <div className="field">
                       <label htmlFor="email">邮箱</label>
                       <input
@@ -60,6 +60,7 @@ export function LoginPage() {
                         className="input"
                         value={email}
                         onChange={(event) => setEmail(event.target.value)}
+                        autoComplete="off"
                       />
                     </div>
                     <div className="field">
@@ -72,6 +73,7 @@ export function LoginPage() {
                         className="input"
                         value={password}
                         onChange={(event) => setPassword(event.target.value)}
+                        autoComplete="off"
                       />
                     </div>
                     <button type="submit" disabled={submitting} className="btn btn-primary auth-submit">
@@ -87,7 +89,7 @@ export function LoginPage() {
               panel: (
                 <>
                   {error ? <div className="auth-error">{error}</div> : null}
-                  <form className="auth-fields" onSubmit={handleSubmit}>
+                  <form className="auth-fields" onSubmit={handleSubmit} autoComplete="off">
                     <div className="field">
                       <label htmlFor="displayName">昵称</label>
                       <input
@@ -97,6 +99,7 @@ export function LoginPage() {
                         value={displayName}
                         onChange={(event) => setDisplayName(event.target.value)}
                         placeholder="可选"
+                        autoComplete="off"
                       />
                     </div>
                     <div className="field">
@@ -108,6 +111,7 @@ export function LoginPage() {
                         className="input"
                         value={email}
                         onChange={(event) => setEmail(event.target.value)}
+                        autoComplete="off"
                       />
                     </div>
                     <div className="field">
@@ -120,6 +124,7 @@ export function LoginPage() {
                         className="input"
                         value={password}
                         onChange={(event) => setPassword(event.target.value)}
+                        autoComplete="off"
                       />
                     </div>
                     <button type="submit" disabled={submitting} className="btn btn-primary auth-submit">

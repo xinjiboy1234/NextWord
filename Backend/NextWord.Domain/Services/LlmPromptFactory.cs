@@ -48,13 +48,71 @@ public static class LlmPromptFactory
         """;
     }
 
+    public static string BuildDefinitionPrompt(DefinitionRequest request)
+    {
+        var explanationLanguage = ExplanationLanguageHelper.Resolve(
+            request.ExplanationLanguage,
+            ExplanationLanguageHelper.Default);
+        var explanationLanguageName = ExplanationLanguageHelper.GetPromptDisplayName(explanationLanguage);
+        var context = string.IsNullOrWhiteSpace(request.Context) ? "(no sentence provided)" : request.Context;
+
+        return $$"""
+        You are a vocabulary assistant for English learners. Explain a word in reading context.
+
+        Word: {{request.Word}}
+        Context Sentence: {{context}}
+        Feedback Language: {{explanationLanguage}} ({{explanationLanguageName}})
+
+        Return only JSON:
+        {
+          "phonetics": "string",
+          "meanings": [
+            {
+              "definition": "string",
+              "is_contextual": true
+            }
+          ],
+          "collocations": ["string"],
+          "examples": [
+            {
+              "kind": "contextual",
+              "sentence": "English sentence tied to the context",
+              "explanation": "essence note in {{explanationLanguageName}}"
+            },
+            {
+              "kind": "general",
+              "sentence": "English sentence from another scenario",
+              "explanation": "essence note in {{explanationLanguageName}}"
+            }
+          ],
+          "special_usage": "string",
+          "difficulty_level": "basic|intermediate|advanced",
+          "cefr_level": "A1|A2|B1|B2|C1|C2"
+        }
+
+        Rules:
+        - meanings[0] must explain how the word is used in the given context sentence.
+        - Write definition, special_usage, collocation glosses, and example explanations in {{explanationLanguageName}}.
+        - Keep example sentences in natural English.
+        - examples[0] (contextual) must reflect usage in the given context sentence.
+        - examples[1] (general) should come from a different everyday scenario; omit if the word is too rare, too specialized, or not worth illustrating at this level.
+        - Return 0-2 examples. Be concise: one primary contextual meaning, up to 2 collocations.
+        """;
+    }
+
     public static string BuildVocabExtractPrompt(VocabExtractRequest request)
     {
+        var explanationLanguage = ExplanationLanguageHelper.Resolve(
+            request.ExplanationLanguage,
+            ExplanationLanguageHelper.Default);
+        var explanationLanguageName = ExplanationLanguageHelper.GetPromptDisplayName(explanationLanguage);
+
         return $$"""
         You are a vocabulary extraction assistant for English learners.
 
         Article Level: {{request.ArticleLevel}}
         User Level: {{request.UserLevel}}
+        Feedback Language: {{explanationLanguage}} ({{explanationLanguageName}})
 
         Article Title: {{request.ArticleTitle}}
 
@@ -67,8 +125,16 @@ public static class LlmPromptFactory
           "keyVocab": [
             {
               "word": "string",
+              "phonetics": "string",
               "contextMeaning": "string",
-              "specialUsage": "string",
+              "usageExample": {
+                "sentence": "English sentence from this article's context",
+                "explanation": "essence note in {{explanationLanguageName}}"
+              },
+              "generalExample": {
+                "sentence": "English sentence from another scenario",
+                "explanation": "essence note in {{explanationLanguageName}}"
+              },
               "difficulty": "basic|intermediate|advanced",
               "action": "learn_now|review_later|challenge_only"
             }
@@ -81,6 +147,11 @@ public static class LlmPromptFactory
         - Max 10 key vocabulary items.
         - Evaluate each word IN CONTEXT.
         - Do not include very basic words.
+        - Keep word as the English lemma.
+        - Write contextMeaning and example explanations in {{explanationLanguageName}}.
+        - phonetics is required for common words (IPA).
+        - usageExample must show how the word is used in THIS article; generalExample is optional for another scenario.
+        - Omit generalExample if the word is too specialized or not worth a second example at this level.
         """;
     }
 

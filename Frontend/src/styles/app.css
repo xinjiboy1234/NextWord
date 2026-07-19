@@ -252,6 +252,13 @@ p { text-wrap: pretty; }
 }
 .btn-secondary:hover { border-color: var(--fg); }
 
+.btn-danger-outline {
+  background: transparent;
+  color: var(--danger);
+  border: 1px solid var(--danger);
+}
+.btn-danger-outline:hover { background: var(--danger-soft); border-color: var(--danger); }
+
 .btn-ghost {
   background: transparent; color: var(--fg);
   padding-inline: var(--space-3);
@@ -532,6 +539,9 @@ p { text-wrap: pretty; }
 }
 
 /* ─── Tabs ────────────────────────────────────────────── */
+.tabs-root {
+  width: 100%;
+}
 .tabs {
   display: flex; gap: 2px;
   background: var(--border-soft);
