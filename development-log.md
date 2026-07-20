@@ -1,5 +1,39 @@
 # NextWord 开发日志
 
+按时间倒序记录需求、决策、实现与验收。
+
+## 2026-07-20 — 文档集整理与本地开发代理修复
+
+### 实现
+- 新增根 `README.md`（功能、技术栈、快速启动、配置、测试）
+- 重写 `docs/CURRENT-STATE.md`：对齐 React Router、全量 PostgreSQL、Score 内核 v1、Base UI 前端等现状
+- 删除已完成/被取代的文档：`plans/` 全部 Phase 计划、`docs/SPEC-ai-learning-*`（4 份）、`docs/DESIGN-frontend-ux.md`、`docs/AUDIT-cefr-read-path.md`、`docs/superpowers/`、`英语学习.md`；活口待办并入 `next-steps.md`
+- 保留 `docs/DESIGN-ai-learning-architecture.md`（架构 why）与 `docs/DESIGN-auth-profile.md`，补「已实现」状态标注
+- 修复 `Frontend/vite.config.ts` 代理端口漂移：8080 → 默认 5108（可用 `VITE_API_PROXY_TARGET` 覆盖）
+
+### 验收
+- [x] 后端启动（`dotnet run`，:5108）：注册/登录、每日词、文章、profile、progress、匿名 401 全部实测通过
+- [x] 前端 `npm run dev`（:5173）页面与 /api 代理实测通过
+
+---
+
+## 2026-07-19 — UI checkpoint
+
+### 实现
+- `front_design/` 7 个屏幕与 `Frontend` 同步（设计原型与实现并行维护）
+
+---
+
+## 2026-07-10 — fix：PG Score 内核补丁缺失列
+
+### 问题
+`AddScoreKernelM1` 在 PG 上无法走 EF 迁移，补丁曾标记已应用但未创建 `WordDifficultyAnnotations.DimensionsJson` 等列，导致阅读查词失败。
+
+### 实现
+- `Patch_PostgreSql_ScoreKernel.sql` 补齐缺失列（幂等）
+
+---
+
 ## 2026-07-08 — 阅读查词例句与重点词汇增强
 
 ### 需求
@@ -20,7 +54,19 @@
 
 ---
 
-# NextWord 开发日志
+## 2026-07-08 — Base UI 前端重构 + Score 日快照 + PG schema 补丁
+
+### 需求
+按 `2026-07-07-base-ui-frontend-redesign` spec（已随文档整理删除，内容已全部落地）重构前端：`@base-ui/react` 组件封装、黑白主题、沉浸式首次测评 Onboarding + 跳过测评。
+
+### 实现
+- 前端：`@base-ui/react` 封装层（`src/components/ui/`：Button/Dialog/Drawer/Select/Switch/Tabs/Badge/Progress/RadioGroup）、黑白主题 tokens、底部导航精简为「首页/我的」
+- 首次测评沉浸式 `OnboardingLayout` + `POST /api/assessment/initial/skip`（可跳过，默认 A2）
+- 后端：`ProfileScoreSnapshotWorker`（Score 每日快照）+ `GET /api/profile/scores/history`
+- `PostgreSqlSchemaPatcher` + `Patch_PostgreSql_ScoreKernel.sql`：PG 上幂等补齐 Score 内核 schema
+- `ApplicationDbContextFactory`（design-time Npgsql）
+
+---
 
 ## 2026-07-06 — 全环境切换 PostgreSQL（移除 SQLite）
 
@@ -120,7 +166,7 @@ Development 启动时自动 `MigrateAsync()` 到 `nextword` 库。
 - `ReAnnotationWorker` + `UserFeedbackService`（DefinitionWrong / MarkKnown / ExcludeWord）
 - `EvaluationDataAssembler` 预取工具数据写入报告
 - 前端 `FeedbackButton`、`useDisplaySettings` CEFR toggle
-- E2E `challenge.spec.ts`；`docs/AUDIT-cefr-read-path.md`；`Scripts/README_BackfillDrill.md`
+- E2E `challenge.spec.ts`；CEFR read-path audit；`Scripts/README_BackfillDrill.md`
 
 ### 验收
 - [x] `dotnet test` 45 通过
@@ -128,88 +174,78 @@ Development 启动时自动 `MigrateAsync()` 到 `nextword` 库。
 
 ---
 
-## 2026-06-19 — Phase 2 阅读模块
+## 2026-06-27 — AI 学习架构叙事归档
 
-### 需求
-实现短文阅读器、点击查词、LLM 重点词汇提取、段落评论、阅读日志与阅读辅助 Agent。
+### 背景
+产品方向讨论：从五项 AI 体验需求（评价化等级、Agent 工具、DuckDuckGo、AI 每日词、阅读查词 AI）出发，梳理定级机制，进而重估 CEFR 在系统中的角色。
 
-### 决策
-- 短文逐词 React 渲染以支持 onClick 查词
-- 查词优先读 ArticleVocabMappings 缓存
-- 阅读辅助 Agent 通过 ReadingSkillRegistry + ReadingAssistantAgent 组合 skills
-- LLM 调用统一扩展 ILLMProvider（ExtractVocab、ReplyToComment）
+### 决策记录
+- **定级与评价不冲突**：规则引擎产出权威 Score/等级；LLM 产出叙事评价，不改定级结果
+- **CEFR 降级为映射层**：内部以 DifficultyScore (0–100) + User Profile 为核心；CEFR 仅展示与互操作
+- **AI 判官 + CEFR 翻译官**：AI 负责标注、解释、辅导；规则负责 SM-2、升级、复习
+- **收紧原则**：AI 标注持久化（非全链路实时）；区分 intrinsic / personal difficulty；规则引擎不可省略
 
-### 实现
-- 新增 Article / ReadingLog / ArticleComment / ArticleVocabMapping 实体与迁移
-- 内置 21 篇分级短文种子数据
-- API：articles CRUD、vocab-extract、lookup、comments、reading-logs、reading/agent
-- 前端：ArticleLibrary、ArticleReader、查词弹层、词汇面板、评论线程
-
-### 验收
-- [x] dotnet build 通过
-- [x] npm run build 通过
-- [x] 21 篇内置短文
-- [x] 阅读主流程不依赖真实 LLM（Mock 降级）
+### 产出
+- 新增 `docs/DESIGN-ai-learning-architecture.md`（完整来龙去脉、理想分层、待决问题）
+- §10 待决问题随后在产品规格中全部锁定，并由 Score 内核 v1（06-30）实现
 
 ---
 
-## 2026-06-19 — Phase 3 测评与挑战
-
-### 需求
-5 步初测、挑战测评、等级升降、等级历史与前端测评流程。
-
-### 决策
-- 测评编排由确定性 AssessmentService 完成，LLM 仅用于造句（复用既有能力）
-- 短板定级：overall = min(vocab, sentence, reading)
-- 挑战包预生成（ChallengePackGenerator）
-- AssessmentRecord 用 JSON 存题目/答案/分数
+## 2026-06-26 — 前端 UX 换皮 P3：React Router + 挑战历史
 
 ### 实现
-- Assessment / AssessmentRecord / ChallengeRecord / LevelHistory 实体与迁移
-- AssessmentScoringService、LevelUpgradeEngine、ChallengePackGenerator
-- API：/api/assessment、/api/challenge、/api/level
-- 前端：InitialAssessment、ChallengeMode、LevelDashboard
+- `react-router-dom`：`BrowserRouter` + `Routes` 替代 `view` state
+- `navigation/routes.ts`：路径映射（词库 `/word-bank`，阅读 `/reading/:articleId`）
+- `AppShell` 改用 `useLocation` / `useNavigate`
+- `ArticleReaderRoute`：`useParams` 包装阅读页
+- `ChallengeRecentList` 挂到挑战页空闲态，调用 `/api/challenge/recent`
+- 未完成初测时 `navigate('/assessment', { replace: true })`
+- E2E：`helpers.ts` 注册登录 + API 跳过初测；Vite 代理改为 `:5108`
 
 ### 验收
-- [x] dotnet build 通过
-- [x] npm run build 通过
+- [x] `npm run build` 通过
+- [x] `npm run test:e2e` 3/3 通过
 
 ---
 
-## 2026-06-19 — Phase 4 完善与优化
-
-### 需求
-缓存层、LLM 重试、单元测试、Docker 部署、HealthChecks、前端错误边界。
+## 2026-06-25 — 句子评分中文反馈 + 测评流程导航优化
 
 ### 实现
-- ICacheService + MemoryCacheService（开发环境）
-- LlmRetryProvider 装饰 ILLMProvider（指数退避 3 次）
-- NextWord.UnitTests：Sm2、AssessmentScoring、LevelUpgrade（9 用例通过）
-- Dockerfile + docker-compose.yml
-- /api/health/details HealthChecks
-- ErrorBoundary、LoadingSkeleton 组件
-
-### 验收
-- [x] dotnet test 9/9 通过
-- [x] dotnet build 通过
-- [x] npm run build 通过
+- `Llm:SentenceRating:ExplanationLanguage` 配置：error_analysis 与 suggestion 按指定语言（默认 zh-CN）输出
+- `ExplanationLanguageHelper`；Mock Provider 同步支持
+- Initial Assessment 各阶段独立题目索引，Timeline 步骤跳转改进
 
 ---
 
-## 2026-06-19 — Phase 5 集成测试 + 引导 + 后台任务
+## 2026-06-24 — 认证与个人中心
 
 ### 需求
-落实 next-steps P0：集成测试、首次测评引导、复习/等级后台 Worker。
+邮箱注册/登录、JWT 认证、个人主页、用户级 LLM 配置（BYOK）。
 
 ### 实现
-- UserProgress 增加 PendingReviewCount、IsUpgradeCandidate
-- ReviewReminderWorker（6h）、LevelCheckWorker（24h）
-- Progress API 返回 hasCompletedInitialAssessment / isUpgradeCandidate / pendingReviewCount
-- NextWord.IntegrationTests：Article + Assessment 共 3 用例
-- 前端 OnboardingBanner 引导未完成初测用户
+- `User` 扩展 Email/PasswordHash（PBKDF2-SHA256）；`UserLlmSettings` 1:1
+- JWT HS256 发 token；全站授权 FallbackPolicy，匿名仅健康检查与注册/登录
+- OpenAI/DeepSeek/Qwen 预设；`IUserLlmProviderFactory` 按用户构建 provider
+- 前端 AuthContext + 登录页 + ProfilePage（等级、统计、LLM 设置）
+- 设计文档：`docs/DESIGN-auth-profile.md`
+
+---
+
+## 2026-06-24 — 主导航重构与首次测评自动引导
+
+### 需求
+1. 测评、挑战、词库移至「我的」菜单
+2. 其余功能以卡片形式展示在主界面（登录后默认首页）
+3. 未完成首次测评时自动进入测评流程（取代黄色引导横幅）
+
+### 实现
+- 新增 `Dashboard.tsx` 卡片首页（学习、拼写、造句、阅读、等级、复习、进度）
+- `App.tsx` 精简顶栏为「返回首页」+「我的」；默认视图改为 dashboard
+- `ProfilePage` 增加「更多功能」区块（测评、挑战、词库）
+- `InitialAssessment` 支持 `autoStart` 与 `onComplete` 回调
+- 移除 `OnboardingBanner` 使用；进度加载完成前显示加载态避免首页闪烁
 
 ### 验收
-- [x] dotnet test 12/12 通过（单元 9 + 集成 3）
 - [x] npm run build 通过
 
 ---
@@ -238,105 +274,92 @@ Redis 缓存、docker-compose 生产栈、LLM 遥测、EF snapshot/迁移对齐�
 - 单元测试 +3（RedisCache、LlmTelemetry）
 
 ### 验收
-- [x] dotnet test 15/15 通过（单元 12 + 集成 3）
-- [x] npm run build 通过
-- [x] npm run test:e2e 2/2 通过
+- [x] `dotnet test` 15/15 通过（单元 12 + 集成 3）
+- [x] `npm run build` 通过
+- [x] `npm run test:e2e` 2/2 通过
 
 ---
 
-## 2026-06-24 — 主导航重构与首次测评自动引导
+## 2026-06-19 — Phase 5 集成测试 + 引导 + 后台任务
 
 ### 需求
-1. 测评、挑战、词库移至「我的」菜单
-2. 其余功能以卡片形式展示在主界面（登录后默认首页）
-3. 未完成首次测评时自动进入测评流程（取代黄色引导横幅）
+落实 next-steps P0：集成测试、首次测评引导、复习/等级后台 Worker。
 
 ### 实现
-- 新增 `Dashboard.tsx` 卡片首页（学习、拼写、造句、阅读、等级、复习、进度）
-- `App.tsx` 精简顶栏为「返回首页」+「我的」；默认视图改为 dashboard
-- `ProfilePage` 增加「更多功能」区块（测评、挑战、词库）
-- `InitialAssessment` 支持 `autoStart` 与 `onComplete` 回调
-- 移除 `OnboardingBanner` 使用；进度加载完成前显示加载态避免首页闪烁
+- UserProgress 增加 PendingReviewCount、IsUpgradeCandidate
+- ReviewReminderWorker（6h）、LevelCheckWorker（24h）
+- Progress API 返回 hasCompletedInitialAssessment / isUpgradeCandidate / pendingReviewCount
+- NextWord.IntegrationTests：Article + Assessment 共 3 用例
+- 前端 OnboardingBanner 引导未完成初测用户
 
 ### 验收
+- [x] `dotnet test` 12/12 通过（单元 9 + 集成 3）
 - [x] npm run build 通过
 
 ---
 
-## 2026-06-26 — 前端 UX 换皮 P3：React Router + 挑战历史
+## 2026-06-19 — Phase 4 完善与优化
+
+### 需求
+缓存层、LLM 重试、单元测试、Docker 部署、HealthChecks、前端错误边界。
 
 ### 实现
-- `react-router-dom`：`BrowserRouter` + `Routes` 替代 `view` state
-- `navigation/routes.ts`：路径映射（词库 `/word-bank`，阅读 `/reading/:articleId`）
-- `AppShell` 改用 `useLocation` / `useNavigate`
-- `ArticleReaderRoute`：`useParams` 包装阅读页
-- `ChallengeRecentList` 挂到挑战页空闲态，调用 `/api/challenge/recent`
-- 未完成初测时 `navigate('/assessment', { replace: true })`
-- E2E：`helpers.ts` 注册登录 + API 跳过初测；Vite 代理改为 `:5108`
+- ICacheService + MemoryCacheService（开发环境）
+- LlmRetryProvider 装饰 ILLMProvider（指数退避 3 次）
+- NextWord.UnitTests：Sm2、AssessmentScoring、LevelUpgrade（9 用例通过）
+- Dockerfile + docker-compose.yml
+- /api/health/details HealthChecks
+- ErrorBoundary、LoadingSkeleton 组件
 
 ### 验收
-- [x] `npm run build` 通过
-- [x] `npm run test:e2e` 3/3 通过
+- [x] `dotnet test` 9/9 通过
+- [x] dotnet build 通过
+- [x] npm run build 通过
 
 ---
 
-## 2026-06-27 — AI 学习架构叙事归档
+## 2026-06-19 — Phase 3 测评与挑战
 
-### 背景
-产品方向讨论：从五项 AI 体验需求（评价化等级、Agent 工具、DuckDuckGo、AI 每日词、阅读查词 AI）出发，梳理定级机制，进而重估 CEFR 在系统中的角色。
+### 需求
+5 步初测、挑战测评、等级升降、等级历史与前端测评流程。
 
-### 决策记录
-- **定级与评价不冲突**：规则引擎产出权威 Score/等级；LLM 产出叙事评价，不改定级结果
-- **CEFR 降级为映射层**：内部以 DifficultyScore (0–100) + User Profile 为核心；CEFR 仅展示与互操作
-- **AI 判官 + CEFR 翻译官**：AI 负责标注、解释、辅导；规则负责 SM-2、升级、复习
-- **收紧原则**：AI 标注持久化（非全链路实时）；区分 intrinsic / personal difficulty；规则引擎不可省略
+### 决策
+- 测评编排由确定性 AssessmentService 完成，LLM 仅用于造句（复用既有能力）
+- 短板定级：overall = min(vocab, sentence, reading)
+- 挑战包预生成（ChallengePackGenerator）
+- AssessmentRecord 用 JSON 存题目/答案/分数
 
-### 产出
-- 新增 `docs/DESIGN-ai-learning-architecture.md`（完整来龙去脉、理想分层、待决问题）
+### 实现
+- Assessment / AssessmentRecord / ChallengeRecord / LevelHistory 实体与迁移
+- AssessmentScoringService、LevelUpgradeEngine、ChallengePackGenerator
+- API：/api/assessment、/api/challenge、/api/level
+- 前端：InitialAssessment、ChallengeMode、LevelDashboard
 
-### 未完成
-- §10 待决问题产品确认
-- `plans/PLAN-Overview.md` 分级原则段同步更新
-- Implementation spec 与任务拆分
-
----
-
-## 2026-06-27 — AI 学习架构叙事归档
-
-### 背景
-产品方向讨论：从五项 AI 体验需求（评价化等级、Agent 工具、DuckDuckGo、AI 每日词、阅读查词 AI）出发，梳理定级机制，进而重估 CEFR 在系统中的角色。
-
-### 决策记录
-- **定级与评价不冲突**：规则引擎产出权威 Score/等级；LLM 产出叙事评价，不改定级结果
-- **CEFR 降级为映射层**：内部以 DifficultyScore (0–100) + User Profile 为核心；CEFR 仅展示与互操作
-- **AI 判官 + CEFR 翻译官**：AI 负责标注、解释、辅导；规则负责 SM-2、升级、复习
-- **收紧原则**：AI 标注持久化（非全链路实时）；区分 intrinsic / personal difficulty；规则引擎不可省略
-
-### 产出
-- 新增 `docs/DESIGN-ai-learning-architecture.md`（完整来龙去脉、理想分层、待决问题）
-
-### 未完成
-- §10 待决问题产品确认
-- `plans/PLAN-Overview.md` 分级原则段同步更新
-- Implementation spec 与任务拆分
+### 验收
+- [x] dotnet build 通过
+- [x] npm run build 通过
 
 ---
 
-## 2026-06-27 — AI 学习架构叙事归档
+## 2026-06-19 — Phase 2 阅读模块
 
-### 背景
-产品方向讨论：从五项 AI 体验需求（评价化等级、Agent 工具、DuckDuckGo、AI 每日词、阅读查词 AI）出发，梳理定级机制，进而重估 CEFR 在系统中的角色。
+### 需求
+实现短文阅读器、点击查词、LLM 重点词汇提取、段落评论、阅读日志与阅读辅助 Agent。
 
-### 决策记录
-- **定级与评价不冲突**：规则引擎产出权威 Score/等级；LLM 产出叙事评价，不改定级结果
-- **CEFR 降级为映射层**：内部以 DifficultyScore (0–100) + User Profile 为核心；CEFR 仅展示与互操作
-- **AI 判官 + CEFR 翻译官**：AI 负责标注、解释、辅导；规则负责 SM-2、升级、复习
-- **收紧原则**：AI 标注持久化（非全链路实时）；区分 intrinsic / personal difficulty；规则引擎不可省略
+### 决策
+- 短文逐词 React 渲染以支持 onClick 查词
+- 查词优先读 ArticleVocabMappings 缓存
+- 阅读辅助 Agent 通过 ReadingSkillRegistry + ReadingAssistantAgent 组合 skills
+- LLM 调用统一扩展 ILLMProvider（ExtractVocab、ReplyToComment）
 
-### 产出
-- 新增 `docs/DESIGN-ai-learning-architecture.md`（完整来龙去脉、理想分层、待决问题）
+### 实现
+- 新增 Article / ReadingLog / ArticleComment / ArticleVocabMapping 实体与迁移
+- 内置 21 篇分级短文种子数据
+- API：articles CRUD、vocab-extract、lookup、comments、reading-logs、reading/agent
+- 前端：ArticleLibrary、ArticleReader、查词弹层、词汇面板、评论线程
 
-### 未完成
-- §10 待决问题产品确认
-- `plans/PLAN-Overview.md` 分级原则段同步更新
-- Implementation spec 与任务拆分
+### 验收
+- [x] dotnet build 通过
+- [x] npm run build 通过
+- [x] 21 篇内置短文
+- [x] 阅读主流程不依赖真实 LLM（Mock 降级）

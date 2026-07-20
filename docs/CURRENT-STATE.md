@@ -1,782 +1,249 @@
-# NextWord 当前功能文档
+# NextWord 当前状态（Current State）
 
-> 文档版本：2026-06-23  
-> 用途：记录已实现功能、架构与业务规则，供后续迭代参考。  
-> 相关计划文档见 [`plans/PLAN-Overview.md`](../plans/PLAN-Overview.md)。
+> 版本：2026-07-20。本文描述**已实现并验证**的现状，是项目功能的权威参考。
+> 待办事项见 [next-steps.md](../next-steps.md)；架构决策的「为什么」见 [DESIGN-ai-learning-architecture.md](DESIGN-ai-learning-architecture.md)。
 
----
+## 1. 项目概览
 
-## 1. 项目概要
-
-| 项目 | 说明 |
-|------|------|
-| 名称 | NextWord — 英语学习应用 |
-| 后端 | ASP.NET Core Minimal API（.NET 10） |
-| 前端 | React 19 + Vite 8 + TypeScript + Tailwind CSS 4 |
-| 数据库 | SQLite（本地开发）/ PostgreSQL（生产 Docker） |
-| 缓存 | MemoryCache（开发）/ Redis（生产 Docker） |
-| LLM | Microsoft.Extensions.AI + `ILLMProvider` 门面；默认 Mock，可切换 OpenAI |
-| 核心算法 | SM-2 间隔重复（自实现） |
-| 分级体系 | `DifficultyLevel`（Basic/Intermediate/Advanced）× CEFR（A1–C2） |
-
-### 1.1 解决方案结构
+NextWord 是 AI 驱动的英语词汇学习应用，核心闭环：
 
 ```
-Backend/
-  NextWord.Api              # 宿主：Program.cs、HealthChecks、CORS、迁移与种子
-  NextWord.Api.Endpoints    # Minimal API 路由与请求/响应 DTO
-  NextWord.Domain           # 实体、枚举、接口、领域服务（SM-2、评分、Mock LLM）
-  NextWord.Infrastructure   # EF Core、仓储、应用服务、后台 Worker、缓存
-  NextWord.UnitTests        # 单元测试（12 用例）
-  NextWord.IntegrationTests # 集成测试（3 用例，WebApplicationFactory）
-Frontend/
-  src/                      # React SPA（无路由库，view 状态切换）
-  e2e/                      # Playwright E2E（2 用例）
-docs/                       # 本文档
-plans/                      # 分阶段计划与 next-steps
+每日选词 → 新词记忆 / 拼写 / 造句 / 阅读 → 首次测评定级 → 挑战升级 → Score 画像持续更新
 ```
 
-### 1.2 实现阶段对照
+两条设计主线：
 
-| Phase | 状态 | 核心交付 |
-|-------|------|----------|
-| 0 | ✅ | 项目骨架、背单词 MVP、LLM 分级接口 |
-| 1 | ✅ | 造句、拼写、SM-2、学习日志 |
-| 2 | ✅ | 阅读模块、词汇提取、评论、阅读 Agent |
-| 3 | ✅ | 初测 + 挑战、等级升降 |
-| 4 | ✅ | 缓存装饰、重试、Docker、HealthChecks、单元测试 |
-| 5 | ✅ | 集成测试、引导横幅、后台 Worker |
-| 6 | ✅ | Redis、LLM 遥测、Playwright E2E、升级候选横幅 |
+- **规则引擎保证确定性**：SM-2 间隔重复、Score 内核（0–100 三维分数）、等级升级规则，全部由后端确定性代码执行。
+- **LLM 提供智能体验**：单词难度标注、造句/自由表达评分、阅读查词与词汇提取、批注回复。LLM 全部走 `ILLMProvider` 抽象，默认 Mock（无外部依赖），可切 OpenAI 兼容接口（服务端全局配置或用户级 BYOK）。
 
----
-
-## 2. 功能模块总览
-
-应用包含 **五大学习模块** 与 **测评/等级体系**，前端通过顶部导航切换（无 URL 路由）。
-
-| 导航 | 模块 | 后端服务 | 说明 |
-|------|------|----------|------|
-| 学习 | M1 背单词 | `UserRepository`, `Sm2Service` | 每日新词 + 主观评分（记得/模糊/忘了） |
-| 拼写 | M1 拼写 | `SpellingService` | 中文释义 → 英文拼写，错误位置高亮 |
-| 造句 | M2 造句 | `SentenceService`, `FreeExpressionService` | 指定词造句 + 自由表达 |
-| 阅读 | M3 阅读 | `ArticleService`, `ArticleVocabService`, `CommentService` | 短文库、点击查词、词汇提取、评论 |
-| 测评 | M4 初测 | `AssessmentService` | 5 步定级（词汇/拼写/造句/阅读/汇总） |
-| 挑战 | M4 挑战 | `ChallengeService`, `ChallengePackGenerator` | 等级挑战与确认挑战 |
-| 等级 | M4 等级 | `LevelDashboardService`, `LevelUpgradeEngine` | CEFR 看板与历史 |
-| 复习 | SM-2 复习 | `ReviewQueueService`, `ReviewReminderWorker` | 待复习队列与活动摘要 |
-| 词库 | 词库浏览 | `WordRepository` | 全量词条列表 |
-| 进度 | 用户进度 | `UserRepository` | 等级、连续天数、准确率等 |
-| 我的 | 个人主页 | `AuthService`, `ProfileEndpoints` | 登录、等级、进度、LLM 配置 |
-
-### 2.1 全局引导
-
-- **OnboardingBanner**：`hasCompletedInitialAssessment === false` 时提示完成初测；可关闭（`localStorage: nextword.onboarding.dismissed`）。
-- **UpgradeCandidateBanner**：已完成初测且 `isUpgradeCandidate === true` 时提示查看等级页；可关闭（`nextword.upgrade.dismissed`）。
-
-### 2.2 用户与认证
-
-- **默认用户**（开发种子，无邮箱）：ID `11111111-1111-1111-1111-111111111111`，显示名 `MVP Learner`
-- **注册用户**：邮箱 + 密码（PBKDF2-SHA256），JWT 有效期 7 天
-- **用户解析顺序**：`Authorization: Bearer` JWT → 可选 `userId` 查询参数 → 默认种子用户
-- 未登录时学习功能仍可用（绑定默认用户）；个人主页与 LLM 配置需登录
-
----
-
-## 3. 模块详细说明
-
-### 3.1 背单词（学习）
-
-**用户流程**
-
-1. 加载每日新词（默认 8 个，`GET /api/words/daily?count=8`）
-2. 展示英文单词（词性、音标）；用户输入中文释义
-3. 选择主观评分：Remembered / Fuzzy / Forgot
-4. 提交 `POST /api/learning/submit` → 返回释义、掌握度、下次复习时间
-5. 顺序学完队列后显示「今日新词完成」
-
-**业务规则**
-
-- 每日词从未学习或低掌握度的核心词中选取（`WordRepository.GetDailyWordsAsync`）
-- 每次提交写入 `WordLearningLog`，更新 `UserWordRelationship`（SM-2）
-- `IsCorrect` 由答案匹配逻辑判定；间隔由 **评分** 驱动，非仅对错
-
-**前端**：`WordCard` + `useWordSession` + `useLearningLog`
-
----
-
-### 3.2 拼写
-
-**用户流程**
-
-1. 加载拼写队列（默认 8 个，`GET /api/spelling/queue`）— 优先 `NextReviewDue <= now` 的复习词，否则回落到每日词
-2. 展示中文释义 + TTS 播放（Web Speech API）
-3. 用户输入拼写；可「再想想」增加尝试次数
-4. 提交 `POST /api/spelling/submit` → 错误字符位置高亮
-5. 「下一个」进入下一词
-
-**业务规则**
-
-- 拼写结果同样走 SM-2 更新 `UserWordRelationship`
-- 记录 `SpellingLog`（含 `ErrorPositions[]`、`Attempts`）
-
-**前端**：`SpellingMode` + `useSpellingSession`
-
----
-
-### 3.3 造句
-
-#### 3.3.1 指定词造句
-
-**用户流程**
-
-1. 加载造句提示（10 条，`GET /api/sentences/prompts`）
-2. 展示目标词 + 例句场景；用户选择场景并写句子
-3. `POST /api/sentences/rate` → LLM 评分（语法/自然度/词汇/相关性）
-4. 展示 AI 改写、错误标签、建议；评分标签：稳定 / 可用 / 需打磨 / 需重写
-
-**业务规则**
-
-- 使用 Model Profile `grading-stable`
-- 持久化 `SentenceLog`
-
-#### 3.3.2 自由表达
-
-**用户流程**
-
-1. 用户写 2–5 句英文
-2. `POST /api/free-expression/rate` → 综合评分与改写建议
-3. 持久化 `FreeExpressionLog`
-
-**前端**：`SentenceStudio`（Tab：指定词 `SentenceCard` / 自由表达 `FreeExpression`）
-
-**注意**：前端硬编码 `userLevel: 'A2'` 传入评分请求。
-
----
-
-### 3.4 阅读
-
-**用户流程**
-
-1. **文库**：`GET /api/articles`（可按 `level` / `cefr` 筛选），内置 **21 篇** 分级短文
-2. **打开文章**：并行加载详情、评论、开始阅读会话 `POST .../reading/start`
-3. **阅读器**：逐词可点击查词 → `POST .../lookup`；记录 lookup 次数
-4. **词汇提取**：加载已有映射或 `POST .../vocab-extract`（LLM）
-5. **评论**：按段落发帖，可选 AI 回复 `POST .../comments`
-6. **完成**：`POST /api/reading-logs/{logId}/finish`（上报 lookup/comment 计数）
-
-**种子数据分布**
-
-| 难度 | 篇数 | CEFR 范围 |
-|------|------|-----------|
-| Basic | 10 | A1–A2 |
-| Intermediate | 7 | B1–B2 |
-| Advanced | 4 | C1–C2 |
-
-**阅读辅助 Agent**
-
-- 后端：`ReadingAssistantAgent` + `ReadingSkillRegistry`（组合查词、词汇提取、评论回复等 skills）
-- API：`POST /api/reading/agent`
-- **前端尚未接入**该端点
-
-**前端**：`ArticleLibrary` → `ArticleReader` + `useArticleReader` / `useWordLookup` / `useVocabExtract`
-
----
-
-### 3.5 测评（初测）
-
-**5 步流程**（确定性编排，LLM 仅用于造句步骤评分）
-
-| 步骤 | 类型 | GET 返回 | POST 提交 `answersJson` |
-|------|------|----------|-------------------------|
-| 1 | 词汇识别 | 选择题数组 | `int[]` 选项索引 |
-| 2 | 拼写 | 中→英拼写题 | `string[]` |
-| 3 | 造句 | 目标词 + 场景 | `string[]` 用户句子 |
-| 4 | 阅读 | 短文 + 选择题 | `{ selectedIndex, lookupCount }` |
-| 5 | 定级 | — | `POST .../complete` |
-
-**API 序列**
+## 2. 仓库结构
 
 ```
-POST /api/assessment/initial/start
-GET  /api/assessment/{id}/step/{1-4}
-POST /api/assessment/{id}/step/{1-4}
-POST /api/assessment/{id}/complete  → FinalLevelResult
+Backend/                  .NET 10 解决方案（NextWord.slnx）
+  NextWord.Api/           Web 宿主：Program.cs 组装、认证、CORS、健康检查、启动迁移+种子
+  NextWord.Api.Endpoints/ 全部 Minimal API 端点（17 个端点类，纯 HTTP 层）
+  NextWord.Domain/        27 个实体、9 个枚举、接口契约、领域服务（SM2/Score 映射/等级引擎/Prompt 工厂）
+  NextWord.Infrastructure/ EF Core + Npgsql、仓储、约 25 个业务服务、JWT/密码、4 个后台 Worker、缓存
+  NextWord.UnitTests/     xUnit 单元测试（Score/缓存部分连真实 PostgreSQL）
+  NextWord.IntegrationTests/ WebApplicationFactory + 真实 PostgreSQL 集成测试
+  Scripts/                迁移 SQL 生成脚本、backfill drill 说明、生产迁移 runbook
+Frontend/                 React 19 + Vite 8 + Tailwind 4 + @base-ui/react
+  src/pages/              14 个页面；src/components/ 约 35 个组件（含 ui/ 设计系统封装）
+  e2e/                    Playwright E2E（5 用例）
+front_design/             静态 HTML/CSS 设计原型，screens/ 与 src/pages/ 一一对应，同步维护
+docker-compose.yml        postgres:16-alpine + redis:7-alpine + api（容器内 8080）
 ```
 
-**评分与定级规则**（`AssessmentScoringService`）
+## 3. 技术栈
 
-| 维度 | 映射依据 | 阈值（≤ 则对应等级） |
-|------|----------|----------------------|
-| 词汇 | 正确率 % | 9→A1, 29→A2, 49→B1, 69→B2, 否则 C1 |
-| 拼写 | 正确率 % | 0→A1, 19→A2, 39→B1, 59→B2, 否则 C1 |
-| 造句 | 平均分 0–5 | 0.9→A1, 1.9→A2, 2.9→B1, 3.9→B2, 否则 C1 |
-| 阅读 | 正确率 % + 查词密度 | 19/39/59/79；查词 > 15% 词数则降一级 |
+- **后端**：.NET 10、ASP.NET Core Minimal API、EF Core 10 + Npgsql（PostgreSQL 16，全环境统一，SQLite 已移除）、`Microsoft.Extensions.AI.OpenAI`（IChatClient）、JWT Bearer（HS256）、PBKDF2-SHA256 密码哈希（10 万次迭代）、`Microsoft.Extensions.Caching.StackExchangeRedis`（可选）
+- **前端**：React 19.2、TypeScript、Vite 8、Tailwind CSS 4（`@tailwindcss/vite`）、`@base-ui/react` 无样式基元（封装于 `src/components/ui/`）、lucide-react 图标、react-router-dom v7、axios；无专门状态管理库（AuthContext + 15 个自定义 hooks + localStorage）
+- **测试**：xUnit、WebApplicationFactory、Playwright
 
-**总等级（短板定级）**
+## 4. 认证与用户
 
-```
-overall = min(vocabLevel, sentenceLevel, readingLevel)
-```
+- 全站默认要求登录（`Program.cs` 的授权 FallbackPolicy）。匿名可访问仅：`GET /api/health`、`GET /api/health/details`、`POST /api/auth/register`、`POST /api/auth/login`。
+- JWT HS256，7 天有效（`Auth:JwtSecret`/`Issuer`/`Audience`/`ExpirationDays` 配置）；生产必须覆盖默认 JwtSecret。
+- 用户解析只认 JWT `sub`/`NameIdentifier`（`UserResolver`），无 query userId 回退。
+- 前端：token 存 localStorage（`nextword.auth.token`），axios 拦截器自动带 Bearer；401 自动清凭据；未登录时 App 只渲染登录页（非路由守卫）。
+- 新用户 `hasCompletedInitialAssessment=false` 时被强制留在 `/assessment` 沉浸式 Onboarding，可确认跳过（`POST /api/assessment/initial/skip`，默认 A2）。
 
-拼写等级单独记录，**不参与** overall 计算。
+## 5. 功能模块
 
-完成后更新 `UserProgress` 各维度 CEFR、`HasCompletedInitialAssessment = true`，写入 `LevelHistory`。
+### 5.1 每日选词与新词记忆（`/learn`）
 
-**前端**：`InitialAssessment` + `useAssessmentFlow`（步骤 1–4 交互完整；E2E 仅验证启动）
+- `GET /api/words/daily?count=`：按用户 Vocabulary 分取 `[score, score+12]` 难度带单词 + `EstimatedKnownRate<0.4` 弱词，各占约一半（`DailyWordSelectionService`）。
+- `POST /api/learning/submit`：提交词义作答 → SM-2 排程更新 + `MasteryScore`/`EstimatedKnownRate`/`PersonalDifficulty`（EMA）+ 连胜天数。
+- SM-2 变体（`Sm2Service`）：EF 下限 1.3，间隔上限 3650 天。
+- `POST /api/words` 新增单词时调用 LLM `RateDifficultyAsync` 自动定级（DifficultyLevel + CefrLevel + 0–100 IntrinsicScore 标注）。
 
----
+### 5.2 拼写（`/spelling`）
 
-### 3.6 挑战
+- `GET /api/spelling/queue`：到期复习队列，无到期词时回退每日词。
+- `POST /api/spelling/submit`：含逐字母错误位置标注；前端发音播放 + 错误高亮。
 
-**类型**
+### 5.3 造句工作室（`/sentence`）
 
-- `Daily`：日常挑战
-- `LevelConfirmation`：等级确认挑战（升级/锁定相关）
+- 两个 Tab：指定词造句（`GET /api/sentences/prompts` + `POST /api/sentences/rate`）与自由表达（`POST /api/free-expression/rate`）。
+- LLM 同步评分：语法/自然度/词汇/相关度各 0–5 + A–D 等级 + 改写建议；反馈语言默认 zh-CN（`Llm:SentenceRating:ExplanationLanguage`）。
+- 后台 `SentenceLlmScoringWorker` 会把造句成绩写入 Score 内核（写作维度）。
 
-**流程**
+### 5.4 阅读（`/reading`、`/reading/:id`）
 
-1. `POST /api/challenge/start` → `ChallengePack`（词汇题集、造句题、阅读 MCQ、目标等级）
-2. 用户完成并提交 `POST /api/challenge/submit`（词汇分、造句分、阅读分）
-3. 服务端判定 `Passed`、更新等级或回退
+- 短文库按难度/CEFR 筛选分组；种子含 21 篇分级短文。
+- 阅读器：逐词渲染点词查义（`POST /api/reading/lookup`，先查 `ArticleVocabMappings` 文章级缓存，缺失再 LLM 并 upsert；返回音标 + 文中/其他场景双例句 + 熟悉度）。
+- `POST /api/articles/{id}/vocab-extract`：LLM 提取重点词汇（含音标 + 用法例句）并持久化；存量数据 lazy backfill。
+- 段落批注：`GET/POST /api/articles/{articleId}/comments`，可请求 AI 回复。
+- 阅读日志：`reading/start` → `reading-logs/{logId}/finish`（计时、查词数参与评分）。
+- `POST /api/reading/agent`：阅读助手 Agent（`ReadingAssistantAgent` 组合 skills）。**前端暂未使用**。
 
-**前端现状**
+### 5.5 首次水平测评（`/assessment`）
 
-- `ChallengeMode` 会拉取 `ChallengePack`，但 **UI 为自评模式**（手动填词汇正确数、造句 0–5 分、阅读勾选），非完整交互答题
-- `GET /api/challenge/recent` **未接入前端**
+- 4 步：词汇选择 → 拼写 → LLM 造句评分 → 阅读（查词数有惩罚）。
+- `POST /api/assessment/{id}/complete`：`AssessmentScoringService` 按「最短板」定级（overall = min），写入 Score 内核，并入队 `EvaluationReport` 后台任务。
 
----
+### 5.6 综合挑战（`/challenge`）
 
-### 3.7 等级体系
+- `POST /api/challenge/start` 生成挑战包（`ChallengeSession` 存题目，客户端不拿答案）；可带 `confirmationChallenge` 锁定目标等级。
+- `POST /api/challenge/submit`：客户端提交原始答案，服务端按 `ChallengeThresholds` 计分（词汇正确率 ≥0.6、写作 ≥53、阅读 ≥100、升级增量 5）；确认挑战通过则 ProfileScore 加 UpgradeDelta 并出评估报告。
 
-**数据字段**（`UserProgress`）
+### 5.7 Score 内核（v1）
 
-| 字段 | 说明 |
-|------|------|
-| `OverallLevel` | 综合 CEFR（短板） |
-| `VocabLevel` / `SpellingLevel` / `SentenceLevel` / `ReadingLevel` | 分维度等级 |
-| `StreakDays` | 连续学习天数 |
-| `HasCompletedInitialAssessment` | 是否完成初测 |
-| `IsUpgradeCandidate` | 是否满足升级候选（Worker 写入） |
-| `PendingReviewCount` | 待复习词数（Worker 写入） |
-| `IsLevelLocked` | 确认挑战进行中 |
+- **模型**：`UserProgress` 持有 Vocabulary/Reading/Writing 三个 0–100 分；总分 = 三者最小值（最短板，`ScoreMappingService.ComputeOverall`）；CEFR 分带在 `appsettings.json` 的 `ScoreMapping`。
+- **写入**：`ScoreProfileService.ApplyUpdateAsync` 是唯一入口，支持 absolute/delta；`LearningEvents.IdempotencyKey` 幂等去重。写入点：测评完成、确认挑战通过、后台造句评分。
+- **快照**：`ProfileScoreSnapshotWorker` 每日写 `ProfileScoreSnapshots`，供 `GET /api/profile/scores/history?days=` 趋势图。
+- **难度三层**：intrinsic（LLM 标注，持久化于 `WordDifficultyAnnotation`）→ personal（`EstimatedKnownRate`/`PersonalDifficulty` EMA）→ effective（`EffectiveDifficultyCalculator`，含学术语域加成）。
+- **学习工具注册表**：`GET/POST /api/tools` 暴露 7 个工具（get_profile_scores、search_web(DuckDuckGo)、lookup_word_context、get_daily_words、get_evaluation_latest、get_challenge_history、get_recent_learning）。供 Agent 场景使用。
 
-**升级候选规则**（`LevelUpgradeEngine`）
+### 5.8 等级系统
 
-满足其一即标记候选：
+- `LevelUpgradeEngine`：连胜 ≥3 且当前等级 ≥3 天，或 7 天内有挑战通过 → 升级候选；C1 封顶。
+- `LevelCheckWorker` 每日刷新 `IsUpgradeCandidate`；`GET /api/level/dashboard`、`GET /api/level/history`。
 
-- 连续学习 ≥ 3 天 **且** 当前等级停留 ≥ 3 天
-- 近 7 天内有通过的挑战记录
+### 5.9 个人中心与 LLM 设置（`/profile`、`/manage`）
 
-**API**
+- `GET /api/profile`：等级、连胜、统计、等级历史、LLM 设置；`PUT /api/profile` 改显示名。
+- BYOK：`GET /api/profile/llm/presets`（OpenAI/DeepSeek/Qwen 预设）+ `PUT /api/profile/llm` 存用户自己的 OpenAI 兼容 API（`UserLlmSettings`，API key 脱敏返回）；`UserLlmProviderFactory` 按用户构建 provider。
+- `GET /api/evaluation/latest|{id}` 查看评估报告（当前为模板 + 工具预取数据，LLM 结构化叙事未做）。
+- `POST /api/feedback`：释义错误 / 标记已知 / 排除单词（触发 ReAnnotation 后台任务）。
 
-- `GET /api/level/dashboard` — 各维度等级、候选标志、近期 `LevelHistory`
-- `GET /api/level/history` — 完整历史（前端未单独调用，dashboard 已含 `recentHistory`）
+### 5.10 后台 Worker（Infrastructure/Background，共 4 个 HostedService）
 
----
+| Worker | 周期 | 职责 |
+|---|---|---|
+| `BackgroundJobWorker` | 2s 轮询 `BackgroundJobs` 表 | 处理 EvaluationReport / SentenceLlmScoring / ReAnnotation 三类任务 |
+| `ReviewReminderWorker` | 6h | 刷新待复习数 |
+| `LevelCheckWorker` | 24h | 刷新升级候选标记 |
+| `ProfileScoreSnapshotWorker` | 24h | 写 Score 每日快照 |
 
-### 3.8 复习与日志
+Worker 异常不拖垮宿主（`BackgroundServiceExceptionBehavior=Ignore`）。
 
-**复习队列**
+### 5.11 LLM 集成
 
-- `ReviewQueueService`：按 `NextReviewDue` 与 `EaseFactor` 排序
-- `ReviewReminderWorker`（每 6h）：汇总每用户待复习数 → `PendingReviewCount`
+- 统一抽象 `ILLMProvider`（5 方法：难度标注 / 释义 / 造句评分 / 词汇提取 / 批注回复）；Prompt 由 `LlmPromptFactory` 生成。
+- 默认 `LlmMockProvider`：内置词典启发式，零外部调用；**未知词难度一律回退 Basic/A1**（未启用真实 LLM 时 `POST /api/words` 自动定级基本无效）。
+- `Llm:OpenAI:Enabled=true` 且有 key 时切 `LlmChatClientProvider`（OpenAI `ChatClient`，默认 `gpt-4o-mini`，Temperature 0.1，异常自动回退 Mock）。
+- 装饰链：Inner → `LlmRetryProvider`（指数退避 3 次）→ `LlmTelemetryProvider`（记录耗时与 ModelProfileId）。
+- 用户级 BYOK 优先于服务端全局配置。
 
-**活动日志 API**
+### 5.12 缓存
 
-| 端点 | 说明 |
-|------|------|
-| `GET /api/logs/summary` | 造句/自由表达/拼写次数与拼写准确率 |
-| `GET /api/logs/recent` | 近期 sentence / spelling 活动 |
+- `ICacheService` 由 `Cache:Provider` 切换 Memory（默认）/ Redis。
+- 词义查询以 `ArticleVocabMappings` 表做 DB 级缓存；`POST /api/llm/rate-difficulty` 带 24h IMemoryCache（SHA256 key）。
 
-**前端**：`ReviewQueue` 展示待复习词、摘要指标、近期动态
+## 6. API 全量清单
 
----
+除健康检查与注册/登录外全部需要 JWT Bearer。
 
-### 3.9 LLM 分级（M5）
-
-**端点**：`POST /api/llm/rate-difficulty`
-
-- 输入：文本 + `ItemType`（Word/Sentence/Article）+ 可选 `ModelProfileId`
-- 输出：`DifficultyLevel`、`CefrLevel`、`Reason`、`RecommendedAction`、`Confidence`
-- 缓存：`IMemoryCache`，键 `llm:{itemType}:{sha256(text)}`，TTL 24h
-
-**前端**：端点已定义于 `endpoints.ts`，**UI 未使用**
-
-**实体**
-
-- `WordDifficultyAnnotation` — 词条级 LLM 注释
-- `DifficultyAnnotation` — 通用 `(ItemType, ItemHash)` 注释
-
----
-
-### 3.10 用户认证与个人主页
-
-**登录 / 注册**
-
-1. 前端「我的」页或内嵌 `LoginPage`：邮箱 + 密码
-2. `POST /api/auth/register` 或 `POST /api/auth/login` → JWT + 用户信息
-3. Token 存 `localStorage: nextword.auth.token`；Axios 自动附加 `Authorization` 头
-
-**个人主页**（需登录）
-
-1. `GET /api/profile` — 聚合进度、五维等级、等级历史、LLM 设置（Key 掩码）
-2. `PUT /api/profile/llm` — 保存 LLM 配置；支持预设 `openai` / `deepseek` / `qwen`
-3. 展示：昵称、邮箱、总体等级、已学词/待复习/正确率、连续天数、等级历史
-
-**个人 LLM 配置**
-
-| 预设 | Provider | BaseUrl | 默认 Model |
-|------|----------|---------|------------|
-| openai | OpenAI | `https://api.openai.com/v1` | gpt-4o-mini |
-| deepseek | DeepSeek | `https://api.deepseek.com` | deepseek-chat |
-| qwen | Qwen | `https://dashscope.aliyuncs.com/compatible-mode/v1` | qwen-plus |
-
-- 实体：`UserLlmSettings`（1:1 User），API Key 仅存服务端
-- 调度：`IUserLlmProviderFactory.GetForUserAsync` — 有 Key 则用用户 OpenAI 兼容端点，否则回落全局 `ILLMProvider`
-- 影响：造句评分、自由表达、阅读词汇提取、评论 AI 回复、阅读 Agent
-
-**前端**：`AuthContext`、`LoginPage`、`ProfilePage`；导航「我的」
-
-设计文档：[`docs/DESIGN-auth-profile.md`](DESIGN-auth-profile.md)
-
----
-
-## 4. SM-2 间隔重复
-
-实现：`Sm2Service`（`ISm2Service`）
-
-| 评分 | RepeatCount | IntervalDays | EaseFactor |
-|------|-------------|--------------|------------|
-| Forgot | 重置为 0 | 1 | -0.2（下限 1.3） |
-| Fuzzy | 不变 | 1 | 不变 |
-| Remembered | +1 | 第 1 次→1，第 2 次→6，之后→`interval × ease` | +0.15 |
-
-- 最大间隔：3650 天
-- `NextReviewDue = reviewedAt + IntervalDays`
-- 关系表：`UserWordRelationship`（每用户每词唯一）
-
----
-
-## 5. API 参考（完整列表）
-
-### 5.0 认证与个人主页
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| POST | `/api/auth/register` | 注册 `{ email, password, displayName? }` |
-| POST | `/api/auth/login` | 登录 |
-| GET | `/api/auth/me` | 当前用户（需 Bearer） |
-| GET | `/api/profile` | 个人主页数据（需 Bearer） |
-| PUT | `/api/profile` | 更新昵称 |
-| PUT | `/api/profile/llm` | 更新 LLM 设置 |
-| GET | `/api/profile/llm/presets` | LLM 预设列表 |
-
-### 5.1 词汇
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/words` | 全量词列表 |
-| GET | `/api/words/daily?count=&userId=` | 每日新词（1–20，默认 5） |
-| GET | `/api/words/{id}` | 单词详情 |
-| POST | `/api/words` | 创建词条（lemma 唯一） |
-
-### 5.2 学习 / 拼写 / 造句
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| POST | `/api/learning/submit` | 背单词提交 |
-| GET | `/api/spelling/queue` | 拼写队列 |
-| POST | `/api/spelling/submit` | 拼写提交 |
-| GET | `/api/sentences/prompts` | 造句提示 |
-| POST | `/api/sentences/rate` | 造句评分 |
-| POST | `/api/free-expression/rate` | 自由表达评分 |
-
-### 5.3 进度与日志
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/progress` | 用户进度摘要 |
-| GET | `/api/logs/summary` | 活动汇总 |
-| GET | `/api/logs/recent` | 近期活动 |
-
-### 5.4 阅读
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/articles` | 文章列表 |
-| GET | `/api/articles/{id}` | 文章详情 + 词汇映射 |
-| POST | `/api/articles/{id}/reading/start` | 开始阅读日志 |
-| POST | `/api/articles/{id}/vocab-extract` | LLM 提取词汇 |
-| GET | `/api/articles/{id}/vocab` | 已有词汇映射 |
-| POST | `/api/articles/{id}/lookup` | 上下文查词 |
-| GET/POST | `/api/articles/{id}/comments` | 评论列表 / 发帖 |
-| POST | `/api/reading-logs/{logId}/finish` | 完成阅读 |
-| POST | `/api/reading-logs/{logId}/lookup` | 记录查词事件 |
-| POST | `/api/reading/agent` | 阅读辅助 Agent |
-
-### 5.5 测评 / 挑战 / 等级
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| POST | `/api/assessment/initial/start` | 开始初测 |
-| GET | `/api/assessment/{id}/step/{step}` | 获取步骤题目（1–5） |
-| POST | `/api/assessment/{id}/step/{step}` | 提交步骤答案 |
-| POST | `/api/assessment/{id}/complete` | 完成定级 |
-| GET | `/api/assessment/{id}` | 测评详情 |
-| POST | `/api/challenge/start` | 开始挑战 |
-| POST | `/api/challenge/submit` | 提交挑战 |
-| GET | `/api/challenge/recent` | 近期挑战记录 |
-| GET | `/api/level/dashboard` | 等级看板 |
-| GET | `/api/level/history` | 等级历史 |
-
-### 5.6 LLM / 健康检查
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| POST | `/api/llm/rate-difficulty` | 文本难度分级 |
-| GET | `/api/health` | 存活探测 |
-| GET | `/api/health/details` | DB + LLM 健康详情 |
-
----
-
-## 6. 数据模型
-
-### 6.1 实体关系
-
-```
-User ── UserLlmSettings (1:1)
-     ──< UserProgress
-     ──< UserWordRelationship >── Word ──< WordDifficultyAnnotation
-     ──< WordLearningLog / SpellingLog / SentenceLog / FreeExpressionLog
-     ──< ReadingLog >── Article ──< ArticleComment
-                              ──< ArticleVocabMapping
-     ──< Assessment ──< AssessmentRecord
-     ──< ChallengeRecord
-     ──< LevelHistory
-
-Sentence（造句提示库）
-DifficultyAnnotation（通用 LLM 分级缓存）
-```
-
-### 6.2 种子数据
-
-| 类型 | 数量 | 说明 |
-|------|------|------|
-| 用户 | 1+ | 种子 MVP Learner + 注册用户 |
-| 单词 | 6 | apple, friend, practice, memory, ambiguous, synthesize |
-| 造句提示 | 10 | 与核心词及扩展词关联 |
-| 短文 | 21 | `ArticleSeedData`，约 120–150 词/篇 |
-
-### 6.3 数据库与迁移
-
-- **Provider**：`Database:Provider` = `Sqlite` | `PostgreSql`
-- **迁移**：`20260623125737_InitialCreate`（完整 schema，含用户认证与 `UserLlmSettings`）
-- **启动**：非 `Testing` 环境自动 `MigrateAsync` + `SeedData.InitializeAsync`
-- **集成测试**：内存 SQLite + `EnsureCreated`，跳过迁移
-
----
-
-## 7. LLM 架构
-
-### 7.1 Provider 链
-
-```
-ILLMProvider =
-  LlmTelemetryProvider(          // 记录耗时 + ProfileId
-    LlmRetryProvider(            // 最多 3 次，退避 1s/2s
-      LlmChatClientProvider     // OpenAI 可用时
-      或 LlmMockProvider        // 默认开发
-    )
-  )
-```
-
-**OpenAI 启用条件**：`Llm:OpenAI:Enabled=true` 且配置或环境变量 `OPENAI_API_KEY` 存在。
-
-**用户级 LLM**：`UserLlmSettings` + `IUserLlmProviderFactory`；用户配置优先于全局 Mock/OpenAI。
-
-**`LlmChatClientProvider` 行为**
-
-| 操作 | 实现 |
-|------|------|
-| `RateDifficultyAsync` | 委托 Mock |
-| `GetDefinitionAsync` | 委托 Mock |
-| `RateSentenceAsync` | OpenAI（失败回落 Mock） |
-| `ExtractVocabAsync` | OpenAI（失败回落 Mock） |
-| `ReplyToCommentAsync` | OpenAI（失败回落 Mock） |
-
-### 7.2 Model Profiles
-
-| Profile ID | 用途 | 默认 |
-|------------|------|------|
-| `local-dev` | 通用默认 | Mock |
-| `grading-stable` | 造句评分 | Mock，Temperature=0 |
-| `reading-agent` | 阅读相关 | 解析为 local-dev |
-| `feedback-rich` | 自由表达 | 解析为 local-dev |
-
-未知 Profile 回落到 `local-dev`。
-
-### 7.3 Mock 能力
-
-- 约 150 词硬编码难度表
-- 启发式造句评分
-- 基于 token 的词汇提取
-- 模板化评论回复
-
-**主流程不依赖真实 LLM** 即可运行与 E2E 测试。
-
----
-
-## 8. 缓存与基础设施
-
-### 8.1 缓存
-
-| 配置 | 开发默认 | 生产 Docker |
-|------|----------|-------------|
-| `Cache:Provider` | Memory | Redis |
-| 实现 | `MemoryCacheService` | `RedisCacheService` |
-
-`ICacheService` 已注册；**业务服务尚未统一接入**（LLM 分级端点直接用 `IMemoryCache`）。
-
-### 8.2 后台 Worker
-
-| Worker | 周期 | 行为 |
-|--------|------|------|
-| `ReviewReminderWorker` | 6h | 更新 `PendingReviewCount` |
-| `LevelCheckWorker` | 24h | 评估并设置 `IsUpgradeCandidate` |
-
-Worker 异常不终止 API（`BackgroundServiceExceptionBehavior.Ignore`）。集成测试会移除所有 `IHostedService`。
-
-### 8.3 Docker Compose（生产栈）
-
-```yaml
-services: postgres:16, redis:7, api (port 8080)
-```
-
-API 环境变量：`Database__Provider=PostgreSql`，`Cache__Provider=Redis`，连接串指向 compose 内服务。
-
-### 8.4 健康检查
-
-| 检查项 | 说明 |
-|--------|------|
-| `database` | `CanConnectAsync` |
-| `llm` | 仅验证 Provider 已注册（无真实探测） |
-
----
-
-## 9. 前端架构
-
-### 9.1 技术栈
-
-- React 19、Axios、Lucide 图标
-- 无 React Router — `App.tsx` 内 `view` 状态切换
-- `AuthContext` + JWT（`localStorage`）
-- API：`VITE_API_BASE_URL` 可选；开发时代理 `/api` → `http://localhost:8080`
-
-### 9.2 页面与 Hooks 映射
-
-| 页面 | Hooks |
-|------|-------|
-| WordCard | useWordSession, useLearningLog |
-| SpellingMode | useSpellingSession |
-| SentenceCard | useSentenceSession, useScoreDisplay |
-| FreeExpression | — |
-| ArticleReader | useArticleReader, useWordLookup, useVocabExtract |
-| InitialAssessment | useAssessmentFlow |
-| ChallengeMode | useChallengeFlow |
-| LevelDashboard | — |
-| ReviewQueue | — |
-| ProfilePage | `AuthContext` |
-| LoginPage | `AuthContext` |
-
-### 9.3 共享组件（要点）
-
-`WordDisplay`、`RatingButtons`、`FeedbackArea`、`ErrorHighlight`、`ArticleText`、`WordPopover`、`VocabExtractPanel`、`CommentThread`、`OnboardingBanner`、`UpgradeCandidateBanner`、`ErrorBoundary`
-
-### 9.4 未接入 API
-
-- `/api/llm/rate-difficulty`
-- `/api/reading/agent`
-- `/api/challenge/recent`
-- `/api/level/history`（dashboard 已含近期历史）
-
----
-
-## 10. 测试与质量
-
-### 10.1 单元测试（12）
-
-| 类 | 覆盖 |
-|----|------|
-| Sm2ServiceTests | Forgot 重置、Remembered 增间隔 |
-| AssessmentScoringServiceTests | 词汇映射、短板定级 |
-| LevelUpgradeEngineTests | 锁定、候选条件、等级上限 C1 |
-| Phase6InfrastructureTests | RedisCache、LlmTelemetry |
-
-### 10.2 集成测试（3）
-
-| 类 | 覆盖 |
-|----|------|
-| AssessmentIntegrationTests | 初测启动、progress 字段 |
-| ArticleIntegrationTests | 文章列表非空 |
-
-### 10.3 E2E（Playwright，2）
-
-| 用例 | 验证 |
-|------|------|
-| assessment.spec | 进入测评并开始步骤 1 |
-| reading.spec | 文库 21 篇、打开首篇 |
-
-**运行**：`npm run test:e2e`（自动启动 API `:5108` + Vite `:5173`）
-
-**注意**：`vite.config.ts` 代理指向 `:8080`，与 `launchSettings` 的 `:5108` 不一致；本地单独 `npm run dev` 时需 API 在 8080 或调整代理。
-
-### 10.4 测试缺口
-
-- 大部分 API 端点无集成覆盖
-- OpenAI 路径、Worker 逻辑、PostgreSQL/Redis 路径
-- 前端：拼写、造句、挑战完整流程、初测 5 步提交
-
----
-
-## 11. 本地开发
-
-### 11.1 后端
+**认证**
+- `POST /api/auth/register`（匿名）— 邮箱注册，直接发 JWT
+- `POST /api/auth/login`（匿名）
+- `GET /api/auth/me`
+
+**单词与学习**
+- `GET /api/words`、`GET /api/words/{id}`、`POST /api/words`（LLM 自动定级）
+- `GET /api/words/daily?count=`
+- `POST /api/learning/submit`
+- `GET /api/progress`
+- `POST /api/llm/rate-difficulty`
+
+**拼写 / 造句 / 自由表达**
+- `GET /api/spelling/queue`、`POST /api/spelling/submit`
+- `GET /api/sentences/prompts`、`POST /api/sentences/rate`
+- `POST /api/free-expression/rate`
+
+**阅读**
+- `GET /api/articles?level&cefr`、`GET /api/articles/{id}`
+- `POST /api/articles/{id}/reading/start`、`POST /api/reading-logs/{logId}/finish`、`POST /api/reading-logs/{logId}/lookup`
+- `POST /api/articles/{id}/vocab-extract`、`GET /api/articles/{id}/vocab`
+- `POST /api/articles/{id}/lookup`（前端未用，前端走 `/api/reading/lookup`）
+- `GET/POST /api/articles/{articleId}/comments`
+- `POST /api/reading/lookup`
+- `POST /api/reading/agent`（前端未用）
+
+**测评 / 挑战 / 等级**
+- `POST /api/assessment/initial/start`、`POST /api/assessment/initial/skip`
+- `GET/POST /api/assessment/{id}/step/{step}`（step 1–4）
+- `POST /api/assessment/{id}/complete`、`GET /api/assessment/{id}`
+- `POST /api/challenge/start`、`POST /api/challenge/submit`、`GET /api/challenge/recent`
+- `GET /api/level/dashboard`、`GET /api/level/history`
+
+**个人中心 / Score / 反馈**
+- `GET /api/profile`、`PUT /api/profile`
+- `GET /api/profile/llm/presets`、`PUT /api/profile/llm`
+- `GET /api/profile/scores`、`GET /api/profile/scores/history?days=`
+- `GET /api/evaluation/latest`、`GET /api/evaluation/{id}`
+- `POST /api/feedback`
+- `GET /api/tools`、`POST /api/tools/{name}`
+
+**日志 / 健康**
+- `GET /api/logs/summary`、`GET /api/logs/recent`
+- `GET /api/health`（匿名）、`GET /api/health/details`（匿名；DB CanConnect + LLM 注册检查）
+
+## 7. 数据模型
+
+PostgreSQL，连接串 `ConnectionStrings:PostgreSql`（默认 `Host=localhost;Database=nextword`）。`ApplicationDbContext` 共 **27 个 DbSet**：
+
+Users、UserLlmSettings、Words、WordDifficultyAnnotations、DifficultyAnnotations、UserProgress、UserWordRelationships、WordLearningLogs、Sentences、SentenceLogs、FreeExpressionLogs、SpellingLogs、Articles、ReadingLogs、ArticleComments、ArticleVocabMappings、Assessments、AssessmentRecords、ChallengeRecords、ChallengeSessions、LevelHistories、LearningEvents、ProfileScoreSnapshots、EvaluationReports、BackgroundJobs、UserFeedbacks、UserWordExcludes。
+
+- 列表属性（Meanings、ErrorTags 等）存 JSON 列；枚举存字符串。
+- 5 个 EF 迁移（`Data/Migrations/`）；`AddScoreKernelM1` 含 SQLite 专用 ALTER，由 `PostgreSqlSchemaPatcher` 用嵌入式 SQL（`Patch_PostgreSql_ScoreKernel.sql`）在 PG 上幂等补齐。
+- 启动时 Development 或 `Database:AutoMigrate=true` 自动迁移 + 种子（演示用户、6 词、10 句、21 篇文章）。
+- 生产部署走 SQL 脚本：`Backend/Scripts/generate-migration-sql.ps1` → `Scripts/Migrations/Upgrade_Idempotent.sql`（runbook 在同目录 README）。
+
+## 8. 前端页面与路由
+
+路由见 `Frontend/src/App.tsx` 与 `src/navigation/routes.ts`；登录页不是路由（未认证直接渲染 `LoginPage`）。
+
+| 路径 | 页面 | 功能 |
+|---|---|---|
+| `/dashboard` | Dashboard | 5 个模块卡片（新词/拼写/造句/阅读/复习）+ 今日任务量 Badge |
+| `/learn` | WordCard | 看英文写中文释义，SM-2 调度，Remembered/Forgot 自评 |
+| `/spelling` | SpellingMode | 听写拼写 + 逐字母错误高亮 |
+| `/sentence` | SentenceStudio | 造句评分 / 自由表达 双 Tab |
+| `/reading` | ArticleLibrary | 按难度筛选、难度/CEFR 分组 |
+| `/reading/:articleId` | ArticleReader | 点词查义弹层、词汇提取面板、评论线程、阅读计时 |
+| `/assessment` | InitialAssessment | 4 步测评 + 结果页 |
+| `/challenge` | ChallengeMode | 三阶段挑战 + 近期挑战列表 |
+| `/review` | ReviewQueue | 翻转卡片复习 + 活动统计 + 最近记录 |
+| `/word-bank` | Home | 全量词条表格 + 搜索 + 详情 |
+| `/profile` | ProfilePage | 用户信息、LevelPanel、ProgressDetail、CEFR 开关、管理入口 |
+| `/manage` | ManagePage | LLM 设置抽屉、测评/挑战/词库/学习数据入口 |
+| `/level`、`/progress` | — | 重定向到 `/profile` 锚点 |
+
+- 底部主导航实际只有「首页 / 我的」两个 Tab；其余功能经 Dashboard 卡片进入。
+- 定义了但前端未调用的 API：`/api/reading/agent`、`/api/llm/rate-difficulty`、`/api/profile/scores/history`、`/api/level/history`、`/api/articles/{id}/lookup`。
+
+## 9. 启动与配置
+
+- 本地开发：`docker compose up -d postgres` → `dotnet run --launch-profile http`（Backend/NextWord.Api，:5108）→ `npm run dev`（Frontend，:5173，/api 代理 :5108，可用 `VITE_API_PROXY_TARGET` 覆盖，例如 API 跑 Docker 时指 8080）。
+- 全容器：`docker compose up -d`（postgres + redis + api:8080，Production 环境，AutoMigrate=true）。
+- 关键配置（`appsettings.json` / `.Development` / `.Production` / `.Testing`）：
+  - `ConnectionStrings:PostgreSql` / `ConnectionStrings:Redis`、`Database:AutoMigrate`、`Cache:Provider`（Memory|Redis）
+  - `Auth:JwtSecret`（**生产必须覆盖**，默认值仅开发用）/ `Issuer` / `Audience` / `ExpirationDays:7`
+  - `Llm:OpenAI:Enabled`（默认 false → Mock；Production 配 true）/ `Model`（gpt-4o-mini）/ `ApiKey` 或 `ApiKeyEnvironmentVariable`（默认 `OPENAI_API_KEY`）
+  - `Llm:SentenceRating:ExplanationLanguage`（zh-CN）、`ScoreMapping`（CEFR 分带）、`ChallengeThresholds`、`Search`（DuckDuckGo）
+- 前端 API base：axios `baseURL = VITE_API_BASE_URL ?? ''`（默认相对路径 + dev 代理）。
+- `Backend/NextWord.Api/nextword-dev.db*` 是 SQLite 时代遗留文件，当前代码不使用。
+
+## 10. 测试
+
+**单元测试**（`NextWord.UnitTests`）：SM-2、LevelUpgradeEngine（锁级/升级候选/C1 封顶）、EffectiveDifficultyCalculator、AssessmentScoringService（最短板）、ScoreMappingService、ScoreProfileService（absolute 写入与幂等，连真实 PG `nextword_unit_test`）、LLM prompt/解析与 Mock Provider、ArticleVocabMapping 缓存、RedisCacheService 与 LlmTelemetryProvider。
+
+**集成测试**（`NextWord.IntegrationTests`）：Testing 环境（移除后台 Worker），真实 PG `nextword_test`，真实注册/登录拿 JWT。覆盖：测评（401、开始、进度）、文章（401、种子列表）。覆盖较薄。
+
+**E2E**（`Frontend/e2e`，Playwright，5 用例）：新用户自动跳测评、管理页进测评、短文库/阅读器、挑战 API 计分、挑战页 UI。`playwright.config.ts` 自动拉起后端（:5108 健康检查）与前端（:5173）。
 
 ```bash
-cd Backend
-dotnet run --project NextWord.Api
-# 默认 http://localhost:5108
+docker compose up -d postgres   # 测试依赖
+cd Backend && dotnet test       # 单元 + 集成
+cd Frontend && npm run test:e2e # E2E
 ```
 
-- SQLite 文件：`nextword-dev.db`
-- 开发 OpenAPI：`/openapi/v1.json`（Development 环境）
+## 11. 已知限制
 
-### 11.2 前端
-
-```bash
-cd Frontend
-npm install
-npm run dev
-# http://localhost:5173
-```
-
-确保 API 端口与 `vite.config.ts` 代理一致。
-
-### 11.3 全栈 Docker
-
-```bash
-docker compose up --build
-# API http://localhost:8080
-```
-
-### 11.4 测试命令
-
-```bash
-cd Backend && dotnet test
-cd Frontend && npm run build
-cd Frontend && npm run test:e2e
-```
-
----
-
-## 12. 配置参考
-
-### 12.1 appsettings.json（开发）
-
-```json
-{
-  "Database": { "Provider": "Sqlite" },
-  "Cache": { "Provider": "Memory" },
-  "Llm": { "OpenAI": { "Enabled": false, "Model": "gpt-4o-mini" } },
-  "Auth": {
-    "JwtSecret": "...",
-    "Issuer": "NextWord",
-    "Audience": "NextWord",
-    "ExpirationDays": 7
-  }
-}
-```
-
-### 12.2 生产（Docker / appsettings.Production.json）
-
-- PostgreSQL + Redis
-- `Llm:OpenAI:Enabled: true`（需 API Key）
-
----
-
-## 13. 已知限制与迭代 backlog
-
-摘自 [`next-steps.md`](../next-steps.md) 与代码现状：
-
-### P0 — 生产验证
-
-- [ ] docker-compose 全栈迁移与冒烟
-- [ ] Redis 缓存命中率观测
-- [ ] CI 接入 `npm run test:e2e`
-
-### P1 — 质量与运维
-
-- [ ] SQLitePCLRaw 安全告警
-- [ ] 剩余 SQLite `DateTimeOffset` 查询改内存排序
-- [ ] ReviewReminderWorker 推送/邮件（可选）
-- [ ] PostgreSQL 专用集成测试
-
-### P2 — 功能
-
-- [ ] 初测 E2E 覆盖完整 5 步
-- [ ] LLM 遥测接入 OpenTelemetry
-- [ ] `ICacheService` 接入词库/文章列表；Redis 失效策略
-- [ ] 挑战模式改为真实交互答题
-- [ ] 前端接入阅读 Agent、LLM 分级 API
-- [x] 用户认证与个人主页（JWT + LLM 配置）
-- [ ] URL 路由与深链接
-- [ ] `userLevel` 从 progress 动态读取
-
-### 架构演进（见 PLAN-Overview）
-
-- Agent Framework 仅在多 Agent 长流程场景再评估
-- 确定性规则（SM-2、定级、升降级）保持不由 Agent 决策
-
----
-
-## 14. 文档维护说明
-
-| 变更类型 | 建议更新 |
-|----------|----------|
-| 新 API | 第 5 节 + 对应模块第 3 节 |
-| 新业务规则 | 第 3–4 节 |
-| 新实体/迁移 | 第 6 节 |
-| 前端页面/流程 | 第 9 节 |
-| Phase 完成 | 第 1.2 节 + [`development-log.md`](../development-log.md) |
-| 迭代优先级 | 第 13 节 ↔ [`next-steps.md`](../next-steps.md) |
-
----
-
-## 附录 A：枚举速查
-
-| 枚举 | 值 |
-|------|-----|
-| `CefrLevel` | A1, A2, B1, B2, C1, C2 |
-| `DifficultyLevel` | Basic, Intermediate, Advanced |
-| `AssessmentResult` | Remembered, Fuzzy, Forgot |
-| `AssessmentStepType` | Vocabulary=1, Spelling=2, Sentence=3, Reading=4, FinalLevel=5 |
-| `ChallengeType` | Daily, LevelConfirmation |
-| `LevelChangeReason` | Initial, Upgrade, Rollback |
-| `RecommendedAction` | Learn, Review, Skip, … |
-| `ItemType` | Word, Sentence, Article |
-
-## 附录 B：项目文件索引
-
-| 路径 | 职责 |
-|------|------|
-| `Backend/NextWord.Api/Program.cs` | 宿主、CORS、迁移、Health |
-| `Backend/NextWord.Api.Endpoints/AuthEndpoints.cs` | 认证路由 |
-| `Backend/NextWord.Api.Endpoints/ProfileEndpoints.cs` | 个人主页路由 |
-| `docs/DESIGN-auth-profile.md` | 认证与个人主页设计 |
-| `Backend/NextWord.Infrastructure/DependencyInjection.cs` | DI 注册 |
-| `Backend/NextWord.Infrastructure/Data/SeedData.cs` | 种子数据 |
-| `Backend/NextWord.Domain/Services/*.cs` | 领域算法 |
-| `Frontend/src/App.tsx` | 导航与页面壳 |
-| `Frontend/src/api/endpoints.ts` | API 路径常量 |
-| `docker-compose.yml` | 生产栈 |
-| `plans/PLAN-Overview.md` | 原始分阶段计划 |
+- 评估报告为模板 + 工具预取数据，LLM 结构化叙事未实现。
+- Mock LLM 下新词自动定级无效（未知词回退 Basic/A1）。
+- 集成测试与 E2E 覆盖较薄；`npm run test:e2e` 全绿尚未纳入常规验证。
+- `/api/reading/agent` 无用户级限流。
+- Release Blockers B1–B8 未正式 sign-off（详见 next-steps.md）。
