@@ -2,6 +2,58 @@
 
 按时间倒序记录需求、决策、实现与验收。
 
+## 2026-07-24 — I2 顾言验收（T-004 / T-008 / T-009）
+
+**验收结论：通过，I2 测评重构闭环。**
+
+- 周密验证六项验收标准全过：产出题 60% 走真实 LLM 四维评分（SentenceLogs 留痕精确吻合）；自适应 5 类用户实测升降带与收敛正常、≤15 题；词池无超带无 low、阅读题答案位置不恒定；识别分双向不拖级不抬级；单测 105+6、npm build 全过；T-008 修复抽验属实；
+- 唯一不足（升带阈值偏严）经实测数据支撑，顾言拍板 65→60 并已修复（T-009），修复后 106+6 全过；
+- 观察项（不另开任务）：每块题量固定 5 题未按带微调；测评 e2e 未纳入本轮验收；
+- 遗留风险：qwen-plus 对部分低带简单好答案给 0 维分（偏严），后续 WeaknessProfile（T-005）接入真实数据时再观察。
+
+---
+
+## 2026-07-24 — I2 T-009：测评升带阈值校准（65 → 60）
+
+### 背景与决策
+- 周密真实链路实测（qwen-plus）：低带中等偏上质量答案块均分 61.3–64.7，摸不到升带阈值 65，升带探测对该分段失效；降带阈值 40 工作正常。顾言拍板：**升带阈值 65 → 60，降带 40 不变**。
+
+### 实现
+- `AssessmentScoringService.DecideBandMove` 常量 65→60（含注释说明来源）；单测边界断言同步（60 升带、59.9 保持）；`docs/CURRENT-STATE.md` §5.5 同步。
+
+### 验收
+- [x] `dotnet test` 全过（单元 106 + 集成 6）
+
+---
+
+## 2026-07-24 — I2 T-004：测评重构（产出型为主 + LLM 真实评分）+ T-008 词表修复
+
+### 需求
+- 按 `docs/DESIGN-assessment-rework.md`（已定稿）：产出型题 ≥60%（提示造句 + 情境表达），识别型（词义选择、阅读理解）降级为参考；产出题全部走 LLM 真实评分；主定级改表达力综合分、废弃最短板 min；分块自适应 2–3 块收敛、总量 ≤15；词池限水平带内 + utility=high/medium；阅读题库内选文、答案位置随机。
+- 顺带 T-008：词表 168 词 `example`→`examples`、70 词补音标、`shop around`/`have` 标注修正。
+
+### 决策
+- 固定 4 步流程改为块循环：`GET next-block`（幂等重发未提交块）→ `POST blocks/{n}/submit`（同步 LLM 评分，收敛即定级）；块状态全部落在 `AssessmentRecord`（新增 `AdaptiveBlock` 枚举值，枚举存字符串 → 无表结构变化、无需迁移补丁）。
+- 每块固定 5 题（2 造句 + 1 情境 + 1 词汇 + 1 阅读），产出恰 60%；情境表达复用 `free expression` 目标词走同一四维评分链路。
+- 表达力综合分 = 语法/自然度 0.3 + 词汇/相关度 0.2 加权（0–100）；阈值 [19,34,49,69] 与 ScoreMapping 分带对齐、封顶 C1；块决策 ≥65 升带 / <40 降带；收敛 = 满 2 块且稳定，或满 3 块。
+- 档案写入：各维度分数以表达力综合分为初始先验（识别参考分不写权威分，避免 min 拖低），等级外壳由测评主定级显式设定；识别参考分与四维均值/错误标签记入 FinalLevel 记录，供 T-005 WeaknessProfile。
+- 顶端带（C1 仅 2 个 high/medium 词）兜底：向下一带补充 + 允许重复用词，绝不超带、不含 low。
+
+### 实现
+- Domain：`AssessmentScoringService` 重写（表达分映射/块决策/收敛规则，删除 min 相关与拼写映射）；`AssessmentModels` 新块/结果模型；`BandMove`、`AssessmentStepType.AdaptiveBlock`。
+- Infrastructure：`AssessmentService` 重写（出题/评分/自适应/定级）；旧步骤端点替换为 `next-block` + `blocks/{n}/submit`。
+- 前端：`useAssessmentFlow` + `InitialAssessment` 改为块循环（最小适配）；e2e spec 同步。
+- T-008：`Backend/Scripts/fix-wordlist-t008.py` 幂等修复词表（音标由开发按标准 IPA 给出）。
+- 测试：`AssessmentScoringServiceTests` 重写；新增 `AdaptiveAssessmentServiceTests`（真实 PG + 可控 LLM 桩：强用户升带 C1、弱用户降带 A1、稳定用户 2 块收敛、识别全错不拖定级、阅读答案位置不恒定、词池纪律）。
+
+### 验收
+- [x] `dotnet build` 通过；`dotnet test` 105 单测 + 6 集成全过（真实 PG）
+- [x] `npm run build` 通过
+- [x] WordlistSeedTests 规模口径仍达标（T-008 修复后）
+- [x] DashScope（qwen-plus）真实链路实测（独立库 nextword_verify_t004，验完已删）：块循环/升/降带/收敛/定级全部真实走通，SentenceLogs 留痕 36 条，好答案四维均分 12.2/20 vs 坏答案 0.8/20，区分度成立。观察：qwen-plus 在低带评分偏严，mention 式好答案也只到 3–4 维分，升带阈值 65 对真实用户可能偏高——留给周密实测校准（不阻断）
+
+---
+
 ## 2026-07-23 — I1 T-003：内容建设验证 + 顾言验收
 
 ### 验证（周密）
