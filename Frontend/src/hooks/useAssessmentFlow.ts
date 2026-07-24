@@ -1,153 +1,68 @@
 import { useCallback, useState } from 'react'
 import { api } from '../api/client'
 import { endpoints } from '../api/endpoints'
-import type { FinalLevelResult, ReadingQuizPayload, SentenceQuizQuestion, SpellingQuizQuestion, VocabQuizQuestion } from '../types/assessment'
+import type {
+  AssessmentAnswerItem,
+  AssessmentBlock,
+  AssessmentBlockResponse,
+  AssessmentBlockResult,
+  AssessmentFinalResult,
+} from '../types/assessment'
 
-const STEPS = ['词汇', '拼写', '造句', '阅读', '定级'] as const
-
+/**
+ * T-004 自适应分块测评：开始 → 取下一块 → 提交 → 收敛或继续，2–3 块出定级。
+ */
 export function useAssessmentFlow() {
   const [assessmentId, setAssessmentId] = useState<string | null>(null)
-  const [step, setStep] = useState(1)
-  const [maxReachedStep, setMaxReachedStep] = useState(1)
-  const [vocabQuestions, setVocabQuestions] = useState<VocabQuizQuestion[]>([])
-  const [spellingQuestions, setSpellingQuestions] = useState<SpellingQuizQuestion[]>([])
-  const [sentenceQuestions, setSentenceQuestions] = useState<SentenceQuizQuestion[]>([])
-  const [readingPayload, setReadingPayload] = useState<ReadingQuizPayload | null>(null)
-  const [finalResult, setFinalResult] = useState<FinalLevelResult | null>(null)
+  const [block, setBlock] = useState<AssessmentBlock | null>(null)
+  const [finalResult, setFinalResult] = useState<AssessmentFinalResult | null>(null)
   const [loading, setLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [stepError, setStepError] = useState<string | null>(null)
-  const [loadingStep, setLoadingStep] = useState(false)
 
-  const goToStep = useCallback(async (target: number) => {
-    if (target < 1 || target > 5) {
-      return
+  const loadNextBlock = useCallback(async (id: string) => {
+    const response = await api.get<AssessmentBlockResponse>(endpoints.assessmentNextBlock(id))
+    if (response.data.converged) {
+      setBlock(null)
+      setFinalResult(response.data.final ?? null)
+    } else {
+      setBlock(response.data.block ?? null)
     }
-    if (target === 5 && maxReachedStep < 5 && !finalResult) {
-      return
-    }
-    if (!assessmentId) {
-      return
-    }
-
-    setStepError(null)
-    setLoadingStep(true)
-    try {
-      if (target === 2 && spellingQuestions.length === 0) {
-        const questions = await api.get<SpellingQuizQuestion[]>(endpoints.assessmentStep(assessmentId, 2))
-        setSpellingQuestions(questions.data)
-      }
-      if (target === 3 && sentenceQuestions.length === 0) {
-        const questions = await api.get<SentenceQuizQuestion[]>(endpoints.assessmentStep(assessmentId, 3))
-        setSentenceQuestions(questions.data)
-      }
-      if (target === 4 && !readingPayload) {
-        const payload = await api.get<ReadingQuizPayload>(endpoints.assessmentStep(assessmentId, 4))
-        setReadingPayload(payload.data)
-      }
-      setStep(target)
-    } catch {
-      setStepError('加载题目失败，请重试。')
-    } finally {
-      setLoadingStep(false)
-    }
-  }, [assessmentId, maxReachedStep, finalResult, spellingQuestions.length, sentenceQuestions.length, readingPayload])
+  }, [])
 
   const start = useCallback(async () => {
     setLoading(true)
     setError(null)
-    setStepError(null)
     try {
       const response = await api.post<{ assessmentId: string }>(endpoints.assessmentStart, {})
       setAssessmentId(response.data.assessmentId)
-      setStep(1)
-      setMaxReachedStep(1)
       setFinalResult(null)
-      setSpellingQuestions([])
-      setSentenceQuestions([])
-      setReadingPayload(null)
-      const questions = await api.get<VocabQuizQuestion[]>(endpoints.assessmentStep(response.data.assessmentId, 1))
-      setVocabQuestions(questions.data)
+      await loadNextBlock(response.data.assessmentId)
     } catch {
       setError('无法开始测评。')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [loadNextBlock])
 
-  async function submitVocab(answers: number[]) {
-    if (!assessmentId) return false
+  async function submitBlock(answers: AssessmentAnswerItem[]): Promise<boolean> {
+    if (!assessmentId || !block) return false
     setSubmitting(true)
-    setStepError(null)
+    setError(null)
     try {
-      await api.post(endpoints.assessmentSubmit(assessmentId, 1), { answersJson: JSON.stringify(answers) })
-      const questions = await api.get<SpellingQuizQuestion[]>(endpoints.assessmentStep(assessmentId, 2))
-      setSpellingQuestions(questions.data)
-      setMaxReachedStep((value) => Math.max(value, 2))
-      setStep(2)
+      const result = await api.post<AssessmentBlockResult>(
+        endpoints.assessmentSubmitBlock(assessmentId, block.blockIndex),
+        { answers },
+      )
+      if (result.data.converged) {
+        setBlock(null)
+        setFinalResult(result.data.final ?? null)
+      } else {
+        await loadNextBlock(assessmentId)
+      }
       return true
     } catch {
-      setStepError('词汇提交失败，请重试。')
-      return false
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  async function submitSpelling(answers: string[]) {
-    if (!assessmentId) return false
-    setSubmitting(true)
-    setStepError(null)
-    try {
-      await api.post(endpoints.assessmentSubmit(assessmentId, 2), { answersJson: JSON.stringify(answers) })
-      const questions = await api.get<SentenceQuizQuestion[]>(endpoints.assessmentStep(assessmentId, 3))
-      setSentenceQuestions(questions.data)
-      setMaxReachedStep((value) => Math.max(value, 3))
-      setStep(3)
-      return true
-    } catch {
-      setStepError('拼写提交失败，请重试。')
-      return false
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  async function submitSentence(answers: string[]) {
-    if (!assessmentId) return false
-    setSubmitting(true)
-    setStepError(null)
-    try {
-      await api.post(endpoints.assessmentSubmit(assessmentId, 3), { answersJson: JSON.stringify(answers) })
-      const payload = await api.get<ReadingQuizPayload>(endpoints.assessmentStep(assessmentId, 4))
-      setReadingPayload(payload.data)
-      setMaxReachedStep((value) => Math.max(value, 4))
-      setStep(4)
-      return true
-    } catch {
-      setStepError('造句提交失败，请重试。')
-      return false
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  async function submitReading(selectedIndex: number, lookupCount: number) {
-    if (!assessmentId) return false
-    setSubmitting(true)
-    setStepError(null)
-    try {
-      await api.post(endpoints.assessmentSubmit(assessmentId, 4), {
-        answersJson: JSON.stringify({ selectedIndex, lookupCount }),
-      })
-      const result = await api.post<FinalLevelResult>(endpoints.assessmentComplete(assessmentId))
-      setFinalResult(result.data)
-      setMaxReachedStep(5)
-      setStep(5)
-      return true
-    } catch {
-      setStepError('阅读提交或定级失败，请重试。')
+      setError('提交失败，请重试。')
       return false
     } finally {
       setSubmitting(false)
@@ -155,25 +70,13 @@ export function useAssessmentFlow() {
   }
 
   return {
-    steps: STEPS,
-    step,
-    maxReachedStep,
     assessmentId,
-    vocabQuestions,
-    spellingQuestions,
-    sentenceQuestions,
-    readingPayload,
+    block,
     finalResult,
     loading,
     submitting,
-    loadingStep,
     error,
-    stepError,
     start,
-    goToStep,
-    submitVocab,
-    submitSpelling,
-    submitSentence,
-    submitReading,
+    submitBlock,
   }
 }

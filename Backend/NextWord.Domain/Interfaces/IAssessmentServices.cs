@@ -6,16 +6,20 @@ namespace NextWord.Domain.Interfaces;
 
 public interface IAssessmentScoringService
 {
+    // ── T-004：表达力综合分（产出题四维加权，规则引擎权威）──
+    double ScoreProductionDimensions(int grammar, int natural, int vocabulary, int relevance);
+    CefrLevel MapExpressionScore(double compositeScore);
+
+    // ── T-004：自适应分块决策 ──
+    BandMove DecideBandMove(double blockExpressionScore);
+    bool ShouldConverge(int completedBlocks, BandMove lastMove);
+
+    // ── 识别题参考映射（不计入主定级）；MapXxxToScore 同时被挑战流沿用 ──
     CefrLevel MapVocabAccuracy(double accuracyPercent);
-    CefrLevel MapSpellingAccuracy(double accuracyPercent);
-    CefrLevel MapSentenceAverage(double averageScore);
     CefrLevel MapReadingAccuracy(double accuracyPercent, int lookupCount, int wordCount);
-    FinalLevelResult CalculateFinalLevel(StepScoreResult vocab, StepScoreResult spelling, StepScoreResult sentence, StepScoreResult reading);
     int MapVocabToScore(double accuracyPercent);
-    int MapSpellingToScore(double accuracyPercent);
     int MapSentenceToScore(double averageScore);
     int MapReadingToScore(double accuracyPercent, int lookupCount, int wordCount);
-    FinalScoreResult CalculateFinalScores(StepScoreResult vocab, StepScoreResult spelling, StepScoreResult sentence, StepScoreResult reading);
 }
 
 public interface IChallengePackGenerator
@@ -34,9 +38,8 @@ public interface ILevelEngine
 public interface IAssessmentService
 {
     Task<Assessment> StartInitialAsync(Guid userId, CancellationToken cancellationToken);
-    Task<object> GetStepQuestionsAsync(Guid assessmentId, AssessmentStepType step, CancellationToken cancellationToken);
-    Task<StepScoreResult> SubmitStepAsync(Guid assessmentId, AssessmentStepType step, string answersJson, CancellationToken cancellationToken);
-    Task<FinalLevelResult?> CompleteInitialAsync(Guid assessmentId, CancellationToken cancellationToken);
+    Task<AssessmentBlockResponse> GetNextBlockAsync(Guid assessmentId, CancellationToken cancellationToken);
+    Task<AssessmentBlockResult> SubmitBlockAsync(Guid assessmentId, int blockIndex, IReadOnlyList<AssessmentAnswerItem> answers, CancellationToken cancellationToken);
     Task<Assessment?> GetAsync(Guid assessmentId, CancellationToken cancellationToken);
     Task SkipInitialAsync(Guid userId, CancellationToken cancellationToken);
 }

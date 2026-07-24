@@ -1,0 +1,300 @@
+using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using NextWord.Domain.Entities;
+using NextWord.Domain.Enums;
+using NextWord.Domain.Interfaces;
+using NextWord.Domain.Models;
+using NextWord.Domain.Services;
+using NextWord.Infrastructure.Data;
+using NextWord.Infrastructure.Repositories;
+using NextWord.Infrastructure.Services;
+
+namespace NextWord.UnitTests;
+
+/// <summary>
+/// T-004 自适应分块测评：真实 PG + 可控 LLM 评分桩，验证
+/// 产出题占比、词池纪律、自适应升降带、2–3 块收敛、表达力综合分主定级。
+/// </summary>
+public class AdaptiveAssessmentServiceTests
+{
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+
+    [Fact]
+    public async Task Strong_user_rises_bands_and_levels_by_expression_only()
+    {
+        await using var db = await PostgresTestDatabase.CreateContextAsync();
+        var service = CreateService(db, new StubLlmProvider(5, 5, 5, 5));
+        var user = await SeedPoolAsync(db);
+        var assessment = await service.StartInitialAsync(user.Id, CancellationToken.None);
+
+        // 块 1：从未测评用户从 A2 起步；产出题 3/5 = 60%
+        var response = await service.GetNextBlockAsync(assessment.Id, CancellationToken.None);
+        Assert.False(response.Converged);
+        var block = response.Block!;
+        Assert.Equal(1, block.BlockIndex);
+        Assert.Equal(CefrLevel.A2, block.Band);
+        Assert.Equal(3, block.Production.Count);
+        Assert.Equal(2, block.Production.Count(item => item.Kind == "sentence"));
+        Assert.Single(block.Production, item => item.Kind == "scenario");
+        Assert.Single(block.Vocabulary);
+        Assert.NotNull(block.Reading);
+
+        // 词池纪律：出题词全部在本带内，且不含 utility=low 的 a2lowword
+        Assert.All(block.Production.Where(item => item.Kind == "sentence"),
+            item => Assert.StartsWith("a2word", item.TargetWord));
+        Assert.StartsWith("a2word", block.Vocabulary[0].Word);
+
+        // GET 幂等：重取同一块，题目不变
+        var again = await service.GetNextBlockAsync(assessment.Id, CancellationToken.None);
+        Assert.Equal(block.Production.Select(item => item.Id), again.Block!.Production.Select(item => item.Id));
+        Assert.Equal(block.Vocabulary[0].Word, again.Block.Vocabulary[0].Word);
+
+        // 提交：产出全对（LLM 满分），识别题全部故意答错 → 升带但不收敛（1 块）
+        var result1 = await service.SubmitBlockAsync(assessment.Id, 1,
+            await AnswersAsync(service, assessment.Id, 1, recognitionCorrect: false), CancellationToken.None);
+        Assert.False(result1.Converged);
+        Assert.Equal(100, result1.BlockExpressionScore);
+        Assert.Equal(CefrLevel.B1, result1.NextBand);
+
+        // 块 2：升带到 B1，仍满分 → 升带，2 块未稳定不收敛
+        var block2 = (await service.GetNextBlockAsync(assessment.Id, CancellationToken.None)).Block!;
+        Assert.Equal(2, block2.BlockIndex);
+        Assert.Equal(CefrLevel.B1, block2.Band);
+        Assert.All(block2.Production.Where(item => item.Kind == "sentence"),
+            item => Assert.StartsWith("b1word", item.TargetWord!));
+        var result2 = await service.SubmitBlockAsync(assessment.Id, 2,
+            await AnswersAsync(service, assessment.Id, 2, recognitionCorrect: false), CancellationToken.None);
+        Assert.False(result2.Converged);
+        Assert.Equal(CefrLevel.B2, result2.NextBand);
+
+        // 块 3：B2，满分 → 满 3 块收敛，总量 15 题
+        var block3 = (await service.GetNextBlockAsync(assessment.Id, CancellationToken.None)).Block!;
+        Assert.Equal(CefrLevel.B2, block3.Band);
+        var result3 = await service.SubmitBlockAsync(assessment.Id, 3,
+            await AnswersAsync(service, assessment.Id, 3, recognitionCorrect: false), CancellationToken.None);
+        Assert.True(result3.Converged);
+        Assert.Null(result3.NextBand);
+
+        // 主定级 = 表达力综合分（100 → C1）；识别全错只作参考，不拖低整体
+        var final = result3.Final!;
+        Assert.Equal(CefrLevel.C1, final.OverallLevel);
+        Assert.Equal(100, final.ExpressionScore);
+        Assert.Equal(0, final.VocabularyReferenceScore);
+        Assert.Equal(0, final.ReadingReferenceScore);
+        Assert.Equal(5.0, final.Dimensions.Grammar);
+        Assert.NotEmpty(final.Dimensions.Comments);
+
+        var done = await service.GetAsync(assessment.Id, CancellationToken.None);
+        Assert.Equal(AssessmentStatus.Completed, done!.Status);
+        Assert.Equal(CefrLevel.C1, done.FinalLevel);
+
+        // 产出题全部走 LLM 评分链路留痕：3 块 × 3 题 = 9 条 SentenceLog
+        Assert.Equal(9, await db.SentenceLogs.CountAsync(item => item.UserId == user.Id));
+
+        var progress = await db.UserProgress.SingleAsync(item => item.UserId == user.Id);
+        Assert.True(progress.HasCompletedInitialAssessment);
+        Assert.Equal(CefrLevel.C1, progress.OverallLevel);
+
+        // 收敛后再取块：直接回最终结果
+        var after = await service.GetNextBlockAsync(assessment.Id, CancellationToken.None);
+        Assert.True(after.Converged);
+        Assert.Equal(CefrLevel.C1, after.Final!.OverallLevel);
+    }
+
+    [Fact]
+    public async Task Weak_user_drops_band_and_levels_low()
+    {
+        await using var db = await PostgresTestDatabase.CreateContextAsync();
+        var service = CreateService(db, new StubLlmProvider(1, 1, 0, 0)); // 12 分 → 降带
+        var user = await SeedPoolAsync(db);
+        var assessment = await service.StartInitialAsync(user.Id, CancellationToken.None);
+
+        var block1 = (await service.GetNextBlockAsync(assessment.Id, CancellationToken.None)).Block!;
+        Assert.Equal(CefrLevel.A2, block1.Band);
+        var result1 = await service.SubmitBlockAsync(assessment.Id, 1,
+            await AnswersAsync(service, assessment.Id, 1, recognitionCorrect: true), CancellationToken.None);
+        Assert.False(result1.Converged);
+        Assert.Equal(CefrLevel.A1, result1.NextBand); // 表现差降带
+
+        var block2 = (await service.GetNextBlockAsync(assessment.Id, CancellationToken.None)).Block!;
+        Assert.Equal(CefrLevel.A1, block2.Band);
+        await service.SubmitBlockAsync(assessment.Id, 2,
+            await AnswersAsync(service, assessment.Id, 2, recognitionCorrect: true), CancellationToken.None);
+
+        // A1 到底后仍在低位，第 3 块收敛
+        var block3 = (await service.GetNextBlockAsync(assessment.Id, CancellationToken.None)).Block!;
+        Assert.Equal(CefrLevel.A1, block3.Band);
+        var result3 = await service.SubmitBlockAsync(assessment.Id, 3,
+            await AnswersAsync(service, assessment.Id, 3, recognitionCorrect: true), CancellationToken.None);
+        Assert.True(result3.Converged);
+        Assert.Equal(CefrLevel.A1, result3.Final!.OverallLevel);
+        Assert.Equal(12, result3.Final.ExpressionScore);
+    }
+
+    [Fact]
+    public async Task Stable_user_converges_after_two_blocks()
+    {
+        await using var db = await PostgresTestDatabase.CreateContextAsync();
+        var service = CreateService(db, new StubLlmProvider(3, 3, 2, 2)); // 52 分 → 保持
+        var user = await SeedPoolAsync(db);
+        var assessment = await service.StartInitialAsync(user.Id, CancellationToken.None);
+
+        await service.GetNextBlockAsync(assessment.Id, CancellationToken.None);
+        var result1 = await service.SubmitBlockAsync(assessment.Id, 1,
+            await AnswersAsync(service, assessment.Id, 1, recognitionCorrect: true), CancellationToken.None);
+        Assert.False(result1.Converged);
+        Assert.Equal(CefrLevel.A2, result1.NextBand); // 稳定不升不降
+
+        await service.GetNextBlockAsync(assessment.Id, CancellationToken.None);
+        var result2 = await service.SubmitBlockAsync(assessment.Id, 2,
+            await AnswersAsync(service, assessment.Id, 2, recognitionCorrect: true), CancellationToken.None);
+        Assert.True(result2.Converged); // 2 块稳定即收敛，总量 10 题
+        Assert.Equal(52, result2.Final!.ExpressionScore);
+        Assert.Equal(CefrLevel.B2, result2.Final.OverallLevel); // 阈值 [19,34,49,69]：52 → B2
+    }
+
+    [Fact]
+    public async Task Reading_correct_index_is_not_constant()
+    {
+        await using var db = await PostgresTestDatabase.CreateContextAsync();
+        var service = CreateService(db, new StubLlmProvider(3, 3, 3, 3));
+        await SeedPoolAsync(db);
+
+        // 多次生成块，阅读题正确答案位置不得恒为 0（旧缺陷：恒 index 0）
+        var indices = new List<int>();
+        for (var i = 0; i < 12; i++)
+        {
+            var user = new User { DisplayName = $"reading-random-{i}" };
+            db.Users.Add(user);
+            await db.SaveChangesAsync();
+            var assessment = await service.StartInitialAsync(user.Id, CancellationToken.None);
+            await service.GetNextBlockAsync(assessment.Id, CancellationToken.None);
+            var stored = await service.GetAsync(assessment.Id, CancellationToken.None);
+            var record = stored!.Records.Single(item => item.Step == AssessmentStepType.AdaptiveBlock);
+            using var doc = JsonDocument.Parse(record.QuestionsJson);
+            indices.Add(doc.RootElement.GetProperty("reading").GetProperty("correctIndex").GetInt32());
+        }
+
+        Assert.Contains(indices, index => index != 0);
+    }
+
+    // ── 工具 ────────────────────────────────────────────────
+
+    private static AssessmentService CreateService(ApplicationDbContext db, ILLMProvider llm)
+    {
+        var users = new UserRepository(db);
+        var scoreProfile = new ScoreProfileService(db, new ScoreMappingService(new ScoreMappingOptions()));
+        var sentences = new SentenceService(db, new StubLlmFactory(llm), Options.Create(new LlmSentenceRatingOptions()));
+        return new AssessmentService(db, new AssessmentScoringService(), sentences, users, scoreProfile, new StubEvaluationReports());
+    }
+
+    private static async Task<User> SeedPoolAsync(ApplicationDbContext db)
+    {
+        // 共享测试库中 Lemma 有唯一索引：每次播种带随机后缀，断言用 StartsWith 前缀匹配
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var user = new User { DisplayName = "assessment-test" };
+        db.Users.Add(user);
+
+        foreach (var band in new[] { CefrLevel.A1, CefrLevel.A2, CefrLevel.B1, CefrLevel.B2, CefrLevel.C1 })
+        {
+            var prefix = band.ToString().ToLowerInvariant();
+            for (var i = 0; i < 8; i++)
+            {
+                var word = new Word
+                {
+                    Lemma = $"{prefix}word{i}{suffix}",
+                    Meanings = [$"{prefix} 含义{i}"],
+                    CefrLevel = band,
+                    DifficultyLevel = band <= CefrLevel.A2 ? DifficultyLevel.Basic : band <= CefrLevel.B2 ? DifficultyLevel.Intermediate : DifficultyLevel.Advanced,
+                    Utility = WordUtility.High,
+                    Role = ExpressionRole.CoreVerb,
+                    // 标记为已标注，避免共享库中 ScenarioAnnotationWorker 测试把本组词扫进待标队列
+                    ScenarioAnnotationVersion = ScenarioAnnotationWorker.CurrentVersion
+                };
+                word.Scenarios.Add(new WordScenario { WordId = word.Id, ScenarioKey = "dining_out" });
+                db.Words.Add(word);
+            }
+        }
+
+        // 干扰项：本带 low utility 词不得入池；无 utility 标注词不得入池
+        db.Words.Add(new Word { Lemma = $"a2lowword{suffix}", Meanings = ["低价值词"], CefrLevel = CefrLevel.A2, Utility = WordUtility.Low, ScenarioAnnotationVersion = ScenarioAnnotationWorker.CurrentVersion });
+        db.Words.Add(new Word { Lemma = $"a2unmarked{suffix}", Meanings = ["未标注词"], CefrLevel = CefrLevel.A2, Utility = null, ScenarioAnnotationVersion = ScenarioAnnotationWorker.CurrentVersion });
+
+        foreach (var band in new[] { CefrLevel.A1, CefrLevel.A2, CefrLevel.B1, CefrLevel.B2 })
+        {
+            var prefix = band.ToString().ToLowerInvariant();
+            db.Articles.Add(new Article
+            {
+                Title = $"{band} article",
+                Content = $"This story mentions {prefix}word0{suffix} and {prefix}word1{suffix} many times.",
+                CefrLevel = band,
+                WordCount = 40
+            });
+        }
+
+        await db.SaveChangesAsync();
+        return user;
+    }
+
+    /// <summary>构造作答：产出题给非空文本；识别题按题库中正确答案选择全对或全错。</summary>
+    private static async Task<List<AssessmentAnswerItem>> AnswersAsync(
+        AssessmentService service, Guid assessmentId, int blockIndex, bool recognitionCorrect)
+    {
+        var stored = await service.GetAsync(assessmentId, CancellationToken.None);
+        var record = stored!.Records.Single(item => item.QuestionType == $"block:{blockIndex}");
+        using var doc = JsonDocument.Parse(record.QuestionsJson);
+        var root = doc.RootElement;
+
+        var answers = new List<AssessmentAnswerItem>();
+        foreach (var item in root.GetProperty("production").EnumerateArray())
+        {
+            answers.Add(new AssessmentAnswerItem(item.GetProperty("id").GetString()!, "I wrote a long enough answer here.", null, null));
+        }
+
+        foreach (var item in root.GetProperty("vocabulary").EnumerateArray())
+        {
+            var correct = item.GetProperty("correctIndex").GetInt32();
+            var optionCount = item.GetProperty("options").GetArrayLength();
+            answers.Add(new AssessmentAnswerItem(
+                item.GetProperty("id").GetString()!, null,
+                recognitionCorrect ? correct : (correct + 1) % optionCount, null));
+        }
+
+        if (root.TryGetProperty("reading", out var reading) && reading.ValueKind == JsonValueKind.Object)
+        {
+            var correct = reading.GetProperty("correctIndex").GetInt32();
+            var optionCount = reading.GetProperty("options").GetArrayLength();
+            answers.Add(new AssessmentAnswerItem(
+                reading.GetProperty("id").GetString()!, null,
+                recognitionCorrect ? correct : (correct + 1) % optionCount, 0));
+        }
+
+        return answers;
+    }
+
+    private sealed class StubLlmProvider(int grammar, int natural, int vocabulary, int relevance) : ILLMProvider
+    {
+        public Task<SentenceRatingResponse> RateSentenceAsync(SentenceRatingRequest request, CancellationToken cancellationToken) =>
+            Task.FromResult(new SentenceRatingResponse(
+                grammar, natural, vocabulary, relevance, "B", request.UserSentence,
+                [$"stub-tag-{grammar}"], DifficultyLevel.Basic, "stub suggestion"));
+
+        public Task<DifficultyRating> RateDifficultyAsync(ItemRatingRequest request, CancellationToken cancellationToken) => throw new NotImplementedException();
+        public Task<DefinitionResponse> GetDefinitionAsync(DefinitionRequest request, CancellationToken cancellationToken) => throw new NotImplementedException();
+        public Task<VocabExtractResponse> ExtractVocabAsync(VocabExtractRequest request, CancellationToken cancellationToken) => throw new NotImplementedException();
+        public Task<CommentReplyResponse> ReplyToCommentAsync(CommentReplyRequest request, CancellationToken cancellationToken) => throw new NotImplementedException();
+        public Task<ScenarioAnnotationResponse> AnnotateScenarioAsync(ScenarioAnnotationRequest request, CancellationToken cancellationToken) => throw new NotImplementedException();
+    }
+
+    private sealed class StubLlmFactory(ILLMProvider provider) : IUserLlmProviderFactory
+    {
+        public Task<ILLMProvider> GetForUserAsync(Guid userId, CancellationToken cancellationToken) => Task.FromResult(provider);
+    }
+
+    private sealed class StubEvaluationReports : IEvaluationReportService
+    {
+        public Task<long> EnqueueForUserAsync(Guid userId, string triggerType, Guid? assessmentId, CancellationToken cancellationToken) => Task.FromResult(1L);
+        public Task ProcessJobAsync(BackgroundJob job, CancellationToken cancellationToken) => Task.CompletedTask;
+    }
+}

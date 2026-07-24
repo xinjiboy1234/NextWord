@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { AssessmentTimeline } from '../components/AssessmentTimeline'
 import { OptionTags } from '../components/OptionTags'
 import { Progress } from '../components/ui/Progress'
-import { StepNavigator } from '../components/StepNavigator'
 import { useAssessmentFlow } from '../hooks/useAssessmentFlow'
+import type { AssessmentAnswerItem } from '../types/assessment'
 
 interface InitialAssessmentProps {
   autoStart?: boolean
@@ -12,32 +11,16 @@ interface InitialAssessmentProps {
   onStepChange?: (step: number) => void
 }
 
-function denseAnswers<T>(count: number, answers: T[], isFilled: (value: T | undefined) => boolean) {
-  return Array.from({ length: count }, (_, index) => answers[index]).every(isFilled)
-}
-
+/**
+ * T-004 自适应分块测评：每块 5 题（提示造句 ×2 + 情境表达 ×1 + 词义选择 ×1 + 阅读理解 ×1），
+ * 2–3 块收敛。产出题走 LLM 真实评分，识别题仅作参考。
+ */
 export function InitialAssessment({ autoStart = false, immersive = false, onComplete, onStepChange }: InitialAssessmentProps) {
   const flow = useAssessmentFlow()
   const autoStarted = useRef(false)
-  const [vocabIndex, setVocabIndex] = useState(0)
-  const [spellingIndex, setSpellingIndex] = useState(0)
-  const [sentenceIndex, setSentenceIndex] = useState(0)
-  const [vocabAnswers, setVocabAnswers] = useState<number[]>([])
-  const [spellingAnswers, setSpellingAnswers] = useState<string[]>([])
-  const [sentenceAnswers, setSentenceAnswers] = useState<string[]>([])
-  const [readingIndex, setReadingIndex] = useState(-1)
+  const [productionAnswers, setProductionAnswers] = useState<Record<string, string>>({})
+  const [choiceAnswers, setChoiceAnswers] = useState<Record<string, number>>({})
   const [localError, setLocalError] = useState<string | null>(null)
-
-  const vocabAnswersRef = useRef(vocabAnswers)
-  const spellingAnswersRef = useRef(spellingAnswers)
-  const sentenceAnswersRef = useRef(sentenceAnswers)
-  vocabAnswersRef.current = vocabAnswers
-  spellingAnswersRef.current = spellingAnswers
-  sentenceAnswersRef.current = sentenceAnswers
-
-  useEffect(() => {
-    onStepChange?.(flow.step)
-  }, [flow.step, onStepChange])
 
   useEffect(() => {
     if (!autoStart || autoStarted.current || flow.assessmentId) {
@@ -47,116 +30,59 @@ export function InitialAssessment({ autoStart = false, immersive = false, onComp
     void flow.start()
   }, [autoStart, flow.assessmentId, flow.start])
 
+  // 换块时清空本块作答
   useEffect(() => {
-    if (flow.step === 5 && flow.finalResult) {
+    if (flow.block) {
+      setProductionAnswers({})
+      setChoiceAnswers({})
+      setLocalError(null)
+      onStepChange?.(flow.block.blockIndex)
+    }
+  }, [flow.block, onStepChange])
+
+  useEffect(() => {
+    if (flow.finalResult) {
       onComplete?.()
     }
-  }, [flow.step, flow.finalResult, onComplete])
+  }, [flow.finalResult, onComplete])
 
-  function currentAnswerFilled(): boolean {
-    if (flow.step === 1) {
-      return vocabAnswers[vocabIndex] !== undefined
-    }
-    if (flow.step === 2) {
-      return (spellingAnswers[spellingIndex] ?? '').trim().length > 0
-    }
-    if (flow.step === 3) {
-      return (sentenceAnswers[sentenceIndex] ?? '').trim().length > 0
-    }
-    if (flow.step === 4) {
-      return readingIndex >= 0
-    }
-    return true
+  const block = flow.block
+
+  function allAnswered(): boolean {
+    if (!block) return false
+    const productionDone = block.production.every((item) => (productionAnswers[item.id] ?? '').trim().length > 0)
+    const vocabDone = block.vocabulary.every((item) => choiceAnswers[item.id] !== undefined)
+    const readingDone = block.reading === null || choiceAnswers[block.reading.id] !== undefined
+    return productionDone && vocabDone && readingDone
   }
 
-  function handlePrevious() {
+  async function handleSubmit() {
+    if (!block) return
+    if (!allAnswered()) {
+      setLocalError('请完成本块所有题目后再提交。')
+      return
+    }
     setLocalError(null)
-    if (flow.step === 1) setVocabIndex((value) => Math.max(0, value - 1))
-    if (flow.step === 2) setSpellingIndex((value) => Math.max(0, value - 1))
-    if (flow.step === 3) setSentenceIndex((value) => Math.max(0, value - 1))
+    const answers: AssessmentAnswerItem[] = [
+      ...block.production.map((item) => ({ id: item.id, text: productionAnswers[item.id] ?? '' })),
+      ...block.vocabulary.map((item) => ({ id: item.id, selectedIndex: choiceAnswers[item.id] ?? null })),
+      ...(block.reading ? [{ id: block.reading.id, selectedIndex: choiceAnswers[block.reading.id] ?? null, lookupCount: 0 }] : []),
+    ]
+    await flow.submitBlock(answers)
   }
 
-  async function handleNext() {
-    setLocalError(null)
-
-    if (flow.step === 1) {
-      const total = flow.vocabQuestions.length
-      if (vocabIndex < total - 1) {
-        setVocabIndex((value) => value + 1)
-        return
-      }
-      const answers = vocabAnswersRef.current
-      if (!denseAnswers(total, answers, (value) => typeof value === 'number' && value >= 0)) {
-        setLocalError('请完成本阶段所有题目后再进入下一步。')
-        return
-      }
-      await flow.submitVocab(answers)
-      return
-    }
-
-    if (flow.step === 2) {
-      const total = flow.spellingQuestions.length
-      if (spellingIndex < total - 1) {
-        setSpellingIndex((value) => value + 1)
-        return
-      }
-      const answers = spellingAnswersRef.current
-      if (!denseAnswers(total, answers, (value) => typeof value === 'string' && value.trim().length > 0)) {
-        setLocalError('请完成本阶段所有题目后再进入下一步。')
-        return
-      }
-      await flow.submitSpelling(answers)
-      return
-    }
-
-    if (flow.step === 3) {
-      const total = flow.sentenceQuestions.length
-      if (sentenceIndex < total - 1) {
-        setSentenceIndex((value) => value + 1)
-        return
-      }
-      const answers = sentenceAnswersRef.current
-      if (!denseAnswers(total, answers, (value) => typeof value === 'string' && value.trim().length > 0)) {
-        setLocalError('请完成本阶段所有题目后再进入下一步。')
-        return
-      }
-      await flow.submitSentence(answers)
-      return
-    }
-
-    if (flow.step === 4 && readingIndex >= 0) {
-      await flow.submitReading(readingIndex, 0)
-    }
-  }
-
-  function nextLabel() {
-    if (flow.step === 4) return flow.submitting ? '提交中...' : '提交并定级'
-    const totals = [flow.vocabQuestions.length, flow.spellingQuestions.length, flow.sentenceQuestions.length]
-    const total = totals[flow.step - 1] ?? 1
-    if (flow.submitting) return '提交中...'
-    const indices = [vocabIndex, spellingIndex, sentenceIndex]
-    const index = indices[flow.step - 1] ?? 0
-    return index < total - 1 ? '下一个' : '下一步'
-  }
-
-  function canGoPrevious(): boolean {
-    if (flow.submitting) return false
-    if (flow.step === 1) return vocabIndex > 0
-    if (flow.step === 2) return spellingIndex > 0
-    if (flow.step === 3) return sentenceIndex > 0
-    return false
-  }
-
-  const displayError = localError ?? flow.stepError
+  const displayError = localError ?? flow.error
   const sectionClass = immersive ? 'onboarding-card' : 'card'
 
   if (!flow.assessmentId) {
     return (
       <section className={sectionClass}>
         <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-xl)', fontWeight: 700 }}>首次水平测评</h2>
-        <p style={{ marginTop: 'var(--space-2)', fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>5 步测评：词汇 → 拼写 → 造句 → 阅读 → 定级</p>
-        {flow.error && <p className="alert alert-error" style={{ marginTop: 'var(--space-3)' }}>{flow.error}</p>}
-        {(autoStart || flow.loading) && !flow.error && !flow.assessmentId ? (
+        <p style={{ marginTop: 'var(--space-2)', fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>
+          2–3 块、共 10–15 题，以造句和情境表达为主，逐块自适应难度
+        </p>
+        {displayError && <p className="alert alert-error" style={{ marginTop: 'var(--space-3)' }}>{displayError}</p>}
+        {(autoStart || flow.loading) && !displayError ? (
           <p style={{ marginTop: 'var(--space-4)', fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>{flow.loading ? '正在准备测评...' : '即将开始...'}</p>
         ) : (
           <button
@@ -173,191 +99,118 @@ export function InitialAssessment({ autoStart = false, immersive = false, onComp
     )
   }
 
-  return (
-    <section className={`${sectionClass} stack stack-md`}>
-      {immersive ? (
-        <Progress value={flow.step} max={5} label={`测评进度 ${flow.step}/5`} />
-      ) : null}
-      <AssessmentTimeline
-        steps={flow.steps}
-        currentStep={flow.step}
-        maxReachedStep={flow.maxReachedStep}
-        maxNavigableStep={flow.finalResult ? 5 : 4}
-        onStepClick={(targetStep) => {
-          if (targetStep === flow.step) return
-          setLocalError(null)
-          void flow.goToStep(targetStep)
-        }}
-      />
-
-      {displayError && (
-        <p className="alert alert-error">{displayError}</p>
-      )}
-
-      {flow.submitting && (
-        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>正在提交并加载下一阶段...</p>
-      )}
-
-      {flow.loadingStep && !flow.submitting && (
-        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>正在加载题目...</p>
-      )}
-
-      {flow.step === 1 && flow.vocabQuestions.length > 0 && (
-        <div className="mt-5 space-y-4">
-          <h3 className="text-lg font-semibold">词汇识别</h3>
-          <p style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-xl)', fontWeight: 700 }}>{flow.vocabQuestions[vocabIndex]?.word}</p>
-          <OptionTags
-            options={flow.vocabQuestions[vocabIndex]?.options ?? []}
-            selectedIndex={vocabAnswers[vocabIndex]}
-            disabled={flow.submitting}
-            onSelect={(optionIndex) => {
-              const next = [...vocabAnswers]
-              next[vocabIndex] = optionIndex
-              setVocabAnswers(next)
-            }}
-          />
-          <StepNavigator
-            index={vocabIndex}
-            total={flow.vocabQuestions.length}
-            onPrevious={handlePrevious}
-            onNext={() => void handleNext()}
-            canPrevious={canGoPrevious()}
-            canNext={currentAnswerFilled() && !flow.submitting}
-            nextLabel={nextLabel()}
-          />
-        </div>
-      )}
-
-      {flow.step === 2 && (
-        <div className="mt-5 space-y-4">
-          <h3 className="text-lg font-semibold">拼写测评</h3>
-          {flow.spellingQuestions.length === 0 ? (
-            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>正在加载拼写题目...</p>
-          ) : (
-            <>
-              <label className="card field" style={{ display: 'block' }}>
-                <span style={{ fontSize: 'var(--text-base)', fontWeight: 540 }}>{flow.spellingQuestions[spellingIndex]?.chinese}</span>
-                <input
-                  className="input"
-                  style={{ marginTop: 'var(--space-3)' }}
-                  value={spellingAnswers[spellingIndex] ?? ''}
-                  disabled={flow.submitting}
-                  onChange={(event) => {
-                    const next = [...spellingAnswers]
-                    next[spellingIndex] = event.target.value
-                    setSpellingAnswers(next)
-                  }}
-                  placeholder="输入英文拼写"
-                  autoComplete="off"
-                />
-              </label>
-              <StepNavigator
-                index={spellingIndex}
-                total={flow.spellingQuestions.length}
-                onPrevious={handlePrevious}
-                onNext={() => void handleNext()}
-                canPrevious={canGoPrevious()}
-                canNext={currentAnswerFilled() && !flow.submitting}
-                nextLabel={nextLabel()}
-              />
-            </>
-          )}
-        </div>
-      )}
-
-      {flow.step === 3 && (
-        <div className="mt-5 space-y-4">
-          <h3 className="text-lg font-semibold">造句测评</h3>
-          {flow.sentenceQuestions.length === 0 ? (
-            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>正在加载造句题目...</p>
-          ) : (
-            <>
-              <label className="card field" style={{ display: 'block' }}>
-                <span style={{ fontSize: 'var(--text-base)', fontWeight: 540 }}>使用单词：{flow.sentenceQuestions[sentenceIndex]?.word}</span>
-                <textarea
-                  className="textarea"
-                  style={{ marginTop: 'var(--space-3)' }}
-                  rows={4}
-                  value={sentenceAnswers[sentenceIndex] ?? ''}
-                  disabled={flow.submitting}
-                  onChange={(event) => {
-                    const next = [...sentenceAnswers]
-                    next[sentenceIndex] = event.target.value
-                    setSentenceAnswers(next)
-                  }}
-                  placeholder="用该单词造一个句子"
-                  autoComplete="off"
-                />
-              </label>
-              <StepNavigator
-                index={sentenceIndex}
-                total={flow.sentenceQuestions.length}
-                onPrevious={handlePrevious}
-                onNext={() => void handleNext()}
-                canPrevious={canGoPrevious()}
-                canNext={currentAnswerFilled() && !flow.submitting}
-                nextLabel={nextLabel()}
-              />
-            </>
-          )}
-        </div>
-      )}
-
-      {flow.step === 4 && (
-        <div className="mt-5 space-y-4">
-          <h3 className="text-lg font-semibold">阅读测评</h3>
-          {!flow.readingPayload ? (
-            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>正在加载阅读题目...</p>
-          ) : (
-            <>
-              <p className="text-sm font-medium">{flow.readingPayload.title}</p>
-              <p style={{ fontSize: 'var(--text-sm)', lineHeight: 1.7, color: 'var(--muted)' }}>{flow.readingPayload.content}</p>
-              <div className="card" style={{ padding: 'var(--space-4)' }}>
-                <p className="text-sm font-medium">{flow.readingPayload.question.question}</p>
-                <div className="mt-3">
-                  <OptionTags
-                    options={flow.readingPayload.question.options}
-                    selectedIndex={readingIndex >= 0 ? readingIndex : undefined}
-                    disabled={flow.submitting}
-                    onSelect={setReadingIndex}
-                  />
-                </div>
-              </div>
-              <StepNavigator
-                index={0}
-                total={1}
-                onPrevious={() => flow.goToStep(3)}
-                onNext={() => void handleNext()}
-                canPrevious={!flow.submitting}
-                canNext={readingIndex >= 0 && !flow.submitting}
-                nextLabel={nextLabel()}
-                showProgress={false}
-              />
-            </>
-          )}
-        </div>
-      )}
-
-      {flow.step === 5 && flow.finalResult && (
-        <div className="alert alert-success" style={{ marginTop: 'var(--space-4)' }}>
+  if (flow.finalResult) {
+    const final = flow.finalResult
+    return (
+      <section className={sectionClass}>
+        <div className="alert alert-success">
           <h3 style={{ fontWeight: 540 }}>定级结果</h3>
-          <p style={{ marginTop: 'var(--space-2)', fontSize: 'var(--text-sm)' }}>总体等级：{flow.finalResult.overallLevel}</p>
-          {flow.finalResult.overallScore != null && (
-            <p style={{ fontSize: 'var(--text-sm)' }}>综合 Score：{flow.finalResult.overallScore.toFixed(0)}</p>
-          )}
+          <p style={{ marginTop: 'var(--space-2)', fontSize: 'var(--text-sm)' }}>总体等级：{final.overallLevel}</p>
+          <p style={{ fontSize: 'var(--text-sm)' }}>表达力综合分：{final.expressionScore}/100</p>
           <ul style={{ marginTop: 'var(--space-2)', fontSize: 'var(--text-sm)' }} className="stack stack-sm">
-            <li>词汇：{flow.finalResult.vocabLevel}{flow.finalResult.vocabularyScore != null ? ` (${flow.finalResult.vocabularyScore.toFixed(0)})` : ''}</li>
-            <li>拼写：{flow.finalResult.spellingLevel}{flow.finalResult.spellingScore != null ? ` (${flow.finalResult.spellingScore.toFixed(0)})` : ''}</li>
-            <li>造句：{flow.finalResult.sentenceLevel}{flow.finalResult.writingScore != null ? ` (${flow.finalResult.writingScore.toFixed(0)})` : ''}</li>
-            <li>阅读：{flow.finalResult.readingLevel}{flow.finalResult.readingScore != null ? ` (${flow.finalResult.readingScore.toFixed(0)})` : ''}</li>
+            {final.dimensions.comments.map((comment, index) => (
+              <li key={index}>{comment}</li>
+            ))}
           </ul>
-          {flow.finalResult.evaluationReportId && (
+          <p style={{ marginTop: 'var(--space-2)', fontSize: 'var(--text-sm)' }}>
+            识别参考（不计入定级）：词汇 {final.vocabularyReferenceScore}（{final.vocabularyReferenceLevel}）、阅读 {final.readingReferenceScore}（{final.readingReferenceLevel}）
+          </p>
+          {final.evaluationReportId && (
             <p style={{ fontSize: 'var(--text-xs)', color: 'var(--muted)', marginTop: 'var(--space-2)' }}>
-              评估报告 #{flow.finalResult.evaluationReportId} 生成中，可在等级面板查看。
+              评估报告 #{final.evaluationReportId} 生成中，可在等级面板查看。
             </p>
           )}
         </div>
+      </section>
+    )
+  }
+
+  if (!block) {
+    return (
+      <section className={sectionClass}>
+        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>正在加载题目...</p>
+        {displayError && <p className="alert alert-error" style={{ marginTop: 'var(--space-3)' }}>{displayError}</p>}
+      </section>
+    )
+  }
+
+  return (
+    <section className={`${sectionClass} stack stack-md`}>
+      {immersive ? (
+        <Progress value={block.blockIndex} max={block.maxBlocks} label={`测评进度 第 ${block.blockIndex} 块 / 最多 ${block.maxBlocks} 块`} />
+      ) : null}
+      <p style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>
+        第 {block.blockIndex} 块（难度带 {block.band}）：先写句子，再做两道识别题
+      </p>
+
+      {displayError && <p className="alert alert-error">{displayError}</p>}
+
+      {block.production.map((item) => (
+        <div key={item.id} className="mt-5 space-y-4">
+          <h3 className="text-lg font-semibold">{item.kind === 'sentence' ? '提示造句' : '情境表达'}</h3>
+          <label className="card field" style={{ display: 'block' }}>
+            <span style={{ fontSize: 'var(--text-base)', fontWeight: 540 }}>{item.prompt}</span>
+            <textarea
+              className="textarea"
+              style={{ marginTop: 'var(--space-3)' }}
+              rows={item.kind === 'sentence' ? 3 : 4}
+              value={productionAnswers[item.id] ?? ''}
+              disabled={flow.submitting}
+              onChange={(event) => {
+                setProductionAnswers((current) => ({ ...current, [item.id]: event.target.value }))
+              }}
+              placeholder={item.kind === 'sentence' ? '用该单词造一个句子' : '写 2–3 句你的应对或感受'}
+              autoComplete="off"
+            />
+          </label>
+        </div>
+      ))}
+
+      {block.vocabulary.map((item) => (
+        <div key={item.id} className="mt-5 space-y-4">
+          <h3 className="text-lg font-semibold">词汇识别（参考）</h3>
+          <p style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-xl)', fontWeight: 700 }}>{item.word}</p>
+          <OptionTags
+            options={item.options}
+            selectedIndex={choiceAnswers[item.id]}
+            disabled={flow.submitting}
+            onSelect={(optionIndex) => {
+              setChoiceAnswers((current) => ({ ...current, [item.id]: optionIndex }))
+            }}
+          />
+        </div>
+      ))}
+
+      {block.reading && (
+        <div className="mt-5 space-y-4">
+          <h3 className="text-lg font-semibold">阅读理解（参考）</h3>
+          <p className="text-sm font-medium">{block.reading.title}</p>
+          <p style={{ fontSize: 'var(--text-sm)', lineHeight: 1.7, color: 'var(--muted)' }}>{block.reading.content}</p>
+          <div className="card" style={{ padding: 'var(--space-4)' }}>
+            <p className="text-sm font-medium">{block.reading.question}</p>
+            <div className="mt-3">
+              <OptionTags
+                options={block.reading.options}
+                selectedIndex={choiceAnswers[block.reading.id]}
+                disabled={flow.submitting}
+                onSelect={(optionIndex) => {
+                  if (!block.reading) return
+                  setChoiceAnswers((current) => ({ ...current, [block.reading!.id]: optionIndex }))
+                }}
+              />
+            </div>
+          </div>
+        </div>
       )}
+
+      <button
+        type="button"
+        className="btn btn-primary"
+        disabled={flow.submitting || !allAnswered()}
+        onClick={() => void handleSubmit()}
+      >
+        {flow.submitting ? '评分中...' : '提交本块'}
+      </button>
     </section>
   )
 }

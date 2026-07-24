@@ -1,5 +1,6 @@
 using NextWord.Domain.Enums;
 using NextWord.Domain.Interfaces;
+using NextWord.Domain.Models;
 using NextWord.Infrastructure.Services;
 
 namespace NextWord.Api.Endpoints;
@@ -26,37 +27,21 @@ public static class AssessmentEndpoints
             return Results.Ok(new { skipped = true, defaultLevel = "A2" });
         });
 
-        group.MapGet("/{assessmentId:guid}/step/{step:int}", async (Guid assessmentId, int step, IAssessmentService assessment, CancellationToken ct) =>
+        group.MapGet("/{assessmentId:guid}/next-block", async (Guid assessmentId, IAssessmentService assessment, CancellationToken ct) =>
         {
-            if (!Enum.IsDefined(typeof(AssessmentStepType), step))
-            {
-                return Results.BadRequest(new { message = "Invalid step." });
-            }
-
-            var questions = await assessment.GetStepQuestionsAsync(assessmentId, (AssessmentStepType)step, ct);
-            return Results.Ok(questions);
+            var response = await assessment.GetNextBlockAsync(assessmentId, ct);
+            return Results.Ok(response);
         });
 
-        group.MapPost("/{assessmentId:guid}/step/{step:int}", async (
+        group.MapPost("/{assessmentId:guid}/blocks/{blockIndex:int}/submit", async (
             Guid assessmentId,
-            int step,
-            StepSubmitRequest request,
+            int blockIndex,
+            BlockSubmitRequest request,
             IAssessmentService assessment,
             CancellationToken ct) =>
         {
-            if (!Enum.IsDefined(typeof(AssessmentStepType), step))
-            {
-                return Results.BadRequest(new { message = "Invalid step." });
-            }
-
-            var result = await assessment.SubmitStepAsync(assessmentId, (AssessmentStepType)step, request.AnswersJson, ct);
+            var result = await assessment.SubmitBlockAsync(assessmentId, blockIndex, request.Answers, ct);
             return Results.Ok(result);
-        });
-
-        group.MapPost("/{assessmentId:guid}/complete", async (Guid assessmentId, IAssessmentService assessment, CancellationToken ct) =>
-        {
-            var final = await assessment.CompleteInitialAsync(assessmentId, ct);
-            return final is null ? Results.BadRequest(new { message = "Complete all steps first." }) : Results.Ok(final);
         });
 
         group.MapGet("/{assessmentId:guid}", async (Guid assessmentId, IAssessmentService assessment, CancellationToken ct) =>
@@ -139,7 +124,7 @@ public static class LevelEndpoints
 }
 
 public sealed record AssessmentUserRequest(Guid? UserId);
-public sealed record StepSubmitRequest(string AnswersJson);
+public sealed record BlockSubmitRequest(IReadOnlyList<AssessmentAnswerItem> Answers);
 public sealed record ChallengeStartRequest(Guid? UserId, bool ConfirmationChallenge = false);
 public sealed record ChallengeSubmitBody(
     Guid? UserId,

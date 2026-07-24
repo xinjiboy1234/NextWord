@@ -1,6 +1,6 @@
 # NextWord 当前状态（Current State）
 
-> 版本：2026-07-20。本文描述**已实现并验证**的现状，是项目功能的权威参考。
+> 版本：2026-07-24。本文描述**已实现并验证**的现状，是项目功能的权威参考。
 > 待办事项见 [next-steps.md](../next-steps.md)；架构决策的「为什么」见 [DESIGN-ai-learning-architecture.md](DESIGN-ai-learning-architecture.md)。
 
 ## 1. 项目概览
@@ -77,10 +77,14 @@ docker-compose.yml        postgres:16-alpine + redis:7-alpine + api（容器内 
 - 阅读日志：`reading/start` → `reading-logs/{logId}/finish`（计时、查词数参与评分）。
 - `POST /api/reading/agent`：阅读助手 Agent（`ReadingAssistantAgent` 组合 skills）。**前端暂未使用**。
 
-### 5.5 首次水平测评（`/assessment`）
+### 5.5 首次水平测评（`/assessment`）— I2 T-004 重构
 
-- 4 步：词汇选择 → 拼写 → LLM 造句评分 → 阅读（查词数有惩罚）。
-- `POST /api/assessment/{id}/complete`：`AssessmentScoringService` 按「最短板」定级（overall = min），写入 Score 内核，并入队 `EvaluationReport` 后台任务。
+- **自适应分块**：以当前估计水平为起点（未测评用户 A2），每块 5 题（提示造句 ×2 + 情境表达 ×1 + 词义选择 ×1 + 阅读理解 ×1，产出占 60%），块表现 ≥60 升带、<40 降带（T-009 校准），满 2 块且稳定即收敛、最多 3 块（总题量 ≤15）。
+- **产出题全部走 LLM 真实评分**：复用造句工作室四维链路（`SentenceService.RateAsync`，情境表达走 `free expression` 目标），词数启发式已废弃；评分留痕 `SentenceLogs`。
+- **主定级 = 表达力综合分**（语法/自然度 0.3 + 词汇/相关度 0.2 加权，阈值与 ScoreMapping 分带对齐、封顶 C1）；识别题仅作参考展示，不参与定级——「最短板 min」已废弃。档案各维度分数以表达力综合分为初始先验写入 Score 内核。
+- **词池纪律**：出题词只选水平带内且 `utility=high/medium`（顶端带词池过薄时向下一带补充，绝不超带）；情境场景取自 I1 taxonomy（优先词池已标注场景）。
+- **阅读题**：从库内文章按难度带就近选文，考点词取自正文中出现的库内词，正确答案位置随机（硬编码与 index-0 恒定已废除）。
+- 端点：`GET /api/assessment/{id}/next-block`（幂等，未提交的块重发原题）→ `POST /api/assessment/{id}/blocks/{n}/submit`（同步 LLM 评分，收敛时直接定级并入队 `EvaluationReport`）。
 
 ### 5.6 综合挑战（`/challenge`）
 
@@ -135,7 +139,7 @@ Worker 异常不拖垮宿主（`BackgroundServiceExceptionBehavior=Ignore`）。
 
 - **Taxonomy**（`NextWord.Domain/Scenarios/ScenarioTaxonomy.cs`）：常量集，两层 7 大类 × 20 子场景（key + 中文名），设计见 `docs/DESIGN-scenario-taxonomy.md`；无管理后台。
 - **词级标注**：`Word.Utility`（high/medium/low，low 不入库）、`Word.Role`（core_verb/connector/scene_noun/phrase_pattern）、`Word.ScenarioAnnotationVersion`（0=未标注）；`WordScenarios` 关联表（WordId + ScenarioKey 复合主键）承载 0–3 个子场景多对多，0 个 = core 通用桶。难度仍走 `WordDifficultyAnnotations`，不重复；接触词是运行时概念，无静态字段。
-- **内置词表**：`Infrastructure/Data/wordlist-scenarios.json`（嵌入资源，约 1700 词，由 `Backend/Scripts/generate-wordlist.py` 用 LLM 按设计 §4 标准生成，含 scenario/utility/role 标注），`SeedData` 空库时灌入并标记为已标注；验收口径有 `WordlistSeedTests` 守护（每子场景 ≥60、core ≥500、core_verb+connector ≥40%）。
+- **内置词表**：`Infrastructure/Data/wordlist-scenarios.json`（嵌入资源，1520 词，由 `Backend/Scripts/generate-wordlist.py` 用 LLM 按设计 §4 标准生成，含 scenario/utility/role 标注；T-008 已统一 `examples` 数组字段、补全空音标、修正 `shop around`/`have` 场景标注），`SeedData` 空库时灌入并标记为已标注；验收口径有 `WordlistSeedTests` 守护（每子场景 ≥60、core ≥500、core_verb+connector ≥40%）。
 - **标注 worker**：`ScenarioAnnotationWorker`（复用 BackgroundJob 模式）对 `ScenarioAnnotationVersion` 低于当前版本的词分批（默认 20/批，payload `batchSize` 可调 ≤50）调 `AnnotateScenarioAsync`；已标注词自动跳过 → 幂等可重跑、断点可续；LLM 漏标的词保持未标注等下轮。
 - **触发**：`POST /api/scenarios/annotation-jobs?batchSize=`（幂等 key 按小时分桶）；`POST /api/words` 新增词自动入队标注。
 - **查询**：`GET /api/scenarios` 返回 taxonomy + 各子场景词数 + core 桶词数；`GET /api/words?scenario=` 按子场景过滤；`WordDto` 带 scenarios/utility/role。
@@ -173,8 +177,9 @@ Worker 异常不拖垮宿主（`BackgroundServiceExceptionBehavior=Ignore`）。
 
 **测评 / 挑战 / 等级**
 - `POST /api/assessment/initial/start`、`POST /api/assessment/initial/skip`
-- `GET/POST /api/assessment/{id}/step/{step}`（step 1–4）
-- `POST /api/assessment/{id}/complete`、`GET /api/assessment/{id}`
+- `GET /api/assessment/{id}/next-block`（自适应块，幂等）
+- `POST /api/assessment/{id}/blocks/{blockIndex}/submit`（块提交，收敛时定级）
+- `GET /api/assessment/{id}`
 - `POST /api/challenge/start`、`POST /api/challenge/submit`、`GET /api/challenge/recent`
 - `GET /api/level/dashboard`、`GET /api/level/history`
 
@@ -213,7 +218,7 @@ Users、UserLlmSettings、Words、WordDifficultyAnnotations、DifficultyAnnotati
 | `/sentence` | SentenceStudio | 造句评分 / 自由表达 双 Tab |
 | `/reading` | ArticleLibrary | 按难度筛选、难度/CEFR 分组 |
 | `/reading/:articleId` | ArticleReader | 点词查义弹层、词汇提取面板、评论线程、阅读计时 |
-| `/assessment` | InitialAssessment | 4 步测评 + 结果页 |
+| `/assessment` | InitialAssessment | 自适应分块测评（2–3 块，产出为主）+ 结果页 |
 | `/challenge` | ChallengeMode | 三阶段挑战 + 近期挑战列表 |
 | `/review` | ReviewQueue | 翻转卡片复习 + 活动统计 + 最近记录 |
 | `/word-bank` | Home | 全量词条表格 + 搜索 + 详情 |
@@ -238,7 +243,7 @@ Users、UserLlmSettings、Words、WordDifficultyAnnotations、DifficultyAnnotati
 
 ## 10. 测试
 
-**单元测试**（`NextWord.UnitTests`）：SM-2、LevelUpgradeEngine（锁级/升级候选/C1 封顶）、EffectiveDifficultyCalculator、AssessmentScoringService（最短板）、ScoreMappingService、ScoreProfileService（absolute 写入与幂等，连真实 PG `nextword_unit_test`）、LLM prompt/解析与 Mock Provider、ArticleVocabMapping 缓存、RedisCacheService 与 LlmTelemetryProvider。
+**单元测试**（`NextWord.UnitTests`）：SM-2、LevelUpgradeEngine（锁级/升级候选/C1 封顶）、EffectiveDifficultyCalculator、AssessmentScoringService（表达力综合分/自适应决策）、AdaptiveAssessmentService（分块/词池/收敛/定级，连真实 PG + LLM 桩）、ScoreMappingService、ScoreProfileService（absolute 写入与幂等，连真实 PG `nextword_unit_test`）、LLM prompt/解析与 Mock Provider、ArticleVocabMapping 缓存、RedisCacheService 与 LlmTelemetryProvider。
 
 **集成测试**（`NextWord.IntegrationTests`）：Testing 环境（移除后台 Worker），真实 PG `nextword_test`，真实注册/登录拿 JWT。覆盖：测评（401、开始、进度）、文章（401、种子列表）。覆盖较薄。
 

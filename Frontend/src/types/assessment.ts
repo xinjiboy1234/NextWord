@@ -1,48 +1,82 @@
 export type CefrLevel = 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2'
 
-export interface VocabQuizQuestion {
-  word: string
-  options: string[]
-  correctIndex: number
+export interface AssessmentProductionPrompt {
+  id: string
+  kind: 'sentence' | 'scenario'
+  targetWord?: string | null
+  scenarioZh: string
+  prompt: string
 }
 
-export interface SpellingQuizQuestion {
-  chinese: string
-  correctSpelling: string
+export interface AssessmentVocabChoice {
+  id: string
+  word: string
+  options: string[]
+}
+
+export interface AssessmentReadingItem {
+  id: string
+  title: string
+  content: string
+  question: string
+  options: string[]
+}
+
+export interface AssessmentBlock {
+  blockIndex: number
+  maxBlocks: number
+  band: CefrLevel
+  production: AssessmentProductionPrompt[]
+  vocabulary: AssessmentVocabChoice[]
+  reading: AssessmentReadingItem | null
+}
+
+export interface AssessmentAnswerItem {
+  id: string
+  text?: string | null
+  selectedIndex?: number | null
+  lookupCount?: number | null
+}
+
+export interface AssessmentBlockResponse {
+  converged: boolean
+  block?: AssessmentBlock | null
+  final?: AssessmentFinalResult | null
+}
+
+export interface AssessmentBlockResult {
+  converged: boolean
+  blockIndex: number
+  band: CefrLevel
+  nextBand?: CefrLevel | null
+  blockExpressionScore: number
+  final?: AssessmentFinalResult | null
+}
+
+export interface AssessmentDimensionSummary {
+  grammar: number
+  natural: number
+  vocabulary: number
+  relevance: number
+  topErrorTags: string[]
+  comments: string[]
+}
+
+export interface AssessmentFinalResult {
+  overallLevel: CefrLevel
+  expressionScore: number
+  vocabularyReferenceScore: number
+  readingReferenceScore: number
+  vocabularyReferenceLevel: CefrLevel
+  readingReferenceLevel: CefrLevel
+  dimensions: AssessmentDimensionSummary
+  evaluationReportId?: number | null
 }
 
 export interface SentenceQuizQuestion {
   wordId?: string | null
   word: string
   scene: string
-}
-
-export interface ReadingQuizPayload {
-  articleId: string
-  title: string
-  content: string
-  wordCount: number
-  question: {
-    articleId: string
-    question: string
-    options: string[]
-    correctIndex: number
-    articleExcerpt: string
-  }
-}
-
-export interface FinalLevelResult {
-  vocabLevel: CefrLevel
-  spellingLevel: CefrLevel
-  sentenceLevel: CefrLevel
-  readingLevel: CefrLevel
-  overallLevel: CefrLevel
-  vocabularyScore?: number | null
-  spellingScore?: number | null
-  writingScore?: number | null
-  readingScore?: number | null
-  overallScore?: number | null
-  evaluationReportId?: number | null
 }
 
 export interface ChallengePackClient {

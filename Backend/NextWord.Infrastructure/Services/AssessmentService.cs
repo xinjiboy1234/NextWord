@@ -3,20 +3,28 @@ using NextWord.Domain.Entities;
 using NextWord.Domain.Enums;
 using NextWord.Domain.Interfaces;
 using NextWord.Domain.Models;
+using NextWord.Domain.Scenarios;
 using NextWord.Infrastructure.Data;
 using System.Text.Json;
 
 namespace NextWord.Infrastructure.Services;
 
+/// <summary>
+/// 自适应分块测评（T-004，DESIGN-assessment-rework）：
+/// 产出型题为主（≥60%：提示造句 ×2 + 情境表达 ×1），识别型（词义选择、阅读理解）降级为参考；
+/// 产出题全部走 LLM 四维真实评分（复用 SentenceService 链路），主定级 = 表达力综合分；
+/// 以当前估计水平为起点分块出题，表现好升带、差降带，2–3 块收敛，总题量 ≤15。
+/// </summary>
 public sealed class AssessmentService(
     ApplicationDbContext db,
     IAssessmentScoringService scoring,
     ISentenceService sentences,
     IUserRepository users,
     IScoreProfileService scoreProfile,
-    IBackgroundJobService backgroundJobs,
     IEvaluationReportService evaluationReports) : IAssessmentService
 {
+    private const int MaxBlocks = 3;
+    private const string UnsubmittedMarker = "{}";
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     public async Task<Assessment> StartInitialAsync(Guid userId, CancellationToken cancellationToken)
@@ -39,168 +47,123 @@ public sealed class AssessmentService(
         return assessment;
     }
 
-    public async Task<object> GetStepQuestionsAsync(Guid assessmentId, AssessmentStepType step, CancellationToken cancellationToken)
-    {
-        var assessment = await db.Assessments.FirstOrDefaultAsync(item => item.Id == assessmentId, cancellationToken)
-            ?? throw new InvalidOperationException("Assessment not found.");
-
-        return step switch
-        {
-            AssessmentStepType.Vocabulary => await BuildVocabQuestionsAsync(cancellationToken),
-            AssessmentStepType.Spelling => await BuildSpellingQuestionsAsync(cancellationToken),
-            AssessmentStepType.Sentence => await BuildSentenceQuestionsAsync(cancellationToken),
-            AssessmentStepType.Reading => await BuildReadingQuestionAsync(cancellationToken),
-            AssessmentStepType.FinalLevel => new { message = "Submit all previous steps first." },
-            _ => throw new InvalidOperationException("Unsupported step.")
-        };
-    }
-
-    public async Task<StepScoreResult> SubmitStepAsync(Guid assessmentId, AssessmentStepType step, string answersJson, CancellationToken cancellationToken)
+    public async Task<AssessmentBlockResponse> GetNextBlockAsync(Guid assessmentId, CancellationToken cancellationToken)
     {
         var assessment = await db.Assessments
             .Include(item => item.Records)
             .FirstOrDefaultAsync(item => item.Id == assessmentId, cancellationToken)
             ?? throw new InvalidOperationException("Assessment not found.");
 
-        var questions = await GetStepQuestionsAsync(assessmentId, step, cancellationToken);
-        var questionsJson = JsonSerializer.Serialize(questions, JsonOptions);
-        var result = ScoreStep(step, questions, answersJson);
-
-        var record = assessment.Records.FirstOrDefault(item => item.Step == step);
-        if (record is null)
+        if (assessment.Status == AssessmentStatus.Completed)
         {
-            record = new AssessmentRecord
-            {
-                AssessmentId = assessmentId,
-                Step = step,
-                QuestionType = step.ToString()
-            };
-            db.AssessmentRecords.Add(record);
-            assessment.Records.Add(record);
+            return new AssessmentBlockResponse(true, null, RebuildFinal(assessment));
         }
 
-        record.QuestionsJson = questionsJson;
-        record.AnswersJson = answersJson;
-        record.ScoresJson = MergeMappedLevel(result);
-        if (step == AssessmentStepType.Reading && questions is ReadingStepPayload reading)
+        // GET 幂等：已生成但未提交的块直接重发，不重复出题
+        var pending = assessment.Records
+            .Where(item => item.Step == AssessmentStepType.AdaptiveBlock && item.ScoresJson == UnsubmittedMarker)
+            .OrderByDescending(item => item.Timestamp)
+            .FirstOrDefault();
+        if (pending is not null)
         {
-            record.ArticleId = reading.ArticleId;
+            var pendingPayload = JsonSerializer.Deserialize<BlockPayload>(pending.QuestionsJson, JsonOptions)!;
+            return new AssessmentBlockResponse(false, ToView(pendingPayload), null);
         }
 
-        await db.SaveChangesAsync(cancellationToken);
-        return result;
-    }
+        var submittedScores = SubmittedBlocks(assessment);
+        var blockIndex = submittedScores.Count + 1;
+        var band = submittedScores.Count == 0
+            ? await ResolveStartBandAsync(assessment.UserId, cancellationToken)
+            : submittedScores[^1].Scores.NextBand;
 
-    public async Task<FinalLevelResult?> CompleteInitialAsync(Guid assessmentId, CancellationToken cancellationToken)
-    {
-        var assessment = await db.Assessments
-            .Include(item => item.Records)
-            .FirstOrDefaultAsync(item => item.Id == assessmentId, cancellationToken)
-            ?? throw new InvalidOperationException("Assessment not found.");
-
-        var required = new[] { AssessmentStepType.Vocabulary, AssessmentStepType.Spelling, AssessmentStepType.Sentence, AssessmentStepType.Reading };
-        if (required.Any(step => assessment.Records.All(record => record.Step != step)))
-        {
-            return null;
-        }
-
-        var vocab = assessment.Records.First(record => record.Step == AssessmentStepType.Vocabulary);
-        var spelling = assessment.Records.First(record => record.Step == AssessmentStepType.Spelling);
-        var sentence = assessment.Records.First(record => record.Step == AssessmentStepType.Sentence);
-        var reading = assessment.Records.First(record => record.Step == AssessmentStepType.Reading);
-
-        var final = scoring.CalculateFinalLevel(
-            RebuildStep(vocab, AssessmentStepType.Vocabulary),
-            RebuildStep(spelling, AssessmentStepType.Spelling),
-            RebuildStep(sentence, AssessmentStepType.Sentence),
-            RebuildStep(reading, AssessmentStepType.Reading));
-
-        var scoreResult = scoring.CalculateFinalScores(
-            RebuildStep(vocab, AssessmentStepType.Vocabulary),
-            RebuildStep(spelling, AssessmentStepType.Spelling),
-            RebuildStep(sentence, AssessmentStepType.Sentence),
-            RebuildStep(reading, AssessmentStepType.Reading));
-
+        var payload = await BuildBlockAsync(blockIndex, band, cancellationToken);
         db.AssessmentRecords.Add(new AssessmentRecord
         {
             AssessmentId = assessmentId,
-            Step = AssessmentStepType.FinalLevel,
-            QuestionType = "final",
-            QuestionsJson = "{}",
-            AnswersJson = "{}",
-            ScoresJson = JsonSerializer.Serialize(new { final, scoreResult }, JsonOptions)
+            Step = AssessmentStepType.AdaptiveBlock,
+            QuestionType = $"block:{blockIndex}",
+            QuestionsJson = JsonSerializer.Serialize(payload, JsonOptions),
+            AnswersJson = "[]",
+            ScoresJson = UnsubmittedMarker,
+            ArticleId = payload.Reading?.ArticleId
         });
+        await db.SaveChangesAsync(cancellationToken);
+        return new AssessmentBlockResponse(false, ToView(payload), null);
+    }
 
-        assessment.Status = AssessmentStatus.Completed;
-        assessment.EndAt = DateTimeOffset.UtcNow;
-        assessment.FinalLevel = final.OverallLevel;
+    public async Task<AssessmentBlockResult> SubmitBlockAsync(
+        Guid assessmentId,
+        int blockIndex,
+        IReadOnlyList<AssessmentAnswerItem> answers,
+        CancellationToken cancellationToken)
+    {
+        var assessment = await db.Assessments
+            .Include(item => item.Records)
+            .FirstOrDefaultAsync(item => item.Id == assessmentId, cancellationToken)
+            ?? throw new InvalidOperationException("Assessment not found.");
 
-        var previous = (await users.GetOrCreateProgressAsync(assessment.UserId, cancellationToken)).OverallLevel;
+        var record = assessment.Records.FirstOrDefault(item =>
+            item.Step == AssessmentStepType.AdaptiveBlock && item.QuestionType == $"block:{blockIndex}")
+            ?? throw new InvalidOperationException("Block not found.");
+        var payload = JsonSerializer.Deserialize<BlockPayload>(record.QuestionsJson, JsonOptions)!;
 
-        await scoreProfile.ApplyUpdateAsync(
-            new ProfileUpdateCommand(
-                assessment.UserId,
-                "AssessmentCompleted",
-                new ProfileScoreAssignment(
-                    scoreResult.VocabularyScore,
-                    scoreResult.ReadingScore,
-                    scoreResult.WritingScore,
-                    scoreResult.SpellingScore),
-                null,
-                $"assessment:{assessmentId}:complete",
-                JsonSerializer.Serialize(new { final, scoreResult }, JsonOptions)),
-            cancellationToken);
-
-        var progress = await users.GetOrCreateProgressAsync(assessment.UserId, cancellationToken);
-        progress.HasCompletedInitialAssessment = true;
-        progress.LevelStartDate = DateOnly.FromDateTime(DateTime.UtcNow);
-
-        db.LevelHistories.Add(new LevelHistory
+        // 幂等重提交：直接回显已评分结果
+        if (record.ScoresJson != UnsubmittedMarker)
         {
-            UserId = assessment.UserId,
-            FromLevel = previous,
-            ToLevel = final.OverallLevel,
-            Reason = LevelChangeReason.Initial
-        });
+            var existingScores = JsonSerializer.Deserialize<BlockScores>(record.ScoresJson, JsonOptions)!;
+            var converged = assessment.Status == AssessmentStatus.Completed;
+            return new AssessmentBlockResult(
+                converged,
+                blockIndex,
+                payload.Band,
+                converged ? null : existingScores.NextBand,
+                existingScores.BlockExpressionScore,
+                converged ? RebuildFinal(assessment) : null);
+        }
+
+        // 产出题：全部走 LLM 四维真实评分（复用 SentenceService 链路），空作答记 0 不浪费调用
+        var productionScores = new List<ProductionScore>();
+        foreach (var item in payload.Production)
+        {
+            var text = answers.FirstOrDefault(answer => answer.Id == item.Id)?.Text?.Trim();
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                productionScores.Add(new ProductionScore(item.Id, 0, 0, 0, 0, 0, []));
+                continue;
+            }
+
+            var log = item.Kind == "scenario"
+                ? await sentences.RateAsync(assessment.UserId, null, "free expression", text, item.ScenarioKey ?? "life", payload.Band.ToString(), cancellationToken)
+                : await sentences.RateAsync(assessment.UserId, item.WordId, item.TargetWord ?? string.Empty, text, "assessment", payload.Band.ToString(), cancellationToken);
+            var score = scoring.ScoreProductionDimensions(log.GrammarScore, log.NaturalScore, log.VocabularyScore, log.RelevanceScore);
+            productionScores.Add(new ProductionScore(item.Id, score, log.GrammarScore, log.NaturalScore, log.VocabularyScore, log.RelevanceScore, log.ErrorTags));
+        }
+
+        // 识别题：只作参考信号，不进主定级
+        var vocabScores = payload.Vocabulary
+            .Select(item => new VocabScore(item.Id, answers.FirstOrDefault(answer => answer.Id == item.Id)?.SelectedIndex == item.CorrectIndex))
+            .ToList();
+        ReadingScore? readingScore = null;
+        if (payload.Reading is not null)
+        {
+            var readingAnswer = answers.FirstOrDefault(answer => answer.Id == payload.Reading.Id);
+            readingScore = new ReadingScore(readingAnswer?.SelectedIndex == payload.Reading.CorrectIndex, readingAnswer?.LookupCount ?? 0);
+        }
+
+        var blockExpression = productionScores.Count == 0 ? 0 : Math.Round(productionScores.Average(item => item.Score), 1);
+        var decision = scoring.DecideBandMove(blockExpression);
+        var nextBand = ApplyMove(payload.Band, decision);
+
+        record.AnswersJson = JsonSerializer.Serialize(answers, JsonOptions);
+        record.ScoresJson = JsonSerializer.Serialize(
+            new BlockScores(true, blockExpression, productionScores, vocabScores, readingScore, decision, nextBand), JsonOptions);
+
+        var completedBlocks = assessment.Records.Count(item => item.Step == AssessmentStepType.AdaptiveBlock && item.ScoresJson != UnsubmittedMarker);
+        var shouldConverge = scoring.ShouldConverge(completedBlocks, decision);
+        var final = shouldConverge ? await FinalizeAsync(assessment, cancellationToken) : null;
 
         await db.SaveChangesAsync(cancellationToken);
-
-        var evaluationReportId = await evaluationReports.EnqueueForUserAsync(
-            assessment.UserId,
-            "InitialAssessment",
-            assessmentId,
-            cancellationToken);
-
-        var sentencePayload = JsonSerializer.Serialize(new
-        {
-            userId = assessment.UserId,
-            assessmentId,
-            answers = JsonSerializer.Deserialize<List<string>>(sentence.AnswersJson, JsonOptions)?
-                .Zip(JsonSerializer.Deserialize<List<SentenceQuizQuestion>>(sentence.QuestionsJson, JsonOptions) ?? [])
-                .Select(pair => new
-                {
-                    WordId = pair.Second?.WordId,
-                    TargetWord = pair.Second?.Word ?? string.Empty,
-                    Scene = pair.Second?.Scene ?? "life",
-                    Answer = pair.First ?? string.Empty
-                }).ToList()
-        }, JsonOptions);
-
-        await backgroundJobs.EnqueueAsync(
-            "SentenceLlmScoring",
-            sentencePayload,
-            $"sentence:assessment:{assessmentId}",
-            cancellationToken);
-
-        return final with
-        {
-            VocabularyScore = scoreResult.VocabularyScore,
-            SpellingScore = scoreResult.SpellingScore,
-            WritingScore = scoreResult.WritingScore,
-            ReadingScore = scoreResult.ReadingScore,
-            OverallScore = scoreResult.OverallScore,
-            EvaluationReportId = evaluationReportId
-        };
+        return new AssessmentBlockResult(shouldConverge, blockIndex, payload.Band, shouldConverge ? null : nextBand, blockExpression, final);
     }
 
     public Task<Assessment?> GetAsync(Guid assessmentId, CancellationToken cancellationToken)
@@ -238,159 +201,347 @@ public sealed class AssessmentService(
         await db.SaveChangesAsync(cancellationToken);
     }
 
-    private async Task<IReadOnlyList<VocabQuizQuestion>> BuildVocabQuestionsAsync(CancellationToken cancellationToken)
+    // ── 出题 ────────────────────────────────────────────────
+
+    private async Task<BlockPayload> BuildBlockAsync(int blockIndex, CefrLevel band, CancellationToken cancellationToken)
     {
-        var words = (await db.Words.AsNoTracking().ToListAsync(cancellationToken))
-            .OrderBy(_ => Random.Shared.Next())
-            .Take(12)
-            .ToList();
-        return words.Select(word =>
+        // 测评词池纪律：utility=high/medium；low 永不入池
+        var allWords = await db.Words.AsNoTracking()
+            .Include(word => word.LlmAnnotation)
+            .Include(word => word.Scenarios)
+            .Where(word => word.Utility == WordUtility.High || word.Utility == WordUtility.Medium)
+            .ToListAsync(cancellationToken);
+
+        var bandWords = allWords.Where(word => word.CefrLevel == band).ToList();
+        // 兜底：顶端带词池过薄（如 C1 仅个位数）时向下一带补充——仍不超当前带、不含 low
+        if (bandWords.Count < 4 && band > CefrLevel.A1)
         {
-            var correct = word.Meanings.FirstOrDefault() ?? word.Lemma;
-            var options = words.Where(item => item.Id != word.Id)
-                .Select(item => item.Meanings.FirstOrDefault() ?? item.Lemma)
-                .Distinct()
-                .Take(3)
-                .ToList();
-            while (options.Count < 3) options.Add("unknown");
-            var all = new List<string> { correct };
-            all.AddRange(options);
-            all = all.OrderBy(_ => Guid.NewGuid()).ToList();
-            var correctIndex = all.FindIndex(item => item == correct);
-            return new VocabQuizQuestion(word.Lemma, all, Math.Max(0, correctIndex), word.DifficultyLevel);
-        }).ToList();
-    }
-
-    private async Task<IReadOnlyList<SpellingQuizQuestion>> BuildSpellingQuestionsAsync(CancellationToken cancellationToken)
-    {
-        var words = (await db.Words.AsNoTracking().ToListAsync(cancellationToken))
-            .OrderBy(_ => Random.Shared.Next())
-            .Take(10)
-            .ToList();
-        return words.Select(word => new SpellingQuizQuestion(
-            word.Meanings.FirstOrDefault() ?? word.Lemma,
-            word.Lemma,
-            word.DifficultyLevel)).ToList();
-    }
-
-    private async Task<IReadOnlyList<SentenceQuizQuestion>> BuildSentenceQuestionsAsync(CancellationToken cancellationToken)
-    {
-        var prompts = await sentences.GetPromptsAsync(3, cancellationToken);
-        return prompts.Select(item => new SentenceQuizQuestion(item.WordId, item.TargetWord, item.Scene)).ToList();
-    }
-
-    private async Task<ReadingStepPayload> BuildReadingQuestionAsync(CancellationToken cancellationToken)
-    {
-        var articles = await db.Articles.AsNoTracking().ToListAsync(cancellationToken);
-        var article = articles.OrderBy(_ => Random.Shared.Next()).First();
-        return new ReadingStepPayload(
-            article.Id,
-            article.Title,
-            article.Content,
-            article.WordCount,
-            new ReadingQuizQuestion(
-                article.Id,
-                "What topic does this article mainly discuss?",
-                ["Learning and daily life", "Space travel", "Ancient history", "Machine repair"],
-                0,
-                article.Content.Length > 300 ? article.Content[..300] + "..." : article.Content));
-    }
-
-    private StepScoreResult ScoreStep(AssessmentStepType step, object questions, string answersJson)
-    {
-        return step switch
-        {
-            AssessmentStepType.Vocabulary => ScoreVocab(questions, answersJson),
-            AssessmentStepType.Spelling => ScoreSpelling(questions, answersJson),
-            AssessmentStepType.Sentence => ScoreSentence(answersJson),
-            AssessmentStepType.Reading => ScoreReading(questions, answersJson),
-            _ => new StepScoreResult(step, null, 0, "{}")
-        };
-    }
-
-    private StepScoreResult ScoreVocab(object questions, string answersJson)
-    {
-        var qs = ((IEnumerable<VocabQuizQuestion>)questions).ToList();
-        var answers = JsonSerializer.Deserialize<List<int>>(answersJson, JsonOptions) ?? [];
-        var correct = qs.Select((q, i) => i < answers.Count && answers[i] == q.CorrectIndex).Count(match => match);
-        var accuracy = qs.Count == 0 ? 0 : (double)correct / qs.Count * 100;
-        var level = scoring.MapVocabAccuracy(accuracy);
-        var scores = new { basic_correct = correct, total = qs.Count, accuracy };
-        return new StepScoreResult(AssessmentStepType.Vocabulary, level, accuracy, JsonSerializer.Serialize(scores, JsonOptions));
-    }
-
-    private StepScoreResult ScoreSpelling(object questions, string answersJson)
-    {
-        var qs = ((IEnumerable<SpellingQuizQuestion>)questions).ToList();
-        var answers = JsonSerializer.Deserialize<List<string>>(answersJson, JsonOptions) ?? [];
-        var correct = qs.Select((q, i) => i < answers.Count && string.Equals(answers[i]?.Trim(), q.CorrectSpelling, StringComparison.OrdinalIgnoreCase)).Count(match => match);
-        var accuracy = qs.Count == 0 ? 0 : (double)correct / qs.Count * 100;
-        var level = scoring.MapSpellingAccuracy(accuracy);
-        var scores = new { correct, total = qs.Count, accuracy };
-        return new StepScoreResult(AssessmentStepType.Spelling, level, accuracy, JsonSerializer.Serialize(scores, JsonOptions));
-    }
-
-    private StepScoreResult ScoreSentence(string answersJson)
-    {
-        // 初测造句步采用答案长度与完整性启发式；正式 LLM 评分在 SentenceService 中
-        var answers = JsonSerializer.Deserialize<List<string>>(answersJson, JsonOptions) ?? [];
-        var scores = answers.Select(answer =>
-        {
-            var trimmed = answer?.Trim() ?? string.Empty;
-            var wordCount = trimmed.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
-            return Math.Clamp(wordCount >= 6 ? 3.5 : wordCount >= 4 ? 2.5 : 1.5, 0, 5);
-        }).ToList();
-        var average = scores.Count == 0 ? 0 : scores.Average();
-        var level = scoring.MapSentenceAverage(average);
-        return new StepScoreResult(AssessmentStepType.Sentence, level, average, JsonSerializer.Serialize(new { average, scores }, JsonOptions));
-    }
-
-    private StepScoreResult ScoreReading(object questions, string answersJson)
-    {
-        var payload = (ReadingStepPayload)questions;
-        var answer = JsonSerializer.Deserialize<ReadingAnswerPayload>(answersJson, JsonOptions) ?? new ReadingAnswerPayload(0, 0);
-        var correct = answer.SelectedIndex == payload.Question.CorrectIndex ? 1 : 0;
-        var accuracy = correct * 100.0;
-        var level = scoring.MapReadingAccuracy(accuracy, answer.LookupCount, payload.WordCount);
-        var scores = new { correct, accuracy, lookupCount = answer.LookupCount };
-        return new StepScoreResult(AssessmentStepType.Reading, level, accuracy, JsonSerializer.Serialize(scores, JsonOptions));
-    }
-
-    private StepScoreResult RebuildStep(AssessmentRecord record, AssessmentStepType step)
-    {
-        using var doc = JsonDocument.Parse(record.ScoresJson);
-        var root = doc.RootElement;
-        if (root.TryGetProperty("mappedLevel", out var mapped) &&
-            Enum.TryParse<CefrLevel>(mapped.GetString(), out var parsedLevel))
-        {
-            var raw = root.TryGetProperty("accuracy", out var accuracy) ? accuracy.GetDouble()
-                : root.TryGetProperty("average", out var average) ? average.GetDouble() : 0;
-            return new StepScoreResult(step, parsedLevel, raw, record.ScoresJson);
+            bandWords.AddRange(allWords.Where(word => word.CefrLevel == (CefrLevel)((int)band - 1)));
         }
 
-        return step switch
+        var shuffled = bandWords.OrderBy(_ => Random.Shared.Next()).ToList();
+
+        // 提示造句 ×2：水平带内目标词
+        var production = new List<ProductionItem>();
+        var sentenceWords = shuffled.Take(2).ToList();
+        while (sentenceWords.Count < 2 && shuffled.Count > 0)
         {
-            AssessmentStepType.Vocabulary when root.TryGetProperty("accuracy", out var accuracy)
-                => new StepScoreResult(step, scoring.MapVocabAccuracy(accuracy.GetDouble()), accuracy.GetDouble(), record.ScoresJson),
-            AssessmentStepType.Spelling when root.TryGetProperty("accuracy", out var accuracy)
-                => new StepScoreResult(step, scoring.MapSpellingAccuracy(accuracy.GetDouble()), accuracy.GetDouble(), record.ScoresJson),
-            AssessmentStepType.Sentence when root.TryGetProperty("average", out var average)
-                => new StepScoreResult(step, scoring.MapSentenceAverage(average.GetDouble()), average.GetDouble(), record.ScoresJson),
-            AssessmentStepType.Reading when root.TryGetProperty("accuracy", out var accuracy)
-                => new StepScoreResult(step, scoring.MapReadingAccuracy(accuracy.GetDouble(), root.TryGetProperty("lookupCount", out var lookups) ? lookups.GetInt32() : 0, 120), accuracy.GetDouble(), record.ScoresJson),
-            _ => new StepScoreResult(step, CefrLevel.A1, 0, record.ScoresJson)
-        };
+            // 词池极薄时允许重复用词，保证题量
+            sentenceWords.Add(shuffled[Random.Shared.Next(shuffled.Count)]);
+        }
+
+        for (var i = 0; i < sentenceWords.Count; i++)
+        {
+            var word = sentenceWords[i];
+            production.Add(new ProductionItem(
+                $"s{i + 1}", "sentence", word.Id, word.Lemma, null, string.Empty,
+                $"用「{word.Lemma}」造一个英文句子。", Intrinsic(word)));
+        }
+
+        // 情境表达 ×1：场景取自 I1 taxonomy，优先词池已标注场景
+        var scenarioKeys = bandWords
+            .SelectMany(word => word.Scenarios)
+            .Select(link => link.ScenarioKey)
+            .Where(ScenarioTaxonomy.IsSubScenarioKey)
+            .Distinct()
+            .ToList();
+        var scenario = scenarioKeys.Count > 0
+            ? ScenarioTaxonomy.Find(scenarioKeys[Random.Shared.Next(scenarioKeys.Count)])
+            : ScenarioTaxonomy.All[Random.Shared.Next(ScenarioTaxonomy.All.Count)];
+        production.Add(new ProductionItem(
+            "e1", "scenario", null, null, scenario!.Key, scenario.ZhName,
+            $"情境表达：在「{scenario.ZhName}」场景下，用英语写 2–3 句你的应对或感受。", 0));
+
+        // 词义选择 ×1（参考）：本带词 + 本带干扰项，正确答案位置随机
+        var vocabulary = new List<VocabItem>();
+        var vocabWord = shuffled.FirstOrDefault(word => word.Meanings.Count > 0 && !sentenceWords.Contains(word))
+            ?? shuffled.FirstOrDefault(word => word.Meanings.Count > 0);
+        if (vocabWord is not null)
+        {
+            var correct = vocabWord.Meanings[0];
+            var distractors = bandWords.Where(word => word.Id != vocabWord.Id && word.Meanings.Count > 0)
+                .Select(word => word.Meanings[0])
+                .Concat(allWords.Where(word => word.Id != vocabWord.Id && word.Meanings.Count > 0).Select(word => word.Meanings[0]))
+                .Distinct()
+                .Where(meaning => meaning != correct)
+                .OrderBy(_ => Random.Shared.Next())
+                .Take(3)
+                .ToList();
+            while (distractors.Count < 3)
+            {
+                distractors.Add("未知含义");
+            }
+
+            var options = distractors.Append(correct).OrderBy(_ => Random.Shared.Next()).ToList();
+            vocabulary.Add(new VocabItem("v1", vocabWord.Lemma, options, options.IndexOf(correct), Intrinsic(vocabWord)));
+        }
+
+        // 阅读理解 ×1（参考）：从库内文章按难度带选文，考点词来自正文，答案位置随机
+        var reading = await BuildReadingItemAsync(band, shuffled, allWords, cancellationToken);
+
+        return new BlockPayload(blockIndex, band, production, vocabulary, reading);
     }
 
-    private static string MergeMappedLevel(StepScoreResult result)
+    private async Task<ReadingItem?> BuildReadingItemAsync(
+        CefrLevel band,
+        List<Word> bandWords,
+        List<Word> allWords,
+        CancellationToken cancellationToken)
     {
-        var dict = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(result.ScoresJson, JsonOptions)
-            ?? new Dictionary<string, JsonElement>();
-        var mutable = dict.ToDictionary(pair => pair.Key, pair => pair.Value);
-        mutable["mappedLevel"] = JsonSerializer.SerializeToElement(result.MappedLevel?.ToString() ?? CefrLevel.A1.ToString(), JsonOptions);
-        return JsonSerializer.Serialize(mutable, JsonOptions);
+        var articles = await db.Articles.AsNoTracking().ToListAsync(cancellationToken);
+        if (articles.Count == 0)
+        {
+            return null;
+        }
+
+        // 按难度带就近 + 随机排序，跳过正文中找不到考点词的文章
+        var candidates = articles
+            .OrderBy(item => Math.Abs((int)item.CefrLevel - (int)band))
+            .ThenBy(_ => Random.Shared.Next())
+            .ToList();
+
+        foreach (var article in candidates)
+        {
+            var tokens = article.Content
+                .Split([' ', '\n', '\r', '\t', '.', ',', ';', ':', '!', '?', '"', '(', ')', '’', '\''], StringSplitOptions.RemoveEmptyEntries)
+                .Select(token => token.Trim().ToLowerInvariant())
+                .ToHashSet();
+
+            // 考点词：优先本带词池，其次全池；必须出现在正文中且为单词（非短语）
+            var keyWord = bandWords.Where(word => word.Meanings.Count > 0 && !word.Lemma.Contains(' ') && tokens.Contains(word.Lemma.ToLowerInvariant()))
+                    .OrderBy(_ => Random.Shared.Next())
+                    .FirstOrDefault()
+                ?? allWords.Where(word => word.Meanings.Count > 0 && !word.Lemma.Contains(' ') && tokens.Contains(word.Lemma.ToLowerInvariant()))
+                    .OrderBy(_ => Random.Shared.Next())
+                    .FirstOrDefault();
+            if (keyWord is null)
+            {
+                continue;
+            }
+
+            var correct = keyWord.Meanings[0];
+            var options = allWords
+                .Where(word => word.Id != keyWord.Id && word.Meanings.Count > 0)
+                .Select(word => word.Meanings[0])
+                .Distinct()
+                .Where(meaning => meaning != correct)
+                .OrderBy(_ => Random.Shared.Next())
+                .Take(3)
+                .Append(correct)
+                .OrderBy(_ => Random.Shared.Next())
+                .ToList();
+
+            return new ReadingItem(
+                "r1",
+                article.Id,
+                article.Title,
+                article.Content,
+                article.WordCount,
+                $"文中 \"{keyWord.Lemma}\" 的含义是什么？",
+                options,
+                options.IndexOf(correct));
+        }
+
+        return null;
     }
 
-    private sealed record ReadingStepPayload(Guid ArticleId, string Title, string Content, int WordCount, ReadingQuizQuestion Question);
-    private sealed record ReadingAnswerPayload(int SelectedIndex, int LookupCount);
+    // ── 定级 ────────────────────────────────────────────────
+
+    private async Task<AssessmentFinalResult> FinalizeAsync(Assessment assessment, CancellationToken cancellationToken)
+    {
+        var blocks = SubmittedBlocks(assessment);
+        var production = blocks.SelectMany(item => item.Scores.Production).ToList();
+        var vocabulary = blocks.SelectMany(item => item.Scores.Vocabulary).ToList();
+        var readings = blocks.Select(item => item.Scores.Reading).Where(item => item is not null).ToList();
+
+        var expressionComposite = production.Count == 0 ? 0 : production.Average(item => item.Score);
+        var expressionScore = Math.Clamp((int)Math.Round(expressionComposite), 0, 100);
+        var overall = scoring.MapExpressionScore(expressionComposite);
+
+        // 识别题：参考信号，不进主定级
+        var vocabAccuracy = vocabulary.Count == 0 ? 0 : vocabulary.Count(item => item.Correct) * 100.0 / vocabulary.Count;
+        var readingCorrect = readings.Count(item => item!.Correct);
+        var readingAccuracy = readings.Count == 0 ? 0 : readingCorrect * 100.0 / readings.Count;
+        var lookupCount = readings.Sum(item => item!.LookupCount);
+        var readingWordCount = blocks
+            .Select(item => item.Payload.Reading?.WordCount ?? 0)
+            .Sum();
+        var vocabReferenceScore = scoring.MapVocabToScore(vocabAccuracy);
+        var readingReferenceScore = scoring.MapReadingToScore(readingAccuracy, lookupCount, Math.Max(readingWordCount, 1));
+
+        var grammar = production.Count == 0 ? 0 : production.Average(item => item.Grammar);
+        var natural = production.Count == 0 ? 0 : production.Average(item => item.Natural);
+        var vocabDim = production.Count == 0 ? 0 : production.Average(item => item.Vocabulary);
+        var relevance = production.Count == 0 ? 0 : production.Average(item => item.Relevance);
+        var topErrorTags = production
+            .SelectMany(item => item.ErrorTags)
+            .Where(tag => !string.IsNullOrWhiteSpace(tag))
+            .GroupBy(tag => tag)
+            .OrderByDescending(group => group.Count())
+            .Take(5)
+            .Select(group => group.Key)
+            .ToList();
+        var comments = new List<string>
+        {
+            $"表达力综合分 {expressionScore}/100：语法 {grammar:0.0}、自然度 {natural:0.0}、词汇 {vocabDim:0.0}、相关度 {relevance:0.0}（各维度满分 5）。",
+            $"主定级 {overall} 由表达力综合分决定；词汇识别 {vocabReferenceScore}、阅读 {readingReferenceScore} 仅作参考，不影响定级。"
+        };
+        var dimensions = new AssessmentDimensionSummary(
+            Math.Round(grammar, 1), Math.Round(natural, 1), Math.Round(vocabDim, 1), Math.Round(relevance, 1),
+            topErrorTags, comments);
+
+        var final = new AssessmentFinalResult(
+            overall,
+            expressionScore,
+            vocabReferenceScore,
+            readingReferenceScore,
+            scoring.MapVocabAccuracy(vocabAccuracy),
+            scoring.MapReadingAccuracy(readingAccuracy, lookupCount, Math.Max(readingWordCount, 1)),
+            dimensions,
+            null);
+
+        assessment.Status = AssessmentStatus.Completed;
+        assessment.EndAt = DateTimeOffset.UtcNow;
+        assessment.FinalLevel = overall;
+
+        var previous = (await users.GetOrCreateProgressAsync(assessment.UserId, cancellationToken)).OverallLevel;
+        // 表达优先：档案各维度分数统一以表达力综合分为初始先验；识别题只进结果展示与画像内核，
+        // 不写权威分，避免「最短板 min」把识别参考分低的好表达者拖低（DESIGN-assessment-rework §2.2）
+        await scoreProfile.ApplyUpdateAsync(
+            new ProfileUpdateCommand(
+                assessment.UserId,
+                "AssessmentCompleted",
+                new ProfileScoreAssignment(expressionScore, expressionScore, expressionScore, null),
+                null,
+                $"assessment:{assessment.Id}:complete",
+                JsonSerializer.Serialize(final, JsonOptions)),
+            cancellationToken);
+
+        // 等级外壳以测评主定级为准（内核 min 语义不适用于表达优先的初测）
+        var progress = await users.GetOrCreateProgressAsync(assessment.UserId, cancellationToken);
+        progress.HasCompletedInitialAssessment = true;
+        progress.OverallLevel = overall;
+        progress.SentenceLevel = overall;
+        progress.VocabLevel = scoring.MapVocabAccuracy(vocabAccuracy);
+        progress.ReadingLevel = scoring.MapReadingAccuracy(readingAccuracy, lookupCount, Math.Max(readingWordCount, 1));
+        progress.LevelStartDate = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        db.LevelHistories.Add(new LevelHistory
+        {
+            UserId = assessment.UserId,
+            FromLevel = previous,
+            ToLevel = overall,
+            Reason = LevelChangeReason.Initial
+        });
+
+        await db.SaveChangesAsync(cancellationToken);
+
+        var reportId = await evaluationReports.EnqueueForUserAsync(assessment.UserId, "InitialAssessment", assessment.Id, cancellationToken);
+        final = final with { EvaluationReportId = reportId };
+
+        db.AssessmentRecords.Add(new AssessmentRecord
+        {
+            AssessmentId = assessment.Id,
+            Step = AssessmentStepType.FinalLevel,
+            QuestionType = "final",
+            QuestionsJson = "{}",
+            AnswersJson = "{}",
+            ScoresJson = JsonSerializer.Serialize(final, JsonOptions)
+        });
+
+        return final;
+    }
+
+    // ── 工具 ────────────────────────────────────────────────
+
+    private async Task<CefrLevel> ResolveStartBandAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        var progress = await users.GetOrCreateProgressAsync(userId, cancellationToken);
+        // 从未测评的用户 OverallLevel 只是 A1 占位默认值，以 A2 为起点估计（与 skip 默认一致）
+        return ClampBand(progress.HasCompletedInitialAssessment ? progress.OverallLevel : CefrLevel.A2);
+    }
+
+    private List<(BlockPayload Payload, BlockScores Scores)> SubmittedBlocks(Assessment assessment)
+    {
+        return assessment.Records
+            .Where(item => item.Step == AssessmentStepType.AdaptiveBlock && item.ScoresJson != UnsubmittedMarker)
+            .OrderBy(item => item.Timestamp)
+            .Select(item => (
+                JsonSerializer.Deserialize<BlockPayload>(item.QuestionsJson, JsonOptions)!,
+                JsonSerializer.Deserialize<BlockScores>(item.ScoresJson, JsonOptions)!))
+            .ToList();
+    }
+
+    private AssessmentFinalResult? RebuildFinal(Assessment assessment)
+    {
+        var record = assessment.Records.FirstOrDefault(item => item.Step == AssessmentStepType.FinalLevel);
+        return record is null ? null : JsonSerializer.Deserialize<AssessmentFinalResult>(record.ScoresJson, JsonOptions);
+    }
+
+    private static AssessmentBlockView ToView(BlockPayload payload)
+    {
+        return new AssessmentBlockView(
+            payload.BlockIndex,
+            MaxBlocks,
+            payload.Band,
+            payload.Production.Select(item => new AssessmentProductionPrompt(item.Id, item.Kind, item.TargetWord, item.ScenarioZh, item.Prompt)).ToList(),
+            payload.Vocabulary.Select(item => new AssessmentVocabChoice(item.Id, item.Word, item.Options)).ToList(),
+            payload.Reading is null
+                ? null
+                : new AssessmentReadingItem(payload.Reading.Id, payload.Reading.Title, payload.Reading.Content, payload.Reading.Question, payload.Reading.Options));
+    }
+
+    private static int Intrinsic(Word word) =>
+        word.LlmAnnotation?.IntrinsicScore ?? LegacyScoreHelper.FromDifficulty(word.DifficultyLevel);
+
+    private static CefrLevel ApplyMove(CefrLevel band, BandMove move) => ClampBand((CefrLevel)((int)band + (int)move));
+
+    private static CefrLevel ClampBand(CefrLevel level) =>
+        level < CefrLevel.A1 ? CefrLevel.A1 : level > CefrLevel.C1 ? CefrLevel.C1 : level;
+
+    // ── 持久化载荷 ───────────────────────────────────────────
+
+    private sealed record BlockPayload(
+        int BlockIndex,
+        CefrLevel Band,
+        List<ProductionItem> Production,
+        List<VocabItem> Vocabulary,
+        ReadingItem? Reading);
+
+    private sealed record ProductionItem(
+        string Id,
+        string Kind,
+        Guid? WordId,
+        string? TargetWord,
+        string? ScenarioKey,
+        string ScenarioZh,
+        string Prompt,
+        int IntrinsicScore);
+
+    private sealed record VocabItem(string Id, string Word, List<string> Options, int CorrectIndex, int IntrinsicScore);
+
+    private sealed record ReadingItem(
+        string Id,
+        Guid ArticleId,
+        string Title,
+        string Content,
+        int WordCount,
+        string Question,
+        List<string> Options,
+        int CorrectIndex);
+
+    private sealed record BlockScores(
+        bool Submitted,
+        double BlockExpressionScore,
+        List<ProductionScore> Production,
+        List<VocabScore> Vocabulary,
+        ReadingScore? Reading,
+        BandMove Decision,
+        CefrLevel NextBand);
+
+    private sealed record ProductionScore(string Id, double Score, int Grammar, int Natural, int Vocabulary, int Relevance, List<string> ErrorTags);
+
+    private sealed record VocabScore(string Id, bool Correct);
+
+    private sealed record ReadingScore(bool Correct, int LookupCount);
 }
