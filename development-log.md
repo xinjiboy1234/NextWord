@@ -2,6 +2,47 @@
 
 按时间倒序记录需求、决策、实现与验收。
 
+## 2026-07-23 — I1 T-003：内容建设验证 + 顾言验收
+
+### 验证（周密）
+- taxonomy 常量与设计 §2 逐项一致（7 大类 20 子场景，key 与中文名全对）；
+- 临时库端到端实测：`GET /api/scenarios`、`GET /api/words?scenario=` 正常；种子灌入 1523 词；`WordScenarios` 落库 2385 行与词表精确吻合（验后删库，dev 库未动）；
+- **抽样 100 词人工核对准确率 98%**（≥90% 达标），错例 2 个：`shop around` 误人 core 桶、`have` 违反 §3 原则标了 3 个场景；
+- 规模全达标：每子场景 ≥72、core 桶 569、core_verb+connector 52.0%、无 low/无重复/无非法 key；
+- 幂等实测：同小时重复触发复用同一 jobId、已标注词按版本跳过、断点续跑有单测覆盖；
+- `dotnet test` 84 单测 + 6 集成全过（真实 PG）；前端 `npm run build` 通过。
+
+### 顾言验收结论
+**通过，I1 内容建设闭环。** 错例率 2% 在容忍范围内（不钻牛角尖）；愿景对齐确认：core 桶不强塞场景、接触词无静态字段、难度不重复标注。不足记入 T-008（P2，下轮处理）：168 词例句字段单复数不一致导致种子例句丢失、70 词音标为空、2 个标注错例修正。
+
+---
+
+## 2026-07-23 — I1 T-002：Word 场景标注与词库扩充
+
+### 需求
+- 按 `docs/DESIGN-scenario-taxonomy.md`（T-001 定稿）落地：7 大类 × 20 子场景 taxonomy；词级 `scenarios`（0–3，0 = core 通用桶）/ `utility`（low 不入库）/ `role` 标注；每子场景 ≥60 有效词 + core ≥500，core_verb+connector ≥40%；LLM 批量标注复用 ReAnnotation worker 模式。
+
+### 决策
+- Taxonomy 做成 `ScenarioTaxonomy` 常量集（无管理后台）；子场景关联走 `WordScenarios` 关联表（WordId+ScenarioKey 复合主键）；`Word` 增加 `Utility`/`Role`/`ScenarioAnnotationVersion`（0=未标注）。
+- 本轮不做 EF 迁移：PG 由幂等补丁 SQL 补列建表，Development 删库重建。
+- 词表来源：环境里有 DashScope key（OpenAI 兼容），`Backend/Scripts/generate-wordlist.py` 真实跑批生成 + `assemble-wordlist.py` 装配（跨场景重复词合并标签、主场景优先）；core 桶 LLM 类目饱和后由开发（LLM）直接补量约 170 词；产物为内置词表 `wordlist-scenarios.json`（嵌入资源、随种子灌库，验收不依赖运行时 LLM）；运行时标注链路由 `ScenarioAnnotationWorker` 承担，Mock 路径可跑通。
+- 全局 LLM 配置新增可选 `Llm:OpenAI:BaseUrl`，可接任意 OpenAI 兼容端点。
+
+### 实现
+- Domain：`WordUtility`/`ExpressionRole` 枚举、`ScenarioTaxonomy`、`WordScenario` 实体；`ILLMProvider` 第 6 方法 `AnnotateScenarioAsync`（批量）+ Prompt/Parser/Mock/ChatClient/装饰器全链路。
+- `ScenarioAnnotationWorker`：分批标注（默认 20/批），按版本号跳过已标注词 → 幂等可重跑、断点可续；LLM 漏标的词留待下轮；整批无进展时防死循环退出。
+- 端点：`GET /api/scenarios`（taxonomy + 各场景词数 + core 桶词数）、`POST /api/scenarios/annotation-jobs`（按小时幂等触发）、`GET /api/words?scenario=` 过滤、`WordDto` 带场景标注、`POST /api/words` 自动入队标注。
+- 单测：taxonomy、解析器容错、Mock 启发式、worker 幂等/续跑（真实 PG）、词表验收口径（规模/占比/合法性）。
+
+### 验收
+- [x] `dotnet build` 全量通过
+- [x] `dotnet test` 84 全过（含词表规模/占比守护、worker 幂等续跑、解析器容错）
+- [x] 真实链路实测：DashScope（OpenAI 兼容端点）下批量标注 job + 新词自动标注落库可查
+- [x] 种子端到端实测：全新 PG 库灌入 1520 词，`GET /api/scenarios` 返回每子场景最少 72、core 桶 569
+- [ ] 标注质量人工抽检（验收 2，移交周密 T-003）
+
+---
+
 ## 2026-07-20 — 文档集整理与本地开发代理修复
 
 ### 实现
