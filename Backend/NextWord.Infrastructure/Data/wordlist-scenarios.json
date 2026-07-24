@@ -15317,11 +15317,7 @@
    "cefr": "A1",
    "role": "core_verb",
    "utility": "high",
-   "scenarios": [
-    "past_experiences",
-    "emotions",
-    "dining_out"
-   ]
+   "scenarios": []
   },
   {
    "lemma": "see",
@@ -24789,11 +24785,13 @@
    "meanings": [
     "偶然遇见"
    ],
-   "example": "I bumped into an old friend at the station.",
    "cefr": "B1",
    "role": "core_verb",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "I bumped into an old friend at the station."
+   ]
   },
   {
    "lemma": "check on",
@@ -24803,11 +24801,13 @@
     "查看",
     "探望"
    ],
-   "example": "I'll check on the kids before bed.",
    "cefr": "A2",
    "role": "core_verb",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "I'll check on the kids before bed."
+   ]
   },
   {
    "lemma": "come off",
@@ -24817,11 +24817,13 @@
     "脱落",
     "成功举行"
    ],
-   "example": "The button came off my jacket.",
    "cefr": "B1",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "The button came off my jacket."
+   ]
   },
   {
    "lemma": "cross out",
@@ -24831,11 +24833,13 @@
     "划掉",
     "删去"
    ],
-   "example": "Cross out the wrong answer and write again.",
    "cefr": "A2",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Cross out the wrong answer and write again."
+   ]
   },
   {
    "lemma": "cut out",
@@ -24845,11 +24849,13 @@
     "剪掉",
     "戒掉"
    ],
-   "example": "I'm trying to cut out sugar.",
    "cefr": "B1",
    "role": "core_verb",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "I'm trying to cut out sugar."
+   ]
   },
   {
    "lemma": "deal with",
@@ -24859,11 +24865,13 @@
     "处理",
     "应付"
    ],
-   "example": "I'll deal with the emails this afternoon.",
    "cefr": "B1",
    "role": "core_verb",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "I'll deal with the emails this afternoon."
+   ]
   },
   {
    "lemma": "die down",
@@ -24873,11 +24881,13 @@
     "逐渐平息",
     "减弱"
    ],
-   "example": "Let's wait until the rain dies down.",
    "cefr": "B1",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Let's wait until the rain dies down."
+   ]
   },
   {
    "lemma": "dress up",
@@ -24887,11 +24897,13 @@
     "打扮",
     "盛装"
    ],
-   "example": "Do we need to dress up for dinner?",
    "cefr": "A2",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Do we need to dress up for dinner?"
+   ]
   },
   {
    "lemma": "eat out",
@@ -24900,11 +24912,13 @@
    "meanings": [
     "外出就餐"
    ],
-   "example": "We eat out about once a week.",
    "cefr": "A2",
    "role": "core_verb",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "We eat out about once a week."
+   ]
   },
   {
    "lemma": "fall over",
@@ -24914,11 +24928,13 @@
     "摔倒",
     "跌倒"
    ],
-   "example": "The toddler fell over in the park.",
    "cefr": "A2",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "The toddler fell over in the park."
+   ]
   },
   {
    "lemma": "fall through",
@@ -24928,11 +24944,13 @@
     "落空",
     "告吹"
    ],
-   "example": "Our holiday plans fell through.",
    "cefr": "B2",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Our holiday plans fell through."
+   ]
   },
   {
    "lemma": "fill up",
@@ -24942,11 +24960,13 @@
     "加满",
     "填满"
    ],
-   "example": "Can you fill up the tank, please?",
    "cefr": "A2",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Can you fill up the tank, please?"
+   ]
   },
   {
    "lemma": "get rid of",
@@ -24956,11 +24976,13 @@
     "摆脱",
     "扔掉"
    ],
-   "example": "I need to get rid of these old chairs.",
    "cefr": "B1",
    "role": "core_verb",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "I need to get rid of these old chairs."
+   ]
   },
   {
    "lemma": "get through",
@@ -24971,11 +24993,13 @@
     "熬过",
     "完成"
    ],
-   "example": "I can't get through to the doctor's office.",
    "cefr": "B1",
    "role": "core_verb",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "I can't get through to the doctor's office."
+   ]
   },
   {
    "lemma": "give out",
@@ -24985,11 +25009,13 @@
     "分发",
     "发出"
    ],
-   "example": "They gave out free samples at the mall.",
    "cefr": "B1",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "They gave out free samples at the mall."
+   ]
   },
   {
    "lemma": "go by",
@@ -24999,11 +25025,13 @@
     "经过",
     "流逝"
    ],
-   "example": "Time goes by so fast these days.",
    "cefr": "A2",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Time goes by so fast these days."
+   ]
   },
   {
    "lemma": "hand out",
@@ -25012,11 +25040,13 @@
    "meanings": [
     "分发"
    ],
-   "example": "She handed out the flyers at the door.",
    "cefr": "B1",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "She handed out the flyers at the door."
+   ]
   },
   {
    "lemma": "help out",
@@ -25026,11 +25056,13 @@
     "帮忙",
     "搭把手"
    ],
-   "example": "Can you help out with the move?",
    "cefr": "A2",
    "role": "core_verb",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Can you help out with the move?"
+   ]
   },
   {
    "lemma": "hold up",
@@ -25040,11 +25072,13 @@
     "耽搁",
     "举起"
    ],
-   "example": "Sorry I'm late, traffic held me up.",
    "cefr": "B1",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Sorry I'm late, traffic held me up."
+   ]
   },
   {
    "lemma": "hurry up",
@@ -25054,11 +25088,13 @@
     "快点",
     "赶紧"
    ],
-   "example": "Hurry up or we'll miss the bus.",
    "cefr": "A1",
    "role": "core_verb",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Hurry up or we'll miss the bus."
+   ]
   },
   {
    "lemma": "jot down",
@@ -25067,11 +25103,13 @@
    "meanings": [
     "匆匆记下"
    ],
-   "example": "Let me jot down your number.",
    "cefr": "B1",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Let me jot down your number."
+   ]
   },
   {
    "lemma": "kick off",
@@ -25081,11 +25119,13 @@
     "开始",
     "开球"
    ],
-   "example": "The meeting kicks off at nine.",
    "cefr": "B1",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "The meeting kicks off at nine."
+   ]
   },
   {
    "lemma": "knock down",
@@ -25095,11 +25135,13 @@
     "撞倒",
     "拆除"
    ],
-   "example": "They knocked down the old garage.",
    "cefr": "B1",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "They knocked down the old garage."
+   ]
   },
   {
    "lemma": "leave out",
@@ -25109,11 +25151,13 @@
     "遗漏",
     "排除"
    ],
-   "example": "You left out an important detail.",
    "cefr": "B1",
    "role": "core_verb",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "You left out an important detail."
+   ]
   },
   {
    "lemma": "let in",
@@ -25122,11 +25166,13 @@
    "meanings": [
     "让……进来"
    ],
-   "example": "Can you let the cat in?",
    "cefr": "A2",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Can you let the cat in?"
+   ]
   },
   {
    "lemma": "lie down",
@@ -25135,11 +25181,13 @@
    "meanings": [
     "躺下"
    ],
-   "example": "I need to lie down for a bit.",
    "cefr": "A1",
    "role": "core_verb",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "I need to lie down for a bit."
+   ]
   },
   {
    "lemma": "line up",
@@ -25149,11 +25197,13 @@
     "排队",
     "安排好"
    ],
-   "example": "We lined up for tickets at dawn.",
    "cefr": "A2",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "We lined up for tickets at dawn."
+   ]
   },
   {
    "lemma": "lock up",
@@ -25162,11 +25212,13 @@
    "meanings": [
     "锁好门窗"
    ],
-   "example": "Don't forget to lock up tonight.",
    "cefr": "A2",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Don't forget to lock up tonight."
+   ]
   },
   {
    "lemma": "look around",
@@ -25176,11 +25228,13 @@
     "四处看看",
     "参观"
    ],
-   "example": "Take your time and look around.",
    "cefr": "A1",
    "role": "core_verb",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Take your time and look around."
+   ]
   },
   {
    "lemma": "look back",
@@ -25190,11 +25244,13 @@
     "回顾",
     "回忆"
    ],
-   "example": "Looking back, it was a good decision.",
    "cefr": "B1",
    "role": "core_verb",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Looking back, it was a good decision."
+   ]
   },
   {
    "lemma": "look out for",
@@ -25204,11 +25260,13 @@
     "留意",
     "当心"
    ],
-   "example": "Look out for pickpockets downtown.",
    "cefr": "B1",
    "role": "core_verb",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Look out for pickpockets downtown."
+   ]
   },
   {
    "lemma": "look over",
@@ -25218,11 +25276,13 @@
     "快速查看",
     "检查"
    ],
-   "example": "Can you look over my email before I send it?",
    "cefr": "B1",
    "role": "core_verb",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Can you look over my email before I send it?"
+   ]
   },
   {
    "lemma": "mess up",
@@ -25232,11 +25292,13 @@
     "搞砸",
     "弄乱"
    ],
-   "example": "I messed up the reservation date.",
    "cefr": "B1",
    "role": "core_verb",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "I messed up the reservation date."
+   ]
   },
   {
    "lemma": "mix up",
@@ -25246,11 +25308,13 @@
     "混淆",
     "弄混"
    ],
-   "example": "I always mix up their names.",
    "cefr": "B1",
    "role": "core_verb",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "I always mix up their names."
+   ]
   },
   {
    "lemma": "move on",
@@ -25260,11 +25324,13 @@
     "继续前进",
     "翻篇"
    ],
-   "example": "It's time to move on to the next topic.",
    "cefr": "B1",
    "role": "core_verb",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "It's time to move on to the next topic."
+   ]
   },
   {
    "lemma": "move out",
@@ -25273,11 +25339,13 @@
    "meanings": [
     "搬出去"
    ],
-   "example": "She moved out of her parents' house.",
    "cefr": "A2",
    "role": "core_verb",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "She moved out of her parents' house."
+   ]
   },
   {
    "lemma": "narrow down",
@@ -25286,11 +25354,13 @@
    "meanings": [
     "缩小范围"
    ],
-   "example": "We narrowed it down to two options.",
    "cefr": "B2",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "We narrowed it down to two options."
+   ]
   },
   {
    "lemma": "note down",
@@ -25299,11 +25369,13 @@
    "meanings": [
     "记下"
    ],
-   "example": "Note down the reference number.",
    "cefr": "B1",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Note down the reference number."
+   ]
   },
   {
    "lemma": "open up",
@@ -25313,11 +25385,13 @@
     "打开",
     "敞开心扉"
    ],
-   "example": "He finally opened up about his feelings.",
    "cefr": "B1",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "He finally opened up about his feelings."
+   ]
   },
   {
    "lemma": "pack up",
@@ -25327,11 +25401,13 @@
     "收拾行李",
     "打包"
    ],
-   "example": "We packed up and left at noon.",
    "cefr": "A2",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "We packed up and left at noon."
+   ]
   },
   {
    "lemma": "pay back",
@@ -25341,11 +25417,13 @@
     "还钱",
     "报答"
    ],
-   "example": "I'll pay you back on Friday.",
    "cefr": "A2",
    "role": "core_verb",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "I'll pay you back on Friday."
+   ]
   },
   {
    "lemma": "pay off",
@@ -25355,11 +25433,13 @@
     "还清",
     "取得成效"
    ],
-   "example": "All that practice finally paid off.",
    "cefr": "B1",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "All that practice finally paid off."
+   ]
   },
   {
    "lemma": "pick out",
@@ -25369,11 +25449,13 @@
     "挑选",
     "认出"
    ],
-   "example": "She picked out a gift for her mom.",
    "cefr": "A2",
    "role": "core_verb",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "She picked out a gift for her mom."
+   ]
   },
   {
    "lemma": "plan ahead",
@@ -25382,11 +25464,13 @@
    "meanings": [
     "提前计划"
    ],
-   "example": "Book early if you like to plan ahead.",
    "cefr": "B1",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Book early if you like to plan ahead."
+   ]
   },
   {
    "lemma": "plug in",
@@ -25395,11 +25479,13 @@
    "meanings": [
     "插上电源"
    ],
-   "example": "Can you plug in the charger for me?",
    "cefr": "A2",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Can you plug in the charger for me?"
+   ]
   },
   {
    "lemma": "point at",
@@ -25408,11 +25494,13 @@
    "meanings": [
     "指向"
    ],
-   "example": "He pointed at the map on the wall.",
    "cefr": "A1",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "He pointed at the map on the wall."
+   ]
   },
   {
    "lemma": "pull over",
@@ -25421,11 +25509,13 @@
    "meanings": [
     "靠边停车"
    ],
-   "example": "The police asked him to pull over.",
    "cefr": "B1",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "The police asked him to pull over."
+   ]
   },
   {
    "lemma": "put aside",
@@ -25435,11 +25525,13 @@
     "放一边",
     "存下"
    ],
-   "example": "Try to put aside some money each month.",
    "cefr": "B1",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Try to put aside some money each month."
+   ]
   },
   {
    "lemma": "put together",
@@ -25449,11 +25541,13 @@
     "组装",
     "整理出"
    ],
-   "example": "I put together a quick lunch.",
    "cefr": "B1",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "I put together a quick lunch."
+   ]
   },
   {
    "lemma": "read through",
@@ -25462,11 +25556,13 @@
    "meanings": [
     "通读"
    ],
-   "example": "Read through the instructions first.",
    "cefr": "A2",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Read through the instructions first."
+   ]
   },
   {
    "lemma": "ring back",
@@ -25475,11 +25571,13 @@
    "meanings": [
     "回电话"
    ],
-   "example": "I'll ring you back in ten minutes.",
    "cefr": "A2",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "I'll ring you back in ten minutes."
+   ]
   },
   {
    "lemma": "rule out",
@@ -25488,11 +25586,13 @@
    "meanings": [
     "排除可能性"
    ],
-   "example": "We can't rule out a delay.",
    "cefr": "B2",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "We can't rule out a delay."
+   ]
   },
   {
    "lemma": "run down",
@@ -25503,11 +25603,13 @@
     "耗尽",
     "贬低"
    ],
-   "example": "My phone battery is running down.",
    "cefr": "B1",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "My phone battery is running down."
+   ]
   },
   {
    "lemma": "run over",
@@ -25518,11 +25620,13 @@
     "超时",
     "快速过一遍"
    ],
-   "example": "The meeting ran over by half an hour.",
    "cefr": "B1",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "The meeting ran over by half an hour."
+   ]
   },
   {
    "lemma": "see off",
@@ -25531,11 +25635,13 @@
    "meanings": [
     "送行"
    ],
-   "example": "We saw her off at the airport.",
    "cefr": "B1",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "We saw her off at the airport."
+   ]
   },
   {
    "lemma": "sell out",
@@ -25544,11 +25650,13 @@
    "meanings": [
     "售罄"
    ],
-   "example": "The tickets sold out in minutes.",
    "cefr": "A2",
    "role": "core_verb",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "The tickets sold out in minutes."
+   ]
   },
   {
    "lemma": "send back",
@@ -25558,11 +25666,13 @@
     "退回",
     "送回"
    ],
-   "example": "I had to send the package back.",
    "cefr": "A2",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "I had to send the package back."
+   ]
   },
   {
    "lemma": "set aside",
@@ -25572,11 +25682,13 @@
     "留出",
     "拨出"
    ],
-   "example": "Set aside some time for review.",
    "cefr": "B1",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Set aside some time for review."
+   ]
   },
   {
    "lemma": "shop around",
@@ -25585,11 +25697,15 @@
    "meanings": [
     "货比三家"
    ],
-   "example": "Shop around before you buy a phone.",
    "cefr": "B1",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [
+    "shopping"
+   ],
+   "examples": [
+    "Shop around before you buy a phone."
+   ]
   },
   {
    "lemma": "show around",
@@ -25598,11 +25714,13 @@
    "meanings": [
     "带……参观"
    ],
-   "example": "Let me show you around the office.",
    "cefr": "A2",
    "role": "core_verb",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Let me show you around the office."
+   ]
   },
   {
    "lemma": "show off",
@@ -25611,11 +25729,13 @@
    "meanings": [
     "炫耀"
    ],
-   "example": "He likes to show off his new car.",
    "cefr": "B1",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "He likes to show off his new car."
+   ]
   },
   {
    "lemma": "sign up",
@@ -25625,11 +25745,13 @@
     "报名",
     "注册"
    ],
-   "example": "I signed up for a yoga class.",
    "cefr": "A2",
    "role": "core_verb",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "I signed up for a yoga class."
+   ]
   },
   {
    "lemma": "sleep in",
@@ -25638,11 +25760,13 @@
    "meanings": [
     "睡懒觉"
    ],
-   "example": "I love sleeping in on weekends.",
    "cefr": "A2",
    "role": "core_verb",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "I love sleeping in on weekends."
+   ]
   },
   {
    "lemma": "slow down",
@@ -25652,11 +25776,13 @@
     "慢下来",
     "减速"
    ],
-   "example": "Slow down, you're talking too fast.",
    "cefr": "A2",
    "role": "core_verb",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Slow down, you're talking too fast."
+   ]
   },
   {
    "lemma": "speak up",
@@ -25666,11 +25792,13 @@
     "大声说",
     "直言"
    ],
-   "example": "Could you speak up a little?",
    "cefr": "A2",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Could you speak up a little?"
+   ]
   },
   {
    "lemma": "split up",
@@ -25681,11 +25809,13 @@
     "分手",
     "分摊"
    ],
-   "example": "Let's split up and search both floors.",
    "cefr": "B1",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Let's split up and search both floors."
+   ]
   },
   {
    "lemma": "start over",
@@ -25694,11 +25824,13 @@
    "meanings": [
     "重新开始"
    ],
-   "example": "I spilled coffee on it and had to start over.",
    "cefr": "A2",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "I spilled coffee on it and had to start over."
+   ]
   },
   {
    "lemma": "stay up",
@@ -25707,11 +25839,13 @@
    "meanings": [
     "熬夜"
    ],
-   "example": "We stayed up late watching movies.",
    "cefr": "A2",
    "role": "core_verb",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "We stayed up late watching movies."
+   ]
   },
   {
    "lemma": "step in",
@@ -25721,11 +25855,13 @@
     "介入",
     "插手帮忙"
    ],
-   "example": "Thanks for stepping in when I was away.",
    "cefr": "B1",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Thanks for stepping in when I was away."
+   ]
   },
   {
    "lemma": "stick to",
@@ -25734,11 +25870,13 @@
    "meanings": [
     "坚持"
    ],
-   "example": "Stick to the plan and you'll be fine.",
    "cefr": "B1",
    "role": "core_verb",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Stick to the plan and you'll be fine."
+   ]
   },
   {
    "lemma": "stock up",
@@ -25748,11 +25886,13 @@
     "囤货",
     "备足"
    ],
-   "example": "We stocked up on snacks for the trip.",
    "cefr": "B1",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "We stocked up on snacks for the trip."
+   ]
   },
   {
    "lemma": "stop by",
@@ -25761,11 +25901,13 @@
    "meanings": [
     "顺便拜访"
    ],
-   "example": "Stop by anytime you're in the neighborhood.",
    "cefr": "A2",
    "role": "core_verb",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Stop by anytime you're in the neighborhood."
+   ]
   },
   {
    "lemma": "switch off",
@@ -25774,11 +25916,13 @@
    "meanings": [
     "关掉"
    ],
-   "example": "Switch off the lights when you leave.",
    "cefr": "A2",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Switch off the lights when you leave."
+   ]
   },
   {
    "lemma": "switch on",
@@ -25787,11 +25931,13 @@
    "meanings": [
     "打开（电器）"
    ],
-   "example": "Can you switch on the heater?",
    "cefr": "A2",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Can you switch on the heater?"
+   ]
   },
   {
    "lemma": "talk over",
@@ -25801,11 +25947,13 @@
     "商量",
     "详谈"
    ],
-   "example": "Let's talk it over tonight.",
    "cefr": "B1",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Let's talk it over tonight."
+   ]
   },
   {
    "lemma": "tell off",
@@ -25814,11 +25962,13 @@
    "meanings": [
     "训斥"
    ],
-   "example": "Mom told me off for being late.",
    "cefr": "B1",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Mom told me off for being late."
+   ]
   },
   {
    "lemma": "think through",
@@ -25828,11 +25978,13 @@
     "想清楚",
     "考虑周全"
    ],
-   "example": "Think it through before you decide.",
    "cefr": "B1",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Think it through before you decide."
+   ]
   },
   {
    "lemma": "try out",
@@ -25842,11 +25994,13 @@
     "试用",
     "尝试"
    ],
-   "example": "Try out the new feature and tell me.",
    "cefr": "A2",
    "role": "core_verb",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Try out the new feature and tell me."
+   ]
   },
   {
    "lemma": "turn around",
@@ -25857,11 +26011,13 @@
     "掉头",
     "扭转"
    ],
-   "example": "Turn around and you'll see the sign.",
    "cefr": "A2",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Turn around and you'll see the sign."
+   ]
   },
   {
    "lemma": "turn back",
@@ -25871,11 +26027,13 @@
     "折返",
     "往回走"
    ],
-   "example": "We had to turn back in the storm.",
    "cefr": "A2",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "We had to turn back in the storm."
+   ]
   },
   {
    "lemma": "use up",
@@ -25885,11 +26043,13 @@
     "用完",
     "耗尽"
    ],
-   "example": "We've used up all the milk.",
    "cefr": "A2",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "We've used up all the milk."
+   ]
   },
   {
    "lemma": "walk away",
@@ -25899,11 +26059,13 @@
     "走开",
     "抽身"
    ],
-   "example": "Just walk away from the argument.",
    "cefr": "A2",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Just walk away from the argument."
+   ]
   },
   {
    "lemma": "warm up",
@@ -25913,11 +26075,13 @@
     "热身",
     "热一热"
    ],
-   "example": "Warm up the leftovers for lunch.",
    "cefr": "A2",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Warm up the leftovers for lunch."
+   ]
   },
   {
    "lemma": "wear out",
@@ -25927,11 +26091,13 @@
     "穿坏",
     "使筋疲力尽"
    ],
-   "example": "My shoes are completely worn out.",
    "cefr": "B1",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "My shoes are completely worn out."
+   ]
   },
   {
    "lemma": "wind down",
@@ -25941,11 +26107,13 @@
     "放松下来",
     "逐渐结束"
    ],
-   "example": "I read to wind down before bed.",
    "cefr": "B1",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "I read to wind down before bed."
+   ]
   },
   {
    "lemma": "wipe off",
@@ -25954,11 +26122,13 @@
    "meanings": [
     "擦掉"
    ],
-   "example": "Wipe off the table after lunch.",
    "cefr": "A2",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Wipe off the table after lunch."
+   ]
   },
   {
    "lemma": "write down",
@@ -25967,11 +26137,13 @@
    "meanings": [
     "写下来"
    ],
-   "example": "Write down what the teacher says.",
    "cefr": "A1",
    "role": "core_verb",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Write down what the teacher says."
+   ]
   },
   {
    "lemma": "zip up",
@@ -25980,11 +26152,13 @@
    "meanings": [
     "拉上拉链"
    ],
-   "example": "Zip up your jacket, it's windy.",
    "cefr": "A2",
    "role": "core_verb",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Zip up your jacket, it's windy."
+   ]
   },
   {
    "lemma": "anymore",
@@ -25994,120 +26168,138 @@
     "（不再）",
     "再也（不）"
    ],
-   "example": "I don't live there anymore.",
    "cefr": "A2",
    "role": "connector",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "I don't live there anymore."
+   ]
   },
   {
    "lemma": "by now",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/baɪ naʊ/",
    "meanings": [
     "到现在",
     "此刻已经"
    ],
-   "example": "She should be home by now.",
    "cefr": "B1",
    "role": "connector",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "She should be home by now."
+   ]
   },
   {
    "lemma": "for now",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/fə naʊ/",
    "meanings": [
     "暂时",
     "目前先"
    ],
-   "example": "Let's keep it simple for now.",
    "cefr": "B1",
    "role": "connector",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Let's keep it simple for now."
+   ]
   },
   {
    "lemma": "from time to time",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/frɒm taɪm tə taɪm/",
    "meanings": [
     "偶尔",
     "不时"
    ],
-   "example": "We eat out from time to time.",
    "cefr": "B1",
    "role": "connector",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "We eat out from time to time."
+   ]
   },
   {
    "lemma": "in a bit",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/ɪn ə bɪt/",
    "meanings": [
     "一会儿之后"
    ],
-   "example": "I'll call you back in a bit.",
    "cefr": "A2",
    "role": "connector",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "I'll call you back in a bit."
+   ]
   },
   {
    "lemma": "in no time",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/ɪn nəʊ taɪm/",
    "meanings": [
     "很快",
     "立刻"
    ],
-   "example": "You'll pick it up in no time.",
    "cefr": "B1",
    "role": "connector",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "You'll pick it up in no time."
+   ]
   },
   {
    "lemma": "in the long run",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/ɪn ðə lɒŋ rʌn/",
    "meanings": [
     "从长远看"
    ],
-   "example": "It's cheaper in the long run.",
    "cefr": "B2",
    "role": "connector",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "It's cheaper in the long run."
+   ]
   },
   {
    "lemma": "little by little",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/ˈlɪtl baɪ ˈlɪtl/",
    "meanings": [
     "一点一点地",
     "逐渐"
    ],
-   "example": "Little by little, my English improved.",
    "cefr": "A2",
    "role": "connector",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Little by little, my English improved."
+   ]
   },
   {
    "lemma": "no longer",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/nəʊ ˈlɒŋɡə/",
    "meanings": [
     "不再"
    ],
-   "example": "This service is no longer free.",
    "cefr": "B1",
    "role": "connector",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "This service is no longer free."
+   ]
   },
   {
    "lemma": "nowadays",
@@ -26117,25 +26309,29 @@
     "如今",
     "现在"
    ],
-   "example": "Nowadays everyone shops online.",
    "cefr": "B1",
    "role": "connector",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Nowadays everyone shops online."
+   ]
   },
   {
    "lemma": "once in a while",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/wʌns ɪn ə waɪl/",
    "meanings": [
     "偶尔",
     "间或"
    ],
-   "example": "We go hiking once in a while.",
    "cefr": "A2",
    "role": "connector",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "We go hiking once in a while."
+   ]
   },
   {
    "lemma": "rarely",
@@ -26145,93 +26341,107 @@
     "很少",
     "难得"
    ],
-   "example": "I rarely watch TV these days.",
    "cefr": "B1",
    "role": "connector",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "I rarely watch TV these days."
+   ]
   },
   {
    "lemma": "sooner or later",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/ˈsuːnər ɔː ˈleɪtə/",
    "meanings": [
     "迟早"
    ],
-   "example": "Sooner or later you'll have to decide.",
    "cefr": "B1",
    "role": "connector",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Sooner or later you'll have to decide."
+   ]
   },
   {
    "lemma": "the other day",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/ði ˈʌðə deɪ/",
    "meanings": [
     "前几天",
     "那天"
    ],
-   "example": "I ran into Tom the other day.",
    "cefr": "B1",
    "role": "connector",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "I ran into Tom the other day."
+   ]
   },
   {
    "lemma": "these days",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/ðiːz deɪz/",
    "meanings": [
     "这些天",
     "近来"
    ],
-   "example": "Food is so expensive these days.",
    "cefr": "A2",
    "role": "connector",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Food is so expensive these days."
+   ]
   },
   {
    "lemma": "up to now",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/ʌp tə naʊ/",
    "meanings": [
     "到目前为止"
    ],
-   "example": "Up to now everything is fine.",
    "cefr": "B1",
    "role": "connector",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Up to now everything is fine."
+   ]
   },
   {
    "lemma": "at once",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/ət wʌns/",
    "meanings": [
     "立刻",
     "同时"
    ],
-   "example": "Come here at once!",
    "cefr": "B1",
    "role": "connector",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Come here at once!"
+   ]
   },
   {
    "lemma": "for ages",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/fər ˈeɪdʒɪz/",
    "meanings": [
     "很久",
     "好长时间"
    ],
-   "example": "I haven't seen her for ages.",
    "cefr": "A2",
    "role": "connector",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "I haven't seen her for ages."
+   ]
   },
   {
    "lemma": "sometimes",
@@ -26241,11 +26451,13 @@
     "有时",
     "偶尔"
    ],
-   "example": "Sometimes I walk to work.",
    "cefr": "A1",
    "role": "connector",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Sometimes I walk to work."
+   ]
   },
   {
    "lemma": "always",
@@ -26255,11 +26467,13 @@
     "总是",
     "一直"
    ],
-   "example": "She always arrives on time.",
    "cefr": "A1",
    "role": "connector",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "She always arrives on time."
+   ]
   },
   {
    "lemma": "never",
@@ -26269,11 +26483,13 @@
     "从不",
     "绝不"
    ],
-   "example": "I never eat breakfast late.",
    "cefr": "A1",
    "role": "connector",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "I never eat breakfast late."
+   ]
   },
   {
    "lemma": "ever",
@@ -26283,313 +26499,359 @@
     "曾经",
     "究竟"
    ],
-   "example": "Have you ever been to Japan?",
    "cefr": "A1",
    "role": "connector",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Have you ever been to Japan?"
+   ]
   },
   {
    "lemma": "all the time",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/ɔːl ðə taɪm/",
    "meanings": [
     "一直",
     "总是"
    ],
-   "example": "My phone rings all the time.",
    "cefr": "A2",
    "role": "connector",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "My phone rings all the time."
+   ]
   },
   {
    "lemma": "at the moment",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/ət ðə ˈməʊmənt/",
    "meanings": [
     "此刻",
     "目前"
    ],
-   "example": "I'm a bit busy at the moment.",
    "cefr": "A2",
    "role": "connector",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "I'm a bit busy at the moment."
+   ]
   },
   {
    "lemma": "every now and then",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/ˈevri naʊ ənd ðen/",
    "meanings": [
     "偶尔",
     "不时"
    ],
-   "example": "We meet for lunch every now and then.",
    "cefr": "B1",
    "role": "connector",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "We meet for lunch every now and then."
+   ]
   },
   {
    "lemma": "for good",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/fə ɡʊd/",
    "meanings": [
     "永久地",
     "一劳永逸"
    ],
-   "example": "He left the city for good.",
    "cefr": "B2",
    "role": "connector",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "He left the city for good."
+   ]
   },
   {
    "lemma": "from now on",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/frɒm naʊ ɒn/",
    "meanings": [
     "从现在起"
    ],
-   "example": "From now on I'll cook at home.",
    "cefr": "A2",
    "role": "connector",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "From now on I'll cook at home."
+   ]
   },
   {
    "lemma": "just now",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/dʒʌst naʊ/",
    "meanings": [
     "刚才",
     "此刻"
    ],
-   "example": "She called just now.",
    "cefr": "A2",
    "role": "connector",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "She called just now."
+   ]
   },
   {
    "lemma": "in time",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/ɪn taɪm/",
    "meanings": [
     "及时"
    ],
-   "example": "We got there just in time.",
    "cefr": "A2",
    "role": "connector",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "We got there just in time."
+   ]
   },
   {
    "lemma": "straight away",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/streɪt əˈweɪ/",
    "meanings": [
     "马上",
     "立即"
    ],
-   "example": "I'll do it straight away.",
    "cefr": "A2",
    "role": "connector",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "I'll do it straight away."
+   ]
   },
   {
    "lemma": "day by day",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/deɪ baɪ deɪ/",
    "meanings": [
     "一天天地",
     "逐日"
    ],
-   "example": "Day by day, it gets easier.",
    "cefr": "A2",
    "role": "connector",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Day by day, it gets easier."
+   ]
   },
   {
    "lemma": "at last",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/ət lɑːst/",
    "meanings": [
     "终于"
    ],
-   "example": "The weekend is here at last.",
    "cefr": "B1",
    "role": "connector",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "The weekend is here at last."
+   ]
   },
   {
    "lemma": "got it",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/ɡɒt ɪt/",
    "meanings": [
     "明白了",
     "收到"
    ],
-   "example": "Got it, I'll be there at six.",
    "cefr": "A2",
    "role": "phrase_pattern",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Got it, I'll be there at six."
+   ]
   },
   {
    "lemma": "i get it",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/aɪ ɡet ɪt/",
    "meanings": [
     "我懂了",
     "我理解"
    ],
-   "example": "I get it, you need more time.",
    "cefr": "A2",
    "role": "phrase_pattern",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "I get it, you need more time."
+   ]
   },
   {
    "lemma": "that's true",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/ðæts truː/",
    "meanings": [
     "确实",
     "那倒是"
    ],
-   "example": "That's true, I hadn't thought of that.",
    "cefr": "A2",
    "role": "phrase_pattern",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "That's true, I hadn't thought of that."
+   ]
   },
   {
    "lemma": "that's right",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/ðæts raɪt/",
    "meanings": [
     "没错",
     "对"
    ],
-   "example": "That's right, we met at the party.",
    "cefr": "A2",
    "role": "phrase_pattern",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "That's right, we met at the party."
+   ]
   },
   {
    "lemma": "that's a shame",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/ðæts ə ʃeɪm/",
    "meanings": [
     "真可惜",
     "太遗憾了"
    ],
-   "example": "That's a shame, maybe next time.",
    "cefr": "B1",
    "role": "phrase_pattern",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "That's a shame, maybe next time."
+   ]
   },
   {
    "lemma": "lucky you",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/ˈlʌki juː/",
    "meanings": [
     "你真幸运"
    ],
-   "example": "A week off? Lucky you!",
    "cefr": "A2",
    "role": "phrase_pattern",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "A week off? Lucky you!"
+   ]
   },
   {
    "lemma": "poor you",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/pɔː juː/",
    "meanings": [
     "真可怜",
     "真同情你"
    ],
-   "example": "You worked all weekend? Poor you.",
    "cefr": "A2",
    "role": "phrase_pattern",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "You worked all weekend? Poor you."
+   ]
   },
   {
    "lemma": "well done",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/wel dʌn/",
    "meanings": [
     "干得好",
     "做得好"
    ],
-   "example": "Well done, you passed the test!",
    "cefr": "A1",
    "role": "phrase_pattern",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Well done, you passed the test!"
+   ]
   },
   {
    "lemma": "nice one",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/naɪs wʌn/",
    "meanings": [
     "不错啊",
     "好样的"
    ],
-   "example": "Nice one, that shot was perfect.",
    "cefr": "A2",
    "role": "phrase_pattern",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Nice one, that shot was perfect."
+   ]
   },
   {
    "lemma": "oh no",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/əʊ nəʊ/",
    "meanings": [
     "糟糕",
     "不会吧"
    ],
-   "example": "Oh no, I forgot my keys.",
    "cefr": "A1",
    "role": "phrase_pattern",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Oh no, I forgot my keys."
+   ]
   },
   {
    "lemma": "you're joking",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/jɔː ˈdʒəʊkɪŋ/",
    "meanings": [
     "你在开玩笑吧"
    ],
-   "example": "Fifty dollars? You're joking!",
    "cefr": "A2",
    "role": "phrase_pattern",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Fifty dollars? You're joking!"
+   ]
   },
   {
    "lemma": "i can't believe it",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/aɪ kɑːnt bɪˈliːv ɪt/",
    "meanings": [
     "真不敢相信"
    ],
-   "example": "I can't believe it, we won!",
    "cefr": "A2",
    "role": "phrase_pattern",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "I can't believe it, we won!"
+   ]
   },
   {
    "lemma": "unbelievable",
@@ -26598,293 +26860,337 @@
    "meanings": [
     "难以置信的"
    ],
-   "example": "The view from the top is unbelievable.",
    "cefr": "B1",
    "role": "scene_noun",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "The view from the top is unbelievable."
+   ]
   },
   {
    "lemma": "never mind",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/ˈnevə maɪnd/",
    "meanings": [
     "没关系",
     "算了"
    ],
-   "example": "Never mind, I'll do it myself.",
    "cefr": "A2",
    "role": "phrase_pattern",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Never mind, I'll do it myself."
+   ]
   },
   {
    "lemma": "forget it",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/fəˈɡet ɪt/",
    "meanings": [
     "算了",
     "别提了"
    ],
-   "example": "Forget it, it's not important.",
    "cefr": "A2",
    "role": "phrase_pattern",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Forget it, it's not important."
+   ]
   },
   {
    "lemma": "it doesn't matter",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/ɪt ˈdʌznt ˈmætə/",
    "meanings": [
     "没关系",
     "不要紧"
    ],
-   "example": "It doesn't matter if you're a bit late.",
    "cefr": "A2",
    "role": "phrase_pattern",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "It doesn't matter if you're a bit late."
+   ]
   },
   {
    "lemma": "you're welcome",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/jɔː ˈwelkəm/",
    "meanings": [
     "不客气"
    ],
-   "example": "Thanks for your help. — You're welcome.",
    "cefr": "A1",
    "role": "phrase_pattern",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Thanks for your help. — You're welcome."
+   ]
   },
   {
    "lemma": "not at all",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/nɒt ət ɔːl/",
    "meanings": [
     "一点也不",
     "别客气"
    ],
-   "example": "I'm not at all tired.",
    "cefr": "A2",
    "role": "phrase_pattern",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "I'm not at all tired."
+   ]
   },
   {
    "lemma": "thanks a lot",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/θæŋks ə lɒt/",
    "meanings": [
     "非常感谢"
    ],
-   "example": "Thanks a lot for the ride.",
    "cefr": "A1",
    "role": "phrase_pattern",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Thanks a lot for the ride."
+   ]
   },
   {
    "lemma": "thanks anyway",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/θæŋks ˈeniweɪ/",
    "meanings": [
     "不管怎样还是谢谢"
    ],
-   "example": "You couldn't find it? Thanks anyway.",
    "cefr": "A2",
    "role": "phrase_pattern",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "You couldn't find it? Thanks anyway."
+   ]
   },
   {
    "lemma": "i hope so",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/aɪ həʊp səʊ/",
    "meanings": [
     "希望如此"
    ],
-   "example": "Will it stop raining? I hope so.",
    "cefr": "A1",
    "role": "phrase_pattern",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Will it stop raining? I hope so."
+   ]
   },
   {
    "lemma": "i think so",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/aɪ θɪŋk səʊ/",
    "meanings": [
     "我想是的"
    ],
-   "example": "Is he coming? I think so.",
    "cefr": "A1",
    "role": "phrase_pattern",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Is he coming? I think so."
+   ]
   },
   {
    "lemma": "i don't think so",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/aɪ dəʊnt θɪŋk səʊ/",
    "meanings": [
     "我不这么认为"
    ],
-   "example": "Will it rain? I don't think so.",
    "cefr": "A2",
    "role": "phrase_pattern",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Will it rain? I don't think so."
+   ]
   },
   {
    "lemma": "i doubt it",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/aɪ daʊt ɪt/",
    "meanings": [
     "我看未必",
     "我怀疑"
    ],
-   "example": "Will they win? I doubt it.",
    "cefr": "B1",
    "role": "phrase_pattern",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Will they win? I doubt it."
+   ]
   },
   {
    "lemma": "probably not",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/ˈprɒbəbli nɒt/",
    "meanings": [
     "可能不会"
    ],
-   "example": "Are you going out? Probably not.",
    "cefr": "A2",
    "role": "phrase_pattern",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Are you going out? Probably not."
+   ]
   },
   {
    "lemma": "why not",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/waɪ nɒt/",
    "meanings": [
     "为什么不",
     "好啊"
    ],
-   "example": "Let's eat out tonight. — Sure, why not.",
    "cefr": "A2",
    "role": "phrase_pattern",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Let's eat out tonight. — Sure, why not."
+   ]
   },
   {
    "lemma": "me too",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/miː tuː/",
    "meanings": [
     "我也是"
    ],
-   "example": "I'm tired. — Me too.",
    "cefr": "A1",
    "role": "phrase_pattern",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "I'm tired. — Me too."
+   ]
   },
   {
    "lemma": "me neither",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/miː ˈnaɪðə/",
    "meanings": [
     "我也不"
    ],
-   "example": "I don't like it. — Me neither.",
    "cefr": "A2",
    "role": "phrase_pattern",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "I don't like it. — Me neither."
+   ]
   },
   {
    "lemma": "tell me about it",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/tel miː əˈbaʊt ɪt/",
    "meanings": [
     "可不是嘛",
     "深有同感"
    ],
-   "example": "Traffic was awful. — Tell me about it.",
    "cefr": "B1",
    "role": "phrase_pattern",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Traffic was awful. — Tell me about it."
+   ]
   },
   {
    "lemma": "i know what you mean",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/aɪ nəʊ wɒt juː miːn/",
    "meanings": [
     "我懂你的意思"
    ],
-   "example": "I know what you mean, it's confusing.",
    "cefr": "A2",
    "role": "phrase_pattern",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "I know what you mean, it's confusing."
+   ]
   },
   {
    "lemma": "how so",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/haʊ səʊ/",
    "meanings": [
     "为什么这么说",
     "何以见得"
    ],
-   "example": "It's too expensive. — How so?",
    "cefr": "B1",
    "role": "phrase_pattern",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "It's too expensive. — How so?"
+   ]
   },
   {
    "lemma": "bless you",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/bles juː/",
    "meanings": [
     "（打喷嚏后说）保重"
    ],
-   "example": "Achoo! — Bless you.",
    "cefr": "A2",
    "role": "phrase_pattern",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Achoo! — Bless you."
+   ]
   },
   {
    "lemma": "you too",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/juː tuː/",
    "meanings": [
     "你也是"
    ],
-   "example": "Have a nice day! — You too.",
    "cefr": "A1",
    "role": "phrase_pattern",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Have a nice day! — You too."
+   ]
   },
   {
    "lemma": "help yourself",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/help jɔːˈself/",
    "meanings": [
     "请自便",
     "随便吃/用"
    ],
-   "example": "There's cake in the kitchen. Help yourself.",
    "cefr": "A2",
    "role": "phrase_pattern",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "There's cake in the kitchen. Help yourself."
+   ]
   },
   {
    "lemma": "stuff",
@@ -26894,65 +27200,75 @@
     "东西",
     "事情（泛指）"
    ],
-   "example": "I have a lot of stuff to do today.",
    "cefr": "A2",
    "role": "scene_noun",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "I have a lot of stuff to do today."
+   ]
   },
   {
    "lemma": "and so on",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/ənd səʊ ɒn/",
    "meanings": [
     "等等",
     "诸如此类"
    ],
-   "example": "We sell bread, cakes, and so on.",
    "cefr": "A2",
    "role": "connector",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "We sell bread, cakes, and so on."
+   ]
   },
   {
    "lemma": "or so",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/ɔː səʊ/",
    "meanings": [
     "左右",
     "大约"
    ],
-   "example": "It takes an hour or so.",
    "cefr": "B1",
    "role": "connector",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "It takes an hour or so."
+   ]
   },
   {
    "lemma": "or whatever",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/ɔː wɒtˈevə/",
    "meanings": [
     "或者随便什么"
    ],
-   "example": "We can watch a movie or whatever.",
    "cefr": "A2",
    "role": "connector",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "We can watch a movie or whatever."
+   ]
   },
   {
    "lemma": "something like that",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/ˈsʌmθɪŋ laɪk ðæt/",
    "meanings": [
     "类似那样的东西"
    ],
-   "example": "A smoothie or something like that.",
    "cefr": "A2",
    "role": "connector",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "A smoothie or something like that."
+   ]
   },
   {
    "lemma": "whatever",
@@ -26962,120 +27278,138 @@
     "无论什么",
     "随便"
    ],
-   "example": "We can do whatever you like.",
    "cefr": "A2",
    "role": "connector",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "We can do whatever you like."
+   ]
   },
   {
    "lemma": "plenty of",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/ˈplenti əv/",
    "meanings": [
     "大量的",
     "充足的"
    ],
-   "example": "There's plenty of time.",
    "cefr": "A2",
    "role": "connector",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "There's plenty of time."
+   ]
   },
   {
    "lemma": "a couple of",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/ə ˈkʌpl əv/",
    "meanings": [
     "两三个",
     "几个"
    ],
-   "example": "I'll be back in a couple of days.",
    "cefr": "A2",
    "role": "connector",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "I'll be back in a couple of days."
+   ]
   },
   {
    "lemma": "loads of",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/ləʊdz əv/",
    "meanings": [
     "很多",
     "大量"
    ],
-   "example": "There were loads of people at the market.",
    "cefr": "A2",
    "role": "connector",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "There were loads of people at the market."
+   ]
   },
   {
    "lemma": "a bunch of",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/ə bʌntʃ əv/",
    "meanings": [
     "一群",
     "一堆"
    ],
-   "example": "A bunch of us went out for dinner.",
    "cefr": "B1",
    "role": "connector",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "A bunch of us went out for dinner."
+   ]
   },
   {
    "lemma": "most of",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/məʊst əv/",
    "meanings": [
     "大多数"
    ],
-   "example": "Most of the shops close at nine.",
    "cefr": "A2",
    "role": "connector",
    "utility": "high",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "Most of the shops close at nine."
+   ]
   },
   {
    "lemma": "the rest of",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/ðə rest əv/",
    "meanings": [
     "其余的",
     "剩下的"
    ],
-   "example": "I spent the rest of the day at home.",
    "cefr": "A2",
    "role": "connector",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "I spent the rest of the day at home."
+   ]
   },
   {
    "lemma": "none of",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/nʌn əv/",
    "meanings": [
     "没有一个"
    ],
-   "example": "None of my friends smoke.",
    "cefr": "A2",
    "role": "connector",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "None of my friends smoke."
+   ]
   },
   {
    "lemma": "that kind of thing",
    "pos": "phr.",
-   "phonetics": "",
+   "phonetics": "/ðæt kaɪnd əv θɪŋ/",
    "meanings": [
     "那一类事情"
    ],
-   "example": "We talked about work, family, that kind of thing.",
    "cefr": "B1",
    "role": "connector",
    "utility": "medium",
-   "scenarios": []
+   "scenarios": [],
+   "examples": [
+    "We talked about work, family, that kind of thing."
+   ]
   }
  ]
 }
