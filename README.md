@@ -74,6 +74,7 @@ cd Frontend && npm run test:e2e
 ## 文档
 
 - [docs/CURRENT-STATE.md](docs/CURRENT-STATE.md) — 当前功能与架构的完整说明（模块、API、数据模型、测试）
+- [docs/VISION-expression-first.md](docs/VISION-expression-first.md) — 产品方向：以表达能力为核心的愿景对齐、差距分析与修正路径
 - [docs/DESIGN-ai-learning-architecture.md](docs/DESIGN-ai-learning-architecture.md) — Score 内核 + CEFR 映射层的架构决策（why）
 - [docs/DESIGN-auth-profile.md](docs/DESIGN-auth-profile.md) — 认证与个人 LLM 配置设计
 - [development-log.md](development-log.md) — 开发日志（按时间倒序）

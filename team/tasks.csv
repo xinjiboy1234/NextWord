@@ -1,0 +1,9 @@
+id,iteration,title,owner,status,priority,source,created,updated,notes
+T-001,I1,场景 taxonomy 与内容建设方案设计,pm,done,P0,VISION §6-1,2026-07-21,2026-07-22,方案定稿见 docs/DESIGN-scenario-taxonomy.md：两层 7 大类 20 子场景；多标签 0-3 个 + core 通用桶；utility/role 词级标注
+T-002,I1,Word 场景标注与词库扩充,dev,done,P0,VISION §6-1,2026-07-21,2026-07-23,已实现：WordScenarios 关联表 + Word.Utility/Role/ScenarioAnnotationVersion；ScenarioAnnotationWorker 分批标注（幂等按版本跳过、LLM 漏标留待续跑）；触发 POST /api/scenarios/annotation-jobs 与 POST /api/words 自动入队；GET /api/scenarios 查 taxonomy 与词数；内置词表 wordlist-scenarios.json 由 generate-wordlist.py 经 DashScope 真实生成（core 桶有人工补量）；验收要点：随机抽 100 词核对场景标注 ≥90%；规模数字 total 1520、core 桶 569、每子场景最少 72、core_verb+connector 52.0%；dotnet test 84 全过；已知限制：Mock 标注只推 role 场景全空、音标由 LLM 生成可能有误、词表无人工复核
+T-003,I1,内容建设验证,qa,done,P0,VISION §6-1,2026-07-21,2026-07-23,验收通过：①taxonomy 常量与设计 §2 一致（7 大类 20 子场景 key 与中文名全对）；②临时库实测 GET /api/scenarios 与 /api/words?scenario= 正常，WordScenarios 落库 2385 行与词表精确吻合；③随机抽 100 词人工核对准确率 98%（错例 2 个：shop around 应标 shopping 却入 core 桶、have 按 §3 应入 core 桶却标 3 个场景）；④规模达标：每子场景 ≥72、core 桶 569、core_verb+connector 52.0%；⑤幂等实测同小时重复触发复用同一 jobId、已标注词按版本跳过、断点续跑有单测覆盖；⑥dotnet test 84+6 全过、npm run build 通过。不足已另开 T-008
+T-008,I1,词表数据质量修正,dev,backlog,P2,I1 验收不足,2026-07-23,2026-07-23,T-003 验收发现的非阻断问题：①168 个词条用单数 example 字段（导入只认 examples 数组）导致种子例句丢失如 bump into/deal with/dress up；②70 个词条音标为空；③个别标注偏差：shop around 入 core 桶、have 标了 3 个场景（§3 明确 be/have/get 应入 core 桶）；建议下轮统一字段并修正标注
+T-004,I2,测评重构：产出型为主 + LLM 真实评分,dev,backlog,P1,VISION §6-2,2026-07-21,2026-07-21,识别型降级为参考；分块自适应；接触词不进测评
+T-005,I2,WeaknessProfile v1 + Verifier,dev,backlog,P1,VISION §6-3,2026-07-21,2026-07-21,带证据引用的结构化画像持久化 + 验证者机械核查
+T-006,I3,PlannerWorker + 每日内容来源切换,dev,backlog,P1,VISION §6-4,2026-07-21,2026-07-21,夜间规划任务；DailyWordSelectionService 优先执行 Plan
+T-007,I3,瓶颈性质洞察 + 重规划触发,dev,backlog,P2,VISION §6-5,2026-07-21,2026-07-21,指标筛查提示异常 → Agent 细读产出原文 → 事件驱动 + 每周兜底重规划

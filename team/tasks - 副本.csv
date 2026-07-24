@@ -1,0 +1,8 @@
+id,iteration,title,owner,status,priority,source,created,updated,notes
+T-001,I1,场景 taxonomy 与内容建设方案设计,pm,done,P0,VISION §6-1,2026-07-21,2026-07-22,方案定稿见 docs/DESIGN-scenario-taxonomy.md：两层 7 大类 20 子场景；多标签 0-3 个 + core 通用桶；utility/role 词级标注
+T-002,I1,Word 场景标注与词库扩充,dev,in-progress,P0,VISION §6-1,2026-07-21,2026-07-22,LLM 批量标注复用 ReAnnotation worker 模式；依赖 T-001；验收标准见设计文档 §6
+T-003,I1,内容建设验证,qa,backlog,P0,VISION §6-1,2026-07-21,2026-07-21,标注质量抽样 + 词库规模核对；依赖 T-002
+T-004,I2,测评重构：产出型为主 + LLM 真实评分,dev,backlog,P1,VISION §6-2,2026-07-21,2026-07-21,识别型降级为参考；分块自适应；接触词不进测评
+T-005,I2,WeaknessProfile v1 + Verifier,dev,backlog,P1,VISION §6-3,2026-07-21,2026-07-21,带证据引用的结构化画像持久化 + 验证者机械核查
+T-006,I3,PlannerWorker + 每日内容来源切换,dev,backlog,P1,VISION §6-4,2026-07-21,2026-07-21,夜间规划任务；DailyWordSelectionService 优先执行 Plan
+T-007,I3,瓶颈性质洞察 + 重规划触发,dev,backlog,P2,VISION §6-5,2026-07-21,2026-07-21,指标筛查提示异常 → Agent 细读产出原文 → 事件驱动 + 每周兜底重规划
