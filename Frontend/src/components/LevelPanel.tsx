@@ -6,6 +6,18 @@ import { useEvaluationReport } from '../hooks/useProfileScores'
 import { DIMENSION_HINTS, getCefrMeta } from '../lib/cefrMeta'
 import type { LevelDashboard } from '../types/assessment'
 
+/** T-005 画像维度/置信度中文标签 */
+const DIMENSION_LABELS: Record<string, string> = {
+  scenario: '场景',
+  skill: '技能',
+  reading: '阅读',
+}
+const CONFIDENCE_LABELS: Record<string, string> = {
+  high: '高置信',
+  medium: '中置信',
+  low: '低置信',
+}
+
 export function LevelPanel() {
   const [dashboard, setDashboard] = useState<LevelDashboard | null>(null)
   const [loading, setLoading] = useState(true)
@@ -113,25 +125,46 @@ export function LevelPanel() {
         <section className="card stack stack-sm">
           <h3>AI 评估报告</h3>
           <p style={{ fontSize: 'var(--text-sm)' }}>{evaluation.content.summary}</p>
-          {evaluation.content.strengths.length > 0 && (
+          {evaluation.content.findings && evaluation.content.findings.length > 0 ? (
             <div>
-              <p className="mono-label" style={{ marginBottom: 4 }}>优势</p>
-              <ul style={{ fontSize: 'var(--text-sm)', paddingLeft: '1.2em' }}>
-                {evaluation.content.strengths.map((item) => (
-                  <li key={item}>{item}</li>
+              <p className="mono-label" style={{ marginBottom: 4 }}>能力画像（已交叉验证）</p>
+              <ul className="stack stack-sm" style={{ listStyle: 'none', padding: 0 }}>
+                {evaluation.content.findings.map((finding, index) => (
+                  <li key={index} style={{ fontSize: 'var(--text-sm)' }}>
+                    <span style={{ display: 'inline-flex', gap: 6, marginRight: 6 }}>
+                      <Badge variant={finding.polarity === 'strength' ? 'success' : finding.polarity === 'weakness' ? 'warn' : 'muted'}>
+                        {DIMENSION_LABELS[finding.dimension] ?? finding.dimension}
+                      </Badge>
+                      <Badge variant="muted">{CONFIDENCE_LABELS[finding.confidence] ?? finding.confidence}</Badge>
+                    </span>
+                    {finding.statement}
+                  </li>
                 ))}
               </ul>
             </div>
-          )}
-          {evaluation.content.weaknesses.length > 0 && (
-            <div>
-              <p className="mono-label" style={{ marginBottom: 4 }}>待提升</p>
-              <ul style={{ fontSize: 'var(--text-sm)', paddingLeft: '1.2em' }}>
-                {evaluation.content.weaknesses.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </div>
+          ) : (
+            <>
+              {evaluation.content.strengths.length > 0 && (
+                <div>
+                  <p className="mono-label" style={{ marginBottom: 4 }}>优势</p>
+                  <ul style={{ fontSize: 'var(--text-sm)', paddingLeft: '1.2em' }}>
+                    {evaluation.content.strengths.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {evaluation.content.weaknesses.length > 0 && (
+                <div>
+                  <p className="mono-label" style={{ marginBottom: 4 }}>待提升</p>
+                  <ul style={{ fontSize: 'var(--text-sm)', paddingLeft: '1.2em' }}>
+                    {evaluation.content.weaknesses.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </>
           )}
         </section>
       )}

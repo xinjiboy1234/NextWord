@@ -41,6 +41,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<LearningEvent> LearningEvents => Set<LearningEvent>();
     public DbSet<ProfileScoreSnapshot> ProfileScoreSnapshots => Set<ProfileScoreSnapshot>();
     public DbSet<EvaluationReport> EvaluationReports => Set<EvaluationReport>();
+    public DbSet<WeaknessProfile> WeaknessProfiles => Set<WeaknessProfile>();
+    public DbSet<ProfileFinding> ProfileFindings => Set<ProfileFinding>();
     public DbSet<BackgroundJob> BackgroundJobs => Set<BackgroundJob>();
     public DbSet<UserFeedback> UserFeedbacks => Set<UserFeedback>();
     public DbSet<UserWordExclude> UserWordExcludes => Set<UserWordExclude>();
@@ -429,6 +431,40 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
                 .WithMany()
                 .HasForeignKey(r => r.AssessmentId)
                 .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<WeaknessProfile>(entity =>
+        {
+            entity.HasKey(profile => profile.Id);
+            entity.HasIndex(profile => new { profile.UserId, profile.CreatedAt });
+            // 幂等：同一测评只生成一份画像（AssessmentId 可空，PG 唯一索引允许多个 NULL）
+            entity.HasIndex(profile => new { profile.UserId, profile.AssessmentId }).IsUnique();
+            entity.Property(profile => profile.ModelProfileId).HasMaxLength(80);
+            entity.HasOne(profile => profile.User)
+                .WithMany()
+                .HasForeignKey(profile => profile.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(profile => profile.Assessment)
+                .WithMany()
+                .HasForeignKey(profile => profile.AssessmentId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<ProfileFinding>(entity =>
+        {
+            entity.HasKey(finding => finding.Id);
+            entity.Property(finding => finding.Dimension).HasConversion<string>().HasMaxLength(16);
+            entity.Property(finding => finding.DimensionKey).HasMaxLength(40).IsRequired();
+            entity.Property(finding => finding.Polarity).HasConversion<string>().HasMaxLength(16);
+            entity.Property(finding => finding.Statement).HasMaxLength(500).IsRequired();
+            entity.Property(finding => finding.EvidenceJson).HasMaxLength(4000).IsRequired();
+            entity.Property(finding => finding.Confidence).HasConversion<string>().HasMaxLength(16);
+            entity.Property(finding => finding.Verification).HasConversion<string>().HasMaxLength(16);
+            entity.Property(finding => finding.VerificationNote).HasMaxLength(500);
+            entity.HasOne(finding => finding.Profile)
+                .WithMany(profile => profile.Findings)
+                .HasForeignKey(finding => finding.ProfileId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<BackgroundJob>(entity =>

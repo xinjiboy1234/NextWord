@@ -85,6 +85,9 @@ public sealed class LlmTelemetryProviderTests
 
         public Task<ScenarioAnnotationResponse> AnnotateScenarioAsync(ScenarioAnnotationRequest request, CancellationToken cancellationToken)
             => throw new NotImplementedException();
+
+        public Task<WeaknessProfileResponse> GenerateWeaknessProfileAsync(WeaknessProfileRequest request, CancellationToken cancellationToken)
+            => throw new NotImplementedException();
     }
 }
 

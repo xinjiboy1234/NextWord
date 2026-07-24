@@ -5,11 +5,14 @@ using NextWord.Domain.Interfaces;
 using NextWord.Domain.Models;
 using NextWord.Infrastructure.Data;
 using NextWord.Infrastructure.Services;
+using System.Text.Json;
 
 namespace NextWord.Api.Endpoints;
 
 public static class ProfileEndpoints
 {
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+
     public static void Map(IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/profile").WithTags("Profile");
@@ -20,6 +23,40 @@ public static class ProfileEndpoints
             item.Provider.ToString(),
             item.BaseUrl,
             item.DefaultModel))));
+
+        // T-005：最新 WeaknessProfile（含 Finding 核查状态；存疑条目标注但不进前端展示）
+        group.MapGet("/weakness", async (
+            HttpContext http,
+            IWeaknessProfileService weaknessProfiles,
+            CancellationToken ct) =>
+        {
+            var userId = UserResolver.GetAuthenticatedUserId(http);
+            if (!userId.HasValue)
+            {
+                return Results.Unauthorized();
+            }
+
+            var profile = await weaknessProfiles.GetLatestAsync(userId.Value, ct);
+            if (profile is null)
+            {
+                return Results.NotFound();
+            }
+
+            return Results.Ok(new WeaknessProfileDto(
+                profile.Id,
+                profile.AssessmentId,
+                profile.CreatedAt,
+                profile.Findings.Select(finding => new ProfileFindingDto(
+                    finding.Id,
+                    finding.Dimension.ToString().ToLowerInvariant(),
+                    finding.DimensionKey,
+                    finding.Polarity.ToString().ToLowerInvariant(),
+                    finding.Statement,
+                    finding.Confidence.ToString().ToLowerInvariant(),
+                    finding.Verification.ToString().ToLowerInvariant(),
+                    finding.VerificationNote,
+                    JsonSerializer.Deserialize<List<EvidenceClaim>>(finding.EvidenceJson, JsonOptions) ?? [])).ToList()));
+        }).RequireAuthorization();
 
         group.MapGet("/", async (
             HttpContext http,
@@ -181,6 +218,23 @@ public static class ProfileEndpoints
 }
 
 public sealed record UpdateProfileRequest(string? DisplayName);
+
+public sealed record WeaknessProfileDto(
+    long Id,
+    Guid? AssessmentId,
+    DateTimeOffset CreatedAt,
+    IReadOnlyList<ProfileFindingDto> Findings);
+
+public sealed record ProfileFindingDto(
+    long Id,
+    string Dimension,
+    string DimensionKey,
+    string Polarity,
+    string Statement,
+    string Confidence,
+    string Verification,
+    string VerificationNote,
+    IReadOnlyList<EvidenceClaim> Evidence);
 public sealed record UpdateLlmSettingsRequest(
     string? PresetId,
     string? Provider,

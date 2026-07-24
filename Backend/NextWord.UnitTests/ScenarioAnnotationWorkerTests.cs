@@ -127,5 +127,8 @@ public sealed class ScenarioAnnotationWorkerTests
 
         public Task<CommentReplyResponse> ReplyToCommentAsync(CommentReplyRequest request, CancellationToken cancellationToken)
             => throw new NotImplementedException();
+
+        public Task<WeaknessProfileResponse> GenerateWeaknessProfileAsync(WeaknessProfileRequest request, CancellationToken cancellationToken)
+            => throw new NotImplementedException();
     }
 }

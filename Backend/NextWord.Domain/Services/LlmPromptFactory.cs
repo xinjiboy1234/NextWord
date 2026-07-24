@@ -201,4 +201,73 @@ public static class LlmPromptFactory
         - scenarios must only use keys from the list above.
         """;
     }
+
+    /// <summary>
+    /// Profiler Agent 提示词（T-005）：只给库内聚合好的真实数据，要求 Finding 引用其中的记录与数值，
+    /// 供 Verifier 机械回溯核查（防幻觉靠核查，不靠 LLM 自觉）。
+    /// </summary>
+    public static string BuildWeaknessProfilePrompt(WeaknessProfileRequest request)
+    {
+        var logLines = request.SentenceLogs.Count == 0
+            ? "(none)"
+            : string.Join("\n", request.SentenceLogs.Select(log =>
+                $"- id={log.Id} word={log.TargetWord} scene={log.Scene} grammar={log.Grammar} natural={log.Natural} vocabulary={log.Vocabulary} relevance={log.Relevance} errorTags=[{string.Join(",", log.ErrorTags)}]"));
+
+        var dimensions = request.AssessmentDimensions is null
+            ? "(none)"
+            : $"grammar={request.AssessmentDimensions.Grammar} natural={request.AssessmentDimensions.Natural} vocabulary={request.AssessmentDimensions.Vocabulary} relevance={request.AssessmentDimensions.Relevance} expressionScore={request.ExpressionScore} topErrorTags=[{string.Join(",", request.AssessmentDimensions.TopErrorTags)}]";
+
+        var scenarioLines = request.ScenarioStats.Count == 0
+            ? "(none)"
+            : string.Join("\n", request.ScenarioStats.Select(stat =>
+                $"- scenario={stat.ScenarioKey} ({stat.ScenarioZh}) annotated={stat.AnnotatedWords} learned={stat.LearnedWords} coverage={stat.Coverage} avgMastery={stat.AvgMastery} correctRate={stat.CorrectRate}"));
+
+        return $$"""
+        You are the Profiler agent of an English learning app. Write a weakness/strength profile as structured findings, citing ONLY the data below.
+
+        User level: {{request.UserLevel}}
+
+        Assessment dimension averages (0-5 per dimension, expressionScore 0-100):
+        {{dimensions}}
+
+        Sentence logs (LLM-graded production records):
+        {{logLines}}
+
+        Scenario word stats (word mastery per life scenario):
+        {{scenarioLines}}
+
+        Reading behavior: sessionCount={{request.Reading.SessionCount}} avgLookupCount={{request.Reading.AvgLookupCount}}
+
+        Return only JSON:
+        {
+          "findings": [
+            {
+              "dimension": "skill",
+              "dimensionKey": "grammar",
+              "polarity": "weakness",
+              "statement": "一句中文结论，点名具体行为",
+              "evidence": [
+                { "kind": "sentence_log", "refId": "<log id>", "metric": "grammar", "op": "<=", "value": 2 }
+              ],
+              "confidence": "medium"
+            }
+          ]
+        }
+
+        Rules:
+        - 3 to 8 findings; cover at least two dimensions when data allows. Data-poor dimensions may be omitted.
+        - dimension must be exactly ONE word: scenario, skill, or reading. Do NOT copy a list like "scenario|skill|reading".
+        - polarity must be exactly ONE word: strength, weakness, or neutral. confidence must be exactly ONE word: high, medium, or low.
+        - dimensionKey: scenario key for scenario findings; grammar|natural|vocabulary|relevance for skill; "reading" for reading.
+        - evidence kind must be one of:
+          sentence_log — refId = an id from the log list above; metric = grammar|natural|vocabulary|relevance (optional).
+          assessment_dimension — refId = "final"; metric = grammar|natural|vocabulary|relevance|expressionScore.
+          word_stats — refId = a scenario key above; metric = coverage|avgMastery|correctRate.
+          reading_stats — refId = "reading"; metric = sessionCount|avgLookupCount.
+        - op must be one of <=, >=, <, >, =. The claimed value MUST equal the actual value shown above (a verifier will re-check it mechanically).
+        - confidence: high requires >=3 evidence entries, medium >=2, low >=1.
+        - statement: one concise Chinese sentence naming the concrete behavior, e.g. "点餐场景核心动词掌握弱，check/order 类词造句错误率高".
+        - NEVER invent ids, scenario keys, or numbers not shown above.
+        """;
+    }
 }

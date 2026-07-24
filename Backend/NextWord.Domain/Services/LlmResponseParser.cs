@@ -104,6 +104,100 @@ public static class LlmResponseParser
         }
     }
 
+    /// <summary>
+    /// 解析 Profiler 产出的 Finding 列表（T-005）：dimension/polarity/confidence 无法识别的条目直接丢弃；
+    /// 证据引用与数值的真实性不在此判断，由 Verifier 机械核查。
+    /// </summary>
+    public static WeaknessProfileResponse ParseWeaknessProfile(string content)
+    {
+        var json = ExtractJson(content);
+        var parsed = JsonSerializer.Deserialize<WeaknessProfileJson>(json, new JsonSerializerOptions(JsonSerializerDefaults.Web))
+            ?? throw new InvalidOperationException("LLM returned empty weakness profile.");
+
+        var drafts = new List<ProfileFindingDraft>();
+        foreach (var item in parsed.Findings)
+        {
+            if (!TryParseDimension(item.Dimension, out var dimension)
+                || !TryParsePolarity(item.Polarity, out var polarity)
+                || !TryParseConfidence(item.Confidence, out var confidence))
+            {
+                continue;
+            }
+
+            var evidence = item.Evidence
+                .Where(e => !string.IsNullOrWhiteSpace(e.Kind) && !string.IsNullOrWhiteSpace(e.RefId))
+                .Select(e => new EvidenceClaim(
+                    e.Kind.Trim().ToLowerInvariant(),
+                    e.RefId.Trim(),
+                    string.IsNullOrWhiteSpace(e.Metric) ? null : e.Metric.Trim().ToLowerInvariant(),
+                    string.IsNullOrWhiteSpace(e.Op) ? null : e.Op.Trim(),
+                    e.Value))
+                .ToList();
+
+            drafts.Add(new ProfileFindingDraft(
+                dimension,
+                item.DimensionKey.Trim(),
+                polarity,
+                item.Statement.Trim(),
+                evidence,
+                confidence));
+        }
+
+        return new WeaknessProfileResponse(drafts);
+    }
+
+    private static bool TryParseDimension(string value, out FindingDimension dimension)
+    {
+        foreach (var token in EnumTokens(value))
+        {
+            switch (token)
+            {
+                case "scenario": dimension = FindingDimension.Scenario; return true;
+                case "skill": dimension = FindingDimension.Skill; return true;
+                case "reading": dimension = FindingDimension.Reading; return true;
+            }
+        }
+
+        dimension = default;
+        return false;
+    }
+
+    private static bool TryParsePolarity(string value, out FindingPolarity polarity)
+    {
+        foreach (var token in EnumTokens(value))
+        {
+            switch (token)
+            {
+                case "strength": polarity = FindingPolarity.Strength; return true;
+                case "weakness": polarity = FindingPolarity.Weakness; return true;
+                case "neutral": polarity = FindingPolarity.Neutral; return true;
+            }
+        }
+
+        polarity = default;
+        return false;
+    }
+
+    private static bool TryParseConfidence(string value, out FindingConfidence confidence)
+    {
+        foreach (var token in EnumTokens(value))
+        {
+            switch (token)
+            {
+                case "high": confidence = FindingConfidence.High; return true;
+                case "medium": confidence = FindingConfidence.Medium; return true;
+                case "low": confidence = FindingConfidence.Low; return true;
+            }
+        }
+
+        confidence = default;
+        return false;
+    }
+
+    /// <summary>qwen 等模型可能把枚举白名单原样照抄（"skill|grammar"、"scenario|skill|reading"）：逐 token 取第一个可识别值。</summary>
+    private static IEnumerable<string> EnumTokens(string value) =>
+        value.Trim().ToLowerInvariant().Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
     private static WordExample? MapOptionalExample(WordExampleJsonDto? item, WordExampleKind kind)
     {
         if (item is null || string.IsNullOrWhiteSpace(item.Sentence))

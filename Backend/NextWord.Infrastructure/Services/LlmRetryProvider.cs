@@ -26,6 +26,9 @@ public sealed class LlmRetryProvider(ILLMProvider inner, int maxAttempts = 3) : 
     public async Task<ScenarioAnnotationResponse> AnnotateScenarioAsync(ScenarioAnnotationRequest request, CancellationToken cancellationToken)
         => await ExecuteAsync(token => inner.AnnotateScenarioAsync(request, token), cancellationToken);
 
+    public async Task<WeaknessProfileResponse> GenerateWeaknessProfileAsync(WeaknessProfileRequest request, CancellationToken cancellationToken)
+        => await ExecuteAsync(token => inner.GenerateWeaknessProfileAsync(request, token), cancellationToken);
+
     private async Task<T> ExecuteAsync<T>(Func<CancellationToken, Task<T>> action, CancellationToken cancellationToken)
     {
         Exception? last = null;

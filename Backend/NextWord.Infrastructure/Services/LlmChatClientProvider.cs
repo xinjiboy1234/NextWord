@@ -111,4 +111,23 @@ public sealed class LlmChatClientProvider(IChatClient chatClient, LlmMockProvide
             return await fallback.AnnotateScenarioAsync(request, cancellationToken);
         }
     }
+
+    public async Task<WeaknessProfileResponse> GenerateWeaknessProfileAsync(WeaknessProfileRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var response = await chatClient.GetResponseAsync(
+                [
+                    new ChatMessage(ChatRole.System, "You return compact, valid JSON for an English learner weakness profile."),
+                    new ChatMessage(ChatRole.User, LlmPromptFactory.BuildWeaknessProfilePrompt(request))
+                ],
+                new ChatOptions { Temperature = 0.2f, MaxOutputTokens = 3000 },
+                cancellationToken);
+            return LlmResponseParser.ParseWeaknessProfile(response.Text);
+        }
+        catch
+        {
+            return await fallback.GenerateWeaknessProfileAsync(request, cancellationToken);
+        }
+    }
 }

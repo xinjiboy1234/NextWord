@@ -108,7 +108,8 @@ docker-compose.yml        postgres:16-alpine + redis:7-alpine + api（容器内 
 
 - `GET /api/profile`：等级、连胜、统计、等级历史、LLM 设置；`PUT /api/profile` 改显示名。
 - BYOK：`GET /api/profile/llm/presets`（OpenAI/DeepSeek/Qwen 预设）+ `PUT /api/profile/llm` 存用户自己的 OpenAI 兼容 API（`UserLlmSettings`，API key 脱敏返回）；`UserLlmProviderFactory` 按用户构建 provider。
-- `GET /api/evaluation/latest|{id}` 查看评估报告（当前为模板 + 工具预取数据，LLM 结构化叙事未做）。
+- `GET /api/evaluation/latest|{id}` 查看评估报告（测评触发的报告内容为已验证 Finding 画像，见 §5.14；其余触发为模板文案）。
+- `GET /api/profile/weakness`：最新 WeaknessProfile（含每条 Finding 的核查状态与存疑原因）。
 - `POST /api/feedback`：释义错误 / 标记已知 / 排除单词（触发 ReAnnotation 后台任务）。
 
 ### 5.10 后台 Worker（Infrastructure/Background，共 4 个 HostedService）
@@ -124,7 +125,7 @@ Worker 异常不拖垮宿主（`BackgroundServiceExceptionBehavior=Ignore`）。
 
 ### 5.11 LLM 集成
 
-- 统一抽象 `ILLMProvider`（6 方法：难度标注 / 释义 / 造句评分 / 词汇提取 / 批注回复 / 场景标注）；Prompt 由 `LlmPromptFactory` 生成。
+- 统一抽象 `ILLMProvider`（7 方法：难度标注 / 释义 / 造句评分 / 词汇提取 / 批注回复 / 场景标注 / 画像生成）；Prompt 由 `LlmPromptFactory` 生成。
 - 默认 `LlmMockProvider`：内置词典启发式，零外部调用；**未知词难度一律回退 Basic/A1**（未启用真实 LLM 时 `POST /api/words` 自动定级基本无效）；**Mock 场景标注只按词性推 role、场景一律空（全落 core 桶）**，不代表真实标注质量。
 - `Llm:OpenAI:Enabled=true` 且有 key 时切 `LlmChatClientProvider`（OpenAI `ChatClient`，默认 `gpt-4o-mini`，Temperature 0.1，异常自动回退 Mock）；`Llm:OpenAI:BaseUrl` 可选，指向任意 OpenAI 兼容端点（如 DashScope compatible-mode）。
 - 装饰链：Inner → `LlmRetryProvider`（指数退避 3 次）→ `LlmTelemetryProvider`（记录耗时与 ModelProfileId）。
@@ -144,6 +145,15 @@ Worker 异常不拖垮宿主（`BackgroundServiceExceptionBehavior=Ignore`）。
 - **触发**：`POST /api/scenarios/annotation-jobs?batchSize=`（幂等 key 按小时分桶）；`POST /api/words` 新增词自动入队标注。
 - **查询**：`GET /api/scenarios` 返回 taxonomy + 各子场景词数 + core 桶词数；`GET /api/words?scenario=` 按子场景过滤；`WordDto` 带 scenarios/utility/role。
 - **迁移**：本轮不做 EF 迁移；PG 由 `Patch_PostgreSql_ScoreKernel.sql` 幂等补丁补列/建表，Development 删库重建。
+
+### 5.14 WeaknessProfile 画像 + Verifier（I2 T-005）
+
+- **画像结构**：`WeaknessProfiles`（一次测评一份，`(UserId, AssessmentId)` 唯一）+ `ProfileFindings`（Finding 五要素：维度 scenario/skill/reading、强弱 strength/weakness/neutral、结论文案、证据引用 EvidenceJson、置信度 high/medium/low）；设计见 `docs/DESIGN-weakness-profile.md`。
+- **触发链路**：测评收敛 → `EvaluationReportService.EnqueueForUserAsync`（InitialAssessment）→ `BackgroundJobWorker` → `ProcessJobAsync` 内 `WeaknessProfileService.GenerateAsync`（同一测评幂等，仅测评触发，成本 = 每用户每测评 1 次 LLM 调用）。
+- **Profiler Agent**（`WeaknessProfiler`）：聚合库内真实数据（最近 30 条 SentenceLogs、测评 FinalLevel 四维均值、场景词覆盖/正确率、阅读查词统计）→ `ILLMProvider.GenerateWeaknessProfileAsync`（第 7 个 LLM 方法）产出 Finding 草稿；场景/阅读统计由 `WeaknessProfileStats` 单一来源计算（两位小数），供引用值与重算值机械比对。
+- **Verifier Agent**（`FindingVerifier`，不调 LLM）：逐条机械核查——证据引用真实存在且属于本人（sentence_log 按 UserId 过滤）、引用数值与库内重算值一致（sentence_log 四维分 / assessment_dimension / word_stats / reading_stats）、证据条数支撑置信度（high≥3 / medium≥2 / low≥1）；任一不通过标 `Questioned` 并留原因，不展示、不进规划输入（T-006 只消费 Verified）。
+- **展示**：报告 `ContentJson` schemaVersion 2 = 已验证 Finding 列表（strengths/weaknesses 由 Finding 派生兼容旧前端）；画像失败或全部存疑时回退 schemaVersion 1 模板。前端 LevelPanel 优先渲染 findings（维度/置信度徽标 + 结论）。
+- **解析容错**：qwen 会把枚举白名单原样照抄（`"skill|grammar"`），`LlmResponseParser` 按 `|` 逐 token 取第一个可识别值；提示词模板已改为具体占位值。
 
 ## 6. API 全量清单
 
@@ -187,6 +197,7 @@ Worker 异常不拖垮宿主（`BackgroundServiceExceptionBehavior=Ignore`）。
 - `GET /api/profile`、`PUT /api/profile`
 - `GET /api/profile/llm/presets`、`PUT /api/profile/llm`
 - `GET /api/profile/scores`、`GET /api/profile/scores/history?days=`
+- `GET /api/profile/weakness`（最新 WeaknessProfile + Finding 核查状态）
 - `GET /api/evaluation/latest`、`GET /api/evaluation/{id}`
 - `POST /api/feedback`
 - `GET /api/tools`、`POST /api/tools/{name}`
@@ -197,9 +208,9 @@ Worker 异常不拖垮宿主（`BackgroundServiceExceptionBehavior=Ignore`）。
 
 ## 7. 数据模型
 
-PostgreSQL，连接串 `ConnectionStrings:PostgreSql`（默认 `Host=localhost;Database=nextword`）。`ApplicationDbContext` 共 **27 个 DbSet**：
+PostgreSQL，连接串 `ConnectionStrings:PostgreSql`（默认 `Host=localhost;Database=nextword`）。`ApplicationDbContext` 共 **29 个 DbSet**：
 
-Users、UserLlmSettings、Words、WordDifficultyAnnotations、DifficultyAnnotations、UserProgress、UserWordRelationships、WordLearningLogs、Sentences、SentenceLogs、FreeExpressionLogs、SpellingLogs、Articles、ReadingLogs、ArticleComments、ArticleVocabMappings、Assessments、AssessmentRecords、ChallengeRecords、ChallengeSessions、LevelHistories、LearningEvents、ProfileScoreSnapshots、EvaluationReports、BackgroundJobs、UserFeedbacks、UserWordExcludes。
+Users、UserLlmSettings、Words、WordScenarios、WordDifficultyAnnotations、DifficultyAnnotations、UserProgress、UserWordRelationships、WordLearningLogs、Sentences、SentenceLogs、FreeExpressionLogs、SpellingLogs、Articles、ReadingLogs、ArticleComments、ArticleVocabMappings、Assessments、AssessmentRecords、ChallengeRecords、ChallengeSessions、LevelHistories、LearningEvents、ProfileScoreSnapshots、EvaluationReports、WeaknessProfiles、ProfileFindings、BackgroundJobs、UserFeedbacks、UserWordExcludes。
 
 - 列表属性（Meanings、ErrorTags 等）存 JSON 列；枚举存字符串。
 - 5 个 EF 迁移（`Data/Migrations/`）；`AddScoreKernelM1` 含 SQLite 专用 ALTER，由 `PostgreSqlSchemaPatcher` 用嵌入式 SQL（`Patch_PostgreSql_ScoreKernel.sql`）在 PG 上幂等补齐。
@@ -243,7 +254,7 @@ Users、UserLlmSettings、Words、WordDifficultyAnnotations、DifficultyAnnotati
 
 ## 10. 测试
 
-**单元测试**（`NextWord.UnitTests`）：SM-2、LevelUpgradeEngine（锁级/升级候选/C1 封顶）、EffectiveDifficultyCalculator、AssessmentScoringService（表达力综合分/自适应决策）、AdaptiveAssessmentService（分块/词池/收敛/定级，连真实 PG + LLM 桩）、ScoreMappingService、ScoreProfileService（absolute 写入与幂等，连真实 PG `nextword_unit_test`）、LLM prompt/解析与 Mock Provider、ArticleVocabMapping 缓存、RedisCacheService 与 LlmTelemetryProvider。
+**单元测试**（`NextWord.UnitTests`）：SM-2、LevelUpgradeEngine（锁级/升级候选/C1 封顶）、EffectiveDifficultyCalculator、AssessmentScoringService（表达力综合分/自适应决策）、AdaptiveAssessmentService（分块/词池/收敛/定级，连真实 PG + LLM 桩）、WeaknessProfile（生成持久化与幂等、Verifier 篡改/伪造/样本量核查、报告 schemaVersion 2 切换与回退、解析枚举容错，连真实 PG）、ScoreMappingService、ScoreProfileService（absolute 写入与幂等，连真实 PG `nextword_unit_test`）、LLM prompt/解析与 Mock Provider、ArticleVocabMapping 缓存、RedisCacheService 与 LlmTelemetryProvider。
 
 **集成测试**（`NextWord.IntegrationTests`）：Testing 环境（移除后台 Worker），真实 PG `nextword_test`，真实注册/登录拿 JWT。覆盖：测评（401、开始、进度）、文章（401、种子列表）。覆盖较薄。
 
@@ -257,8 +268,9 @@ cd Frontend && npm run test:e2e # E2E
 
 ## 11. 已知限制
 
-- 评估报告为模板 + 工具预取数据，LLM 结构化叙事未实现。
-- Mock LLM 下新词自动定级无效（未知词回退 Basic/A1）。
+- 画像场景/阅读维度依赖学习行为数据：初测后新用户无背词/阅读记录，首轮画像以技能维度为主（场景/阅读随学习积累出现）。
+- 画像仅测评后生成一次；周级刷新与 Planner 消费画像留给 T-006/T-007。
+- Mock LLM 下新词自动定级无效（未知词回退 Basic/A1）；Mock 画像结论带 [Mock] 前缀，不代表个性化成立。
 - 集成测试与 E2E 覆盖较薄；`npm run test:e2e` 全绿尚未纳入常规验证。
 - `/api/reading/agent` 无用户级限流。
 - Release Blockers B1–B8 未正式 sign-off（详见 next-steps.md）。

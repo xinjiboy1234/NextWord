@@ -2,6 +2,45 @@
 
 按时间倒序记录需求、决策、实现与验收。
 
+## 2026-07-24 — I2 T-005 顾言验收
+
+**验收结论：通过，WeaknessProfile v1 + Verifier 闭环，I2 全部完成。**
+
+- 周密验证六项标准全过：测评后自动生成并持久化（幂等实测不重复生成）；证据引用逐条可回溯且数值与库内一致；Verifier 攻击测试覆盖伪造 id/越权引用/篡改数值/样本量不足/空证据全部标存疑；展示层只呈现已验证条目；失败回退 v1 模板；单测 111+6、npm build 全过；
+- 不足记入 T-010（P2，I3 处理）：LLM 偶产同维度重复 Finding、跨 Finding 复用同一证据——Verifier 按设计不拦语义重复，T-006 消费画像前在 Profiler 提示词/后处理去重；
+- 至此愿景 §6 落地路径第 3 项（WeaknessProfile v1 + Verifier）完成，I2（测评重构 + 画像）收官；下一轮 I3：T-006 PlannerWorker + 内容来源切换、T-007 瓶颈洞察。
+
+---
+
+## 2026-07-24 — I2 T-005：WeaknessProfile v1 + Verifier
+
+### 需求
+- 按 `docs/DESIGN-weakness-profile.md`（已定稿）：测评完成后由 Profiler Agent 生成带证据引用的结构化画像（Finding 五要素：维度/强弱/结论/证据引用/置信度）并持久化；Verifier Agent 机械核查，存疑条目不展示、不进规划输入；评估报告从模板文案切换为已验证 Finding 列表。
+
+### 决策
+- **两张新表**（枚举存字符串，走幂等补丁 SQL + Development 删库重建，不做 EF 迁移）：`WeaknessProfiles`（`(UserId, AssessmentId)` 唯一 → 同一测评幂等）+ `ProfileFindings`（EvidenceJson 存证据引用列表）。
+- **触发链路复用现有基建**：测评收敛 → `EvaluationReport` 后台任务 → `ProcessJobAsync` 内生成画像（仅 AssessmentId 关联的测评触发；挑战触发不生成）→ 报告 ContentJson schemaVersion 2 = 已验证 Finding 列表；画像失败或全部存疑回退 schemaVersion 1 模板（不阻断报告）。
+- **Verifier 不调 LLM**：证据引用存在性（sentence_log 按 UserId 过滤防越权引用）、数值属实（sentence_log 四维分 / assessment_dimension / word_stats / reading_stats，场景与阅读统计由 `WeaknessProfileStats` 单一来源计算并统一两位小数，引用值与重算值同源可比）、置信度样本量（high≥3 / medium≥2 / low≥1 条证据）。
+- **LLM 抽象加第 7 方法** `GenerateWeaknessProfileAsync`：真实链路走 `LlmChatClientProvider`（异常回退 Mock）；Mock 产出确定性真实引用（可通过核查）且结论带 [Mock] 前缀。
+
+### 实测修正
+- qwen-plus 会把提示词里的枚举白名单原样照抄（`"dimension": "skill|grammar"`），首轮实测全部草稿被解析丢弃、画像 0 条 → 提示词模板改具体占位值 + `LlmResponseParser` 按 `|` 逐 token 容错（有单测）。
+
+### 实现
+- Domain：`ProfileFindingEnums`、`WeaknessProfile`/`ProfileFinding` 实体、`WeaknessProfileModels`（EvidenceClaim/Draft/请求响应）、`IWeaknessProfileService/IWeaknessProfiler/IFindingVerifier`、prompt 与解析。
+- Infrastructure：`WeaknessProfiler`（聚合 30 条 SentenceLogs + FinalLevel 四维 + 场景词统计 + 阅读统计）、`FindingVerifier`、`WeaknessProfileService`（幂等持久化）、`EvaluationReportService` 接画像、`Patch_PostgreSql_ScoreKernel.sql` 补两表。
+- API：`GET /api/profile/weakness`（画像 + 每条 Finding 核查状态与存疑原因）。
+- 前端：`LevelPanel` 报告卡优先渲染 findings（维度/置信度徽标 + 结论），无 findings 时回退旧优势/待提升列表。
+- 测试：`WeaknessProfileTests`（真实 PG）：生成持久化与幂等、伪造引用/越权引用/篡改数值/样本量不足均标存疑、报告 schemaVersion 2 切换与全存疑回退、解析容错，共 5 个。
+
+### 验收
+- [x] `dotnet build` 通过；`dotnet test` 110 单测 + 6 集成全过（真实 PG）
+- [x] `npm run build` 通过
+- [x] DashScope（qwen-plus）真实链路实测（独立库 nextword_verify_t005，验完已删、dev 库未动，脚本 `Backend/Scripts/verify-weaknessprofile-t005.py` 可复用）：测评（2 块收敛定 B1）→ 报告 schemaVersion 2、5 条 Finding 全部 Verified 且带证据引用、`GET /api/profile/weakness` 一致、DB 落库精确吻合。观察：LLM 会把 expressionScore 当 skill 维度 dimensionKey（不影响核查，后续可在提示词再收紧）
+- [ ] 周密验收（status → testing）
+
+---
+
 ## 2026-07-24 — I2 顾言验收（T-004 / T-008 / T-009）
 
 **验收结论：通过，I2 测评重构闭环。**

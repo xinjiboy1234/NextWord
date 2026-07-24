@@ -29,7 +29,7 @@
 
 ### 待收尾（发布前）
 - [ ] staging 环境实际执行 backfill drill 并填记录表（原 T-005）
-- [ ] 评估报告 LLM 结构化叙事（当前模板 + toolPrefetch）
+- [x] 评估报告 LLM 结构化叙事（当前模板 + toolPrefetch）→ 已并入 T-005 完成：报告切换为 WeaknessProfile 已验证 Finding 列表
 - [ ] Annotation lookup singleflight
 - [ ] SentenceStudio 评分入参改传难度 bucket（原审计 follow-up）
 - [ ] 测试补齐：集成/E2E 覆盖率、负载测试、人工评测抽样（原 T-060/061/063/064）

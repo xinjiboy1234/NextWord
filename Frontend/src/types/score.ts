@@ -23,6 +23,17 @@ export interface EvaluationReportContent {
   recommendations: Array<{ action: string; module: string }>
   evidence: Record<string, number>
   profileSnapshot: UserProfileScores
+  findings?: ProfileFindingItem[]
+}
+
+/** T-005：WeaknessProfile 已验证 Finding（schemaVersion 2 报告内容携带） */
+export interface ProfileFindingItem {
+  dimension: string
+  dimensionKey: string
+  polarity: string
+  statement: string
+  confidence: string
+  evidence: Array<{ kind: string; refId: string; metric: string | null; op: string | null; value: number | null }>
 }
 
 export interface ReadingLookupResult {

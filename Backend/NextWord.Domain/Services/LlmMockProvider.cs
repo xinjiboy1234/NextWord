@@ -172,6 +172,87 @@ public sealed class LlmMockProvider(IModelProfileResolver modelProfileResolver) 
         return Task.FromResult(new ScenarioAnnotationResponse(annotations));
     }
 
+    /// <summary>
+    /// Mock 画像（T-005）：从请求里的真实聚合数据确定性生成 Finding，证据引用逐条属实（可通过 Verifier 核查）。
+    /// Mock 路径可运行但不假装个性化成立：结论语句带 [Mock] 前缀。
+    /// </summary>
+    public Task<WeaknessProfileResponse> GenerateWeaknessProfileAsync(WeaknessProfileRequest request, CancellationToken cancellationToken)
+    {
+        var findings = new List<ProfileFindingDraft>();
+
+        // 技能维度：取测评四维最弱项；证据引用真实 SentenceLog，数值逐条取该日志实际分
+        if (request.AssessmentDimensions is not null)
+        {
+            var dims = new (string Key, double Value)[]
+            {
+                ("grammar", request.AssessmentDimensions.Grammar),
+                ("natural", request.AssessmentDimensions.Natural),
+                ("vocabulary", request.AssessmentDimensions.Vocabulary),
+                ("relevance", request.AssessmentDimensions.Relevance)
+            };
+            var weakest = dims.OrderBy(item => item.Value).First();
+            var evidence = request.SentenceLogs
+                .Take(3)
+                .Select(log => new EvidenceClaim("sentence_log", log.Id.ToString(), weakest.Key, "<=", LogDimension(log, weakest.Key)))
+                .Cast<EvidenceClaim>()
+                .ToList();
+            if (evidence.Count == 0 && request.ExpressionScore.HasValue)
+            {
+                evidence.Add(new EvidenceClaim("assessment_dimension", "final", "expressionScore", "=", request.ExpressionScore.Value));
+            }
+
+            if (evidence.Count > 0)
+            {
+                var confidence = evidence.Count >= 3 ? FindingConfidence.High : evidence.Count >= 2 ? FindingConfidence.Medium : FindingConfidence.Low;
+                findings.Add(new ProfileFindingDraft(
+                    FindingDimension.Skill,
+                    weakest.Key,
+                    weakest.Value < 3 ? FindingPolarity.Weakness : FindingPolarity.Strength,
+                    $"[Mock] 技能维度 {weakest.Key} 均值 {weakest.Value:0.0}/5，参见引用的造句留痕。",
+                    evidence,
+                    confidence));
+            }
+        }
+
+        // 场景维度：已学词中正确率最低的场景（仅引用真实统计值）
+        var scenario = request.ScenarioStats
+            .Where(stat => stat.LearnedWords > 0)
+            .OrderBy(stat => stat.CorrectRate)
+            .FirstOrDefault();
+        if (scenario is not null)
+        {
+            findings.Add(new ProfileFindingDraft(
+                FindingDimension.Scenario,
+                scenario.ScenarioKey,
+                scenario.CorrectRate < 0.6 ? FindingPolarity.Weakness : FindingPolarity.Neutral,
+                $"[Mock] 场景 {scenario.ScenarioZh} 词掌握正确率 {scenario.CorrectRate:0.00}（已学 {scenario.LearnedWords}/{scenario.AnnotatedWords} 词）。",
+                [new EvidenceClaim("word_stats", scenario.ScenarioKey, "correctRate", "<=", scenario.CorrectRate)],
+                FindingConfidence.Low));
+        }
+
+        // 阅读维度：有阅读行为才产出
+        if (request.Reading.SessionCount > 0)
+        {
+            findings.Add(new ProfileFindingDraft(
+                FindingDimension.Reading,
+                "reading",
+                FindingPolarity.Neutral,
+                $"[Mock] 阅读 {request.Reading.SessionCount} 次，平均每次查词 {request.Reading.AvgLookupCount:0.00} 个。",
+                [new EvidenceClaim("reading_stats", "reading", "avgLookupCount", ">=", request.Reading.AvgLookupCount)],
+                FindingConfidence.Low));
+        }
+
+        return Task.FromResult(new WeaknessProfileResponse(findings));
+    }
+
+    private static double LogDimension(SentenceLogEvidence log, string metric) => metric switch
+    {
+        "natural" => log.Natural,
+        "vocabulary" => log.Vocabulary,
+        "relevance" => log.Relevance,
+        _ => log.Grammar
+    };
+
     private static ExpressionRole InferMockRole(string partOfSpeech)
     {
         var pos = partOfSpeech.Trim().ToLowerInvariant();

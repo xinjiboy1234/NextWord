@@ -28,6 +28,9 @@ public sealed class LlmTelemetryProvider(ILLMProvider inner, ILogger<LlmTelemetr
     public Task<ScenarioAnnotationResponse> AnnotateScenarioAsync(ScenarioAnnotationRequest request, CancellationToken cancellationToken)
         => ExecuteAsync("AnnotateScenario", request.Options?.ModelProfileId, token => inner.AnnotateScenarioAsync(request, token), cancellationToken);
 
+    public Task<WeaknessProfileResponse> GenerateWeaknessProfileAsync(WeaknessProfileRequest request, CancellationToken cancellationToken)
+        => ExecuteAsync("GenerateWeaknessProfile", request.Options?.ModelProfileId, token => inner.GenerateWeaknessProfileAsync(request, token), cancellationToken);
+
     private async Task<T> ExecuteAsync<T>(
         string operation,
         string? modelProfileId,
