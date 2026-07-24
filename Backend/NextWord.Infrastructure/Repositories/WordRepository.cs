@@ -11,6 +11,7 @@ public sealed class WordRepository(ApplicationDbContext db) : IWordRepository
     public async Task<IReadOnlyList<Word>> ListAsync(CancellationToken cancellationToken)
     {
         return await db.Words.AsNoTracking()
+            .Include(word => word.Scenarios)
             .OrderBy(word => word.DifficultyLevel == DifficultyLevel.Basic ? 0 :
                 word.DifficultyLevel == DifficultyLevel.Intermediate ? 1 : 2)
             .ThenBy(word => word.Lemma)
@@ -35,12 +36,16 @@ public sealed class WordRepository(ApplicationDbContext db) : IWordRepository
 
     public Task<Word?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
     {
-        return db.Words.FirstOrDefaultAsync(word => word.Id == id, cancellationToken);
+        return db.Words
+            .Include(word => word.Scenarios)
+            .FirstOrDefaultAsync(word => word.Id == id, cancellationToken);
     }
 
     public Task<Word?> GetByLemmaAsync(string lemma, CancellationToken cancellationToken)
     {
-        return db.Words.FirstOrDefaultAsync(word => word.Lemma == lemma, cancellationToken);
+        return db.Words
+            .Include(word => word.Scenarios)
+            .FirstOrDefaultAsync(word => word.Lemma == lemma, cancellationToken);
     }
 
     public async Task AddAsync(Word word, CancellationToken cancellationToken)

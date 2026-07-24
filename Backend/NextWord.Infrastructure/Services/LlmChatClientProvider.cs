@@ -92,4 +92,23 @@ public sealed class LlmChatClientProvider(IChatClient chatClient, LlmMockProvide
             return await fallback.ReplyToCommentAsync(request, cancellationToken);
         }
     }
+
+    public async Task<ScenarioAnnotationResponse> AnnotateScenarioAsync(ScenarioAnnotationRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var response = await chatClient.GetResponseAsync(
+                [
+                    new ChatMessage(ChatRole.System, "You return compact, valid JSON for vocabulary scenario annotation."),
+                    new ChatMessage(ChatRole.User, LlmPromptFactory.BuildScenarioAnnotationPrompt(request))
+                ],
+                new ChatOptions { Temperature = 0.1f, MaxOutputTokens = 4000 },
+                cancellationToken);
+            return LlmResponseParser.ParseScenarioAnnotation(response.Text);
+        }
+        catch
+        {
+            return await fallback.AnnotateScenarioAsync(request, cancellationToken);
+        }
+    }
 }

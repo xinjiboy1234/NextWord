@@ -119,3 +119,15 @@ VALUES
     ('20260630160631_AddChallengeSession', '10.0.9'),
     ('20260708161532_AddArticleVocabPhoneticsAndExamples', '10.0.9')
 ON CONFLICT ("MigrationId") DO NOTHING;
+
+-- T-002 场景标注（本轮不做 EF 迁移，删库重建 + 幂等补丁）：Words 场景标注列 + WordScenarios 关联表
+ALTER TABLE "Words" ADD COLUMN IF NOT EXISTS "Utility" character varying(16);
+ALTER TABLE "Words" ADD COLUMN IF NOT EXISTS "Role" character varying(32);
+ALTER TABLE "Words" ADD COLUMN IF NOT EXISTS "ScenarioAnnotationVersion" integer NOT NULL DEFAULT 0;
+
+CREATE TABLE IF NOT EXISTS "WordScenarios" (
+    "WordId" uuid NOT NULL,
+    "ScenarioKey" character varying(40) NOT NULL,
+    CONSTRAINT "PK_WordScenarios" PRIMARY KEY ("WordId", "ScenarioKey"),
+    CONSTRAINT "FK_WordScenarios_Words_WordId" FOREIGN KEY ("WordId") REFERENCES "Words" ("Id") ON DELETE CASCADE
+);

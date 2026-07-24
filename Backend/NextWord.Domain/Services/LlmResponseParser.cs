@@ -50,6 +50,60 @@ public static class LlmResponseParser
             parsed.SkippedRare);
     }
 
+    /// <summary>
+    /// 解析场景标注结果：无效场景 key 丢弃、场景数截断到 3 个、utility/role 无法识别时丢弃该条（由调用方决定重试）。
+    /// </summary>
+    public static ScenarioAnnotationResponse ParseScenarioAnnotation(string content)
+    {
+        var json = ExtractJson(content);
+        var parsed = JsonSerializer.Deserialize<ScenarioAnnotationJson>(json, new JsonSerializerOptions(JsonSerializerDefaults.Web))
+            ?? throw new InvalidOperationException("LLM returned empty scenario annotation.");
+
+        var results = new List<ScenarioAnnotationResult>();
+        foreach (var item in parsed.Annotations)
+        {
+            if (string.IsNullOrWhiteSpace(item.Lemma)
+                || !TryParseUtility(item.Utility, out var utility)
+                || !TryParseRole(item.Role, out var role))
+            {
+                continue;
+            }
+
+            var scenarioKeys = item.Scenarios
+                .Where(Scenarios.ScenarioTaxonomy.IsSubScenarioKey)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Take(3)
+                .ToList();
+
+            results.Add(new ScenarioAnnotationResult(item.Lemma.Trim().ToLowerInvariant(), scenarioKeys, utility, role));
+        }
+
+        return new ScenarioAnnotationResponse(results);
+    }
+
+    private static bool TryParseUtility(string value, out WordUtility utility)
+    {
+        switch (value.Trim().ToLowerInvariant())
+        {
+            case "high": utility = WordUtility.High; return true;
+            case "medium": utility = WordUtility.Medium; return true;
+            case "low": utility = WordUtility.Low; return true;
+            default: utility = default; return false;
+        }
+    }
+
+    private static bool TryParseRole(string value, out ExpressionRole role)
+    {
+        switch (value.Trim().ToLowerInvariant())
+        {
+            case "core_verb": role = ExpressionRole.CoreVerb; return true;
+            case "connector": role = ExpressionRole.Connector; return true;
+            case "scene_noun": role = ExpressionRole.SceneNoun; return true;
+            case "phrase_pattern": role = ExpressionRole.PhrasePattern; return true;
+            default: role = default; return false;
+        }
+    }
+
     private static WordExample? MapOptionalExample(WordExampleJsonDto? item, WordExampleKind kind)
     {
         if (item is null || string.IsNullOrWhiteSpace(item.Sentence))

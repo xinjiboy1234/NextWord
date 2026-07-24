@@ -21,8 +21,8 @@ NextWord 是 AI 驱动的英语词汇学习应用，核心闭环：
 ```
 Backend/                  .NET 10 解决方案（NextWord.slnx）
   NextWord.Api/           Web 宿主：Program.cs 组装、认证、CORS、健康检查、启动迁移+种子
-  NextWord.Api.Endpoints/ 全部 Minimal API 端点（17 个端点类，纯 HTTP 层）
-  NextWord.Domain/        27 个实体、9 个枚举、接口契约、领域服务（SM2/Score 映射/等级引擎/Prompt 工厂）
+  NextWord.Api.Endpoints/ 全部 Minimal API 端点（18 个端点类，纯 HTTP 层）
+  NextWord.Domain/        28 个实体、11 个枚举、场景 taxonomy 常量、接口契约、领域服务（SM2/Score 映射/等级引擎/Prompt 工厂）
   NextWord.Infrastructure/ EF Core + Npgsql、仓储、约 25 个业务服务、JWT/密码、4 个后台 Worker、缓存
   NextWord.UnitTests/     xUnit 单元测试（Score/缓存部分连真实 PostgreSQL）
   NextWord.IntegrationTests/ WebApplicationFactory + 真实 PostgreSQL 集成测试
@@ -111,7 +111,7 @@ docker-compose.yml        postgres:16-alpine + redis:7-alpine + api（容器内 
 
 | Worker | 周期 | 职责 |
 |---|---|---|
-| `BackgroundJobWorker` | 2s 轮询 `BackgroundJobs` 表 | 处理 EvaluationReport / SentenceLlmScoring / ReAnnotation 三类任务 |
+| `BackgroundJobWorker` | 2s 轮询 `BackgroundJobs` 表 | 处理 EvaluationReport / SentenceLlmScoring / ReAnnotation / ScenarioAnnotation 四类任务 |
 | `ReviewReminderWorker` | 6h | 刷新待复习数 |
 | `LevelCheckWorker` | 24h | 刷新升级候选标记 |
 | `ProfileScoreSnapshotWorker` | 24h | 写 Score 每日快照 |
@@ -120,9 +120,9 @@ Worker 异常不拖垮宿主（`BackgroundServiceExceptionBehavior=Ignore`）。
 
 ### 5.11 LLM 集成
 
-- 统一抽象 `ILLMProvider`（5 方法：难度标注 / 释义 / 造句评分 / 词汇提取 / 批注回复）；Prompt 由 `LlmPromptFactory` 生成。
-- 默认 `LlmMockProvider`：内置词典启发式，零外部调用；**未知词难度一律回退 Basic/A1**（未启用真实 LLM 时 `POST /api/words` 自动定级基本无效）。
-- `Llm:OpenAI:Enabled=true` 且有 key 时切 `LlmChatClientProvider`（OpenAI `ChatClient`，默认 `gpt-4o-mini`，Temperature 0.1，异常自动回退 Mock）。
+- 统一抽象 `ILLMProvider`（6 方法：难度标注 / 释义 / 造句评分 / 词汇提取 / 批注回复 / 场景标注）；Prompt 由 `LlmPromptFactory` 生成。
+- 默认 `LlmMockProvider`：内置词典启发式，零外部调用；**未知词难度一律回退 Basic/A1**（未启用真实 LLM 时 `POST /api/words` 自动定级基本无效）；**Mock 场景标注只按词性推 role、场景一律空（全落 core 桶）**，不代表真实标注质量。
+- `Llm:OpenAI:Enabled=true` 且有 key 时切 `LlmChatClientProvider`（OpenAI `ChatClient`，默认 `gpt-4o-mini`，Temperature 0.1，异常自动回退 Mock）；`Llm:OpenAI:BaseUrl` 可选，指向任意 OpenAI 兼容端点（如 DashScope compatible-mode）。
 - 装饰链：Inner → `LlmRetryProvider`（指数退避 3 次）→ `LlmTelemetryProvider`（记录耗时与 ModelProfileId）。
 - 用户级 BYOK 优先于服务端全局配置。
 
@@ -130,6 +130,16 @@ Worker 异常不拖垮宿主（`BackgroundServiceExceptionBehavior=Ignore`）。
 
 - `ICacheService` 由 `Cache:Provider` 切换 Memory（默认）/ Redis。
 - 词义查询以 `ArticleVocabMappings` 表做 DB 级缓存；`POST /api/llm/rate-difficulty` 带 24h IMemoryCache（SHA256 key）。
+
+### 5.13 场景 taxonomy 与词级标注（I1 T-002）
+
+- **Taxonomy**（`NextWord.Domain/Scenarios/ScenarioTaxonomy.cs`）：常量集，两层 7 大类 × 20 子场景（key + 中文名），设计见 `docs/DESIGN-scenario-taxonomy.md`；无管理后台。
+- **词级标注**：`Word.Utility`（high/medium/low，low 不入库）、`Word.Role`（core_verb/connector/scene_noun/phrase_pattern）、`Word.ScenarioAnnotationVersion`（0=未标注）；`WordScenarios` 关联表（WordId + ScenarioKey 复合主键）承载 0–3 个子场景多对多，0 个 = core 通用桶。难度仍走 `WordDifficultyAnnotations`，不重复；接触词是运行时概念，无静态字段。
+- **内置词表**：`Infrastructure/Data/wordlist-scenarios.json`（嵌入资源，约 1700 词，由 `Backend/Scripts/generate-wordlist.py` 用 LLM 按设计 §4 标准生成，含 scenario/utility/role 标注），`SeedData` 空库时灌入并标记为已标注；验收口径有 `WordlistSeedTests` 守护（每子场景 ≥60、core ≥500、core_verb+connector ≥40%）。
+- **标注 worker**：`ScenarioAnnotationWorker`（复用 BackgroundJob 模式）对 `ScenarioAnnotationVersion` 低于当前版本的词分批（默认 20/批，payload `batchSize` 可调 ≤50）调 `AnnotateScenarioAsync`；已标注词自动跳过 → 幂等可重跑、断点可续；LLM 漏标的词保持未标注等下轮。
+- **触发**：`POST /api/scenarios/annotation-jobs?batchSize=`（幂等 key 按小时分桶）；`POST /api/words` 新增词自动入队标注。
+- **查询**：`GET /api/scenarios` 返回 taxonomy + 各子场景词数 + core 桶词数；`GET /api/words?scenario=` 按子场景过滤；`WordDto` 带 scenarios/utility/role。
+- **迁移**：本轮不做 EF 迁移；PG 由 `Patch_PostgreSql_ScoreKernel.sql` 幂等补丁补列/建表，Development 删库重建。
 
 ## 6. API 全量清单
 
@@ -221,7 +231,7 @@ Users、UserLlmSettings、Words、WordDifficultyAnnotations、DifficultyAnnotati
 - 关键配置（`appsettings.json` / `.Development` / `.Production` / `.Testing`）：
   - `ConnectionStrings:PostgreSql` / `ConnectionStrings:Redis`、`Database:AutoMigrate`、`Cache:Provider`（Memory|Redis）
   - `Auth:JwtSecret`（**生产必须覆盖**，默认值仅开发用）/ `Issuer` / `Audience` / `ExpirationDays:7`
-  - `Llm:OpenAI:Enabled`（默认 false → Mock；Production 配 true）/ `Model`（gpt-4o-mini）/ `ApiKey` 或 `ApiKeyEnvironmentVariable`（默认 `OPENAI_API_KEY`）
+  - `Llm:OpenAI:Enabled`（默认 false → Mock；Production 配 true）/ `Model`（gpt-4o-mini）/ `ApiKey` 或 `ApiKeyEnvironmentVariable`（默认 `OPENAI_API_KEY`）/ `BaseUrl`（可选，OpenAI 兼容端点）
   - `Llm:SentenceRating:ExplanationLanguage`（zh-CN）、`ScoreMapping`（CEFR 分带）、`ChallengeThresholds`、`Search`（DuckDuckGo）
 - 前端 API base：axios `baseURL = VITE_API_BASE_URL ?? ''`（默认相对路径 + dev 代理）。
 - `Backend/NextWord.Api/nextword-dev.db*` 是 SQLite 时代遗留文件，当前代码不使用。

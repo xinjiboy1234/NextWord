@@ -59,6 +59,7 @@ public static class DependencyInjection
         services.AddScoped<IEvaluationReportService, EvaluationReportService>();
         services.AddScoped<EvaluationDataAssembler>();
         services.AddScoped<ReAnnotationWorker>();
+        services.AddScoped<ScenarioAnnotationWorker>();
         services.AddScoped<SentenceLlmScoringWorker>();
         services.AddScoped<IReadingLookupService, ReadingLookupService>();
         services.AddScoped<IDailyWordSelectionService, DailyWordSelectionService>();
@@ -88,13 +89,16 @@ public static class DependencyInjection
             Enabled = bool.TryParse(configuration["Llm:OpenAI:Enabled"], out var enabled) && enabled,
             Model = configuration["Llm:OpenAI:Model"] ?? "gpt-4o-mini",
             ApiKey = configuration["Llm:OpenAI:ApiKey"],
-            ApiKeyEnvironmentVariable = configuration["Llm:OpenAI:ApiKeyEnvironmentVariable"] ?? "OPENAI_API_KEY"
+            ApiKeyEnvironmentVariable = configuration["Llm:OpenAI:ApiKeyEnvironmentVariable"] ?? "OPENAI_API_KEY",
+            BaseUrl = configuration["Llm:OpenAI:BaseUrl"]
         };
         openAiOptions.ApiKey ??= configuration[openAiOptions.ApiKeyEnvironmentVariable];
         openAiOptions.ApiKey ??= Environment.GetEnvironmentVariable(openAiOptions.ApiKeyEnvironmentVariable);
         if (openAiOptions.Enabled && !string.IsNullOrWhiteSpace(openAiOptions.ApiKey))
         {
-            services.AddSingleton<IChatClient>(_ => new ChatClient(openAiOptions.Model, openAiOptions.ApiKey).AsIChatClient());
+            services.AddSingleton<IChatClient>(_ => string.IsNullOrWhiteSpace(openAiOptions.BaseUrl)
+                ? new ChatClient(openAiOptions.Model, openAiOptions.ApiKey).AsIChatClient()
+                : LlmClientFactory.CreateChatClient(openAiOptions.Model, openAiOptions.ApiKey, openAiOptions.BaseUrl));
             services.AddSingleton<LlmChatClientProvider>();
             services.AddSingleton<ILLMProvider>(sp => WrapLlmProvider(sp, sp.GetRequiredService<LlmChatClientProvider>()));
         }

@@ -105,6 +105,24 @@ public sealed record CommentReplyRequest(
 
 public sealed record CommentReplyResponse(string Reply);
 
+public sealed record ScenarioAnnotationItem(
+    string Lemma,
+    string PartOfSpeech,
+    IReadOnlyList<string> Meanings);
+
+public sealed record ScenarioAnnotationRequest(
+    IReadOnlyList<ScenarioAnnotationItem> Words,
+    LlmRequestOptions? Options = null);
+
+public sealed record ScenarioAnnotationResult(
+    string Lemma,
+    IReadOnlyList<string> ScenarioKeys,
+    WordUtility Utility,
+    ExpressionRole Role);
+
+public sealed record ScenarioAnnotationResponse(
+    IReadOnlyList<ScenarioAnnotationResult> Annotations);
+
 public sealed record ReadingAgentRequest(
     string Intent,
     string ArticleTitle,

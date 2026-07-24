@@ -156,6 +156,43 @@ public sealed class LlmMockProvider(IModelProfileResolver modelProfileResolver) 
         return Task.FromResult(new CommentReplyResponse(reply));
     }
 
+    /// <summary>
+    /// Mock 场景标注：按词性启发式推断表达角色，不进任何子场景（全部落 core 通用桶）。
+    /// Mock 路径可运行但不代表真实标注质量（与 Mock 难度定级同一约定）。
+    /// </summary>
+    public Task<ScenarioAnnotationResponse> AnnotateScenarioAsync(ScenarioAnnotationRequest request, CancellationToken cancellationToken)
+    {
+        var annotations = request.Words
+            .Select(item => new ScenarioAnnotationResult(
+                item.Lemma.Trim().ToLowerInvariant(),
+                [],
+                WordUtility.Medium,
+                InferMockRole(item.PartOfSpeech)))
+            .ToList();
+        return Task.FromResult(new ScenarioAnnotationResponse(annotations));
+    }
+
+    private static ExpressionRole InferMockRole(string partOfSpeech)
+    {
+        var pos = partOfSpeech.Trim().ToLowerInvariant();
+        if (pos.StartsWith("v") || pos.Contains("verb"))
+        {
+            return ExpressionRole.CoreVerb;
+        }
+
+        if (pos.StartsWith("conj") || pos.StartsWith("prep"))
+        {
+            return ExpressionRole.Connector;
+        }
+
+        if (pos.StartsWith("phr"))
+        {
+            return ExpressionRole.PhrasePattern;
+        }
+
+        return ExpressionRole.SceneNoun;
+    }
+
     private static string BuildChineseMockDefinition(string word, string? context)
     {
         if (MockChineseDefinitions.TryGetValue(word, out var definition))

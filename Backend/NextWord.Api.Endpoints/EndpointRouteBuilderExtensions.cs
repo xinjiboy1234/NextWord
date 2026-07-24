@@ -5,6 +5,7 @@ public static class EndpointRouteBuilderExtensions
     public static IEndpointRouteBuilder MapNextWordEndpoints(this IEndpointRouteBuilder app)
     {
         WordEndpoints.Map(app);
+        ScenarioEndpoints.Map(app);
         AuthEndpoints.Map(app);
         ProfileEndpoints.Map(app);
         LearningEndpoints.Map(app);

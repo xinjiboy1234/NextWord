@@ -167,4 +167,38 @@ public static class LlmPromptFactory
         Return plain text only, 2-4 sentences, encouraging and explanatory.
         """;
     }
+
+    public static string BuildScenarioAnnotationPrompt(ScenarioAnnotationRequest request)
+    {
+        var scenarioList = string.Join("\n", Scenarios.ScenarioTaxonomy.All.Select(
+            item => $"- {item.Key} ({item.ZhName}, 大类 {item.CategoryKey})"));
+        var wordList = string.Join("\n", request.Words.Select(
+            item => $"- {item.Lemma} ({item.PartOfSpeech}) {string.Join("；", item.Meanings)}"));
+
+        return $$"""
+        You annotate English vocabulary for a life-expression learning app.
+
+        Sub-scenarios (pick 0-3 per word; pick 0 only for cross-scenario core words like be/have/get or connectors):
+        {{scenarioList}}
+
+        Fields per word:
+        - scenarios: 0-3 sub-scenario keys where the word is most useful for EXPRESSION.
+        - utility: high|medium|low — everyday spoken frequency × irreplaceability in expression. Use low for rare/bookish words.
+        - role: core_verb|connector|scene_noun|phrase_pattern — the word's role in spoken expression.
+
+        Words:
+        {{wordList}}
+
+        Return only JSON:
+        {
+          "annotations": [
+            { "lemma": "string", "scenarios": ["key"], "utility": "high", "role": "core_verb" }
+          ]
+        }
+
+        Rules:
+        - Return exactly one annotation per input word, keeping the input lemma unchanged.
+        - scenarios must only use keys from the list above.
+        """;
+    }
 }

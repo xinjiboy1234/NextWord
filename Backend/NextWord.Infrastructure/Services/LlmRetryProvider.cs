@@ -23,6 +23,9 @@ public sealed class LlmRetryProvider(ILLMProvider inner, int maxAttempts = 3) : 
     public async Task<CommentReplyResponse> ReplyToCommentAsync(CommentReplyRequest request, CancellationToken cancellationToken)
         => await ExecuteAsync(token => inner.ReplyToCommentAsync(request, token), cancellationToken);
 
+    public async Task<ScenarioAnnotationResponse> AnnotateScenarioAsync(ScenarioAnnotationRequest request, CancellationToken cancellationToken)
+        => await ExecuteAsync(token => inner.AnnotateScenarioAsync(request, token), cancellationToken);
+
     private async Task<T> ExecuteAsync<T>(Func<CancellationToken, Task<T>> action, CancellationToken cancellationToken)
     {
         Exception? last = null;

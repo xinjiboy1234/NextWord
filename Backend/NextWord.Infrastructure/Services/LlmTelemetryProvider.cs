@@ -25,6 +25,9 @@ public sealed class LlmTelemetryProvider(ILLMProvider inner, ILogger<LlmTelemetr
     public Task<CommentReplyResponse> ReplyToCommentAsync(CommentReplyRequest request, CancellationToken cancellationToken)
         => ExecuteAsync("ReplyToComment", request.Options?.ModelProfileId, token => inner.ReplyToCommentAsync(request, token), cancellationToken);
 
+    public Task<ScenarioAnnotationResponse> AnnotateScenarioAsync(ScenarioAnnotationRequest request, CancellationToken cancellationToken)
+        => ExecuteAsync("AnnotateScenario", request.Options?.ModelProfileId, token => inner.AnnotateScenarioAsync(request, token), cancellationToken);
+
     private async Task<T> ExecuteAsync<T>(
         string operation,
         string? modelProfileId,

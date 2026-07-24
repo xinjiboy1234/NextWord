@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
     <ProjectReference Include="..\NextWord.Domain\NextWord.Domain.csproj" />
@@ -28,6 +28,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Data\Patch_PostgreSql_ScoreKernel.sql" />
+    <EmbeddedResource Include="Data\wordlist-scenarios.json" />
   </ItemGroup>
 
 </Project>

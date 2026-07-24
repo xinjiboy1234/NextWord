@@ -48,6 +48,11 @@ public sealed class BackgroundJobWorker(IServiceScopeFactory scopeFactory, ILogg
                             var reannotation = scope.ServiceProvider.GetRequiredService<ReAnnotationWorker>();
                             await reannotation.ProcessAsync(job, stoppingToken);
                         }
+                        else if (job.JobType == ScenarioAnnotationWorker.JobType)
+                        {
+                            var scenarioWorker = scope.ServiceProvider.GetRequiredService<ScenarioAnnotationWorker>();
+                            await scenarioWorker.ProcessAsync(job, stoppingToken);
+                        }
 
                         job.Status = "Completed";
                         job.ProcessedAt = DateTimeOffset.UtcNow;

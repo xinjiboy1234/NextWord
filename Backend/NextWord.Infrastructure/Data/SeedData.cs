@@ -27,7 +27,11 @@ public static class SeedData
 
         if (!await db.Words.AnyAsync(cancellationToken))
         {
-            db.Words.AddRange(CreateWords());
+            // 内置精选词表（含场景标注）为主，历史 6 词兜底合并缺失 lemma
+            var words = WordlistSeedData.LoadEntries().Select(WordlistSeedData.ToWord).ToList();
+            var lemmas = words.Select(word => word.Lemma).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            words.AddRange(CreateWords().Where(word => !lemmas.Contains(word.Lemma)));
+            db.Words.AddRange(words);
         }
 
         if (!await db.Sentences.AnyAsync(cancellationToken))

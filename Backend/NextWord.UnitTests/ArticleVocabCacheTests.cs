@@ -142,6 +142,9 @@ public sealed class ArticleVocabCacheTests
 
         public Task<CommentReplyResponse> ReplyToCommentAsync(CommentReplyRequest request, CancellationToken cancellationToken)
             => throw new NotImplementedException();
+
+        public Task<ScenarioAnnotationResponse> AnnotateScenarioAsync(ScenarioAnnotationRequest request, CancellationToken cancellationToken)
+            => throw new NotImplementedException();
     }
 
     private sealed class FixedLlmFactory(ILLMProvider provider) : IUserLlmProviderFactory

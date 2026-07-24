@@ -82,6 +82,9 @@ public sealed class LlmTelemetryProviderTests
 
         public Task<CommentReplyResponse> ReplyToCommentAsync(CommentReplyRequest request, CancellationToken cancellationToken)
             => throw new NotImplementedException();
+
+        public Task<ScenarioAnnotationResponse> AnnotateScenarioAsync(ScenarioAnnotationRequest request, CancellationToken cancellationToken)
+            => throw new NotImplementedException();
     }
 }
 

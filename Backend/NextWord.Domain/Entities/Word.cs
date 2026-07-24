@@ -15,7 +15,15 @@ public sealed class Word
     public Guid? LlmAnnotationId { get; set; }
     public bool IsCore { get; set; } = true;
 
+    // 场景标注（设计方案 §3）；null = 未标注。难度走 WordDifficultyAnnotations，不在此重复。
+    public WordUtility? Utility { get; set; }
+    public ExpressionRole? Role { get; set; }
+
+    /// <summary>场景标注版本，0 = 未标注；ScenarioAnnotationWorker 只处理低于当前版本的词。</summary>
+    public int ScenarioAnnotationVersion { get; set; }
+
     public WordDifficultyAnnotation? LlmAnnotation { get; set; }
+    public List<WordScenario> Scenarios { get; set; } = [];
     public List<UserWordRelationship> UserRelationships { get; set; } = [];
     public List<WordLearningLog> LearningLogs { get; set; } = [];
     public List<Sentence> Sentences { get; set; } = [];

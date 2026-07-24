@@ -20,6 +20,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<User> Users => Set<User>();
     public DbSet<UserLlmSettings> UserLlmSettings => Set<UserLlmSettings>();
     public DbSet<Word> Words => Set<Word>();
+    public DbSet<WordScenario> WordScenarios => Set<WordScenario>();
     public DbSet<WordDifficultyAnnotation> WordDifficultyAnnotations => Set<WordDifficultyAnnotation>();
     public DbSet<DifficultyAnnotation> DifficultyAnnotations => Set<DifficultyAnnotation>();
     public DbSet<UserProgress> UserProgress => Set<UserProgress>();
@@ -78,6 +79,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.Property(word => word.Phonetics).HasMaxLength(120);
             entity.Property(word => word.DifficultyLevel).HasConversion<string>().HasMaxLength(32);
             entity.Property(word => word.CefrLevel).HasConversion<string>().HasMaxLength(8);
+            entity.Property(word => word.Utility).HasConversion<string>().HasMaxLength(16);
+            entity.Property(word => word.Role).HasConversion<string>().HasMaxLength(32);
             entity.Property(word => word.Meanings)
                 .HasConversion(
                     value => JsonSerializer.Serialize(value, JsonOptions),
@@ -91,6 +94,16 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.HasOne(word => word.LlmAnnotation)
                 .WithOne(annotation => annotation.Word)
                 .HasForeignKey<WordDifficultyAnnotation>(annotation => annotation.WordId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<WordScenario>(entity =>
+        {
+            entity.HasKey(item => new { item.WordId, item.ScenarioKey });
+            entity.Property(item => item.ScenarioKey).HasMaxLength(40).IsRequired();
+            entity.HasOne(item => item.Word)
+                .WithMany(word => word.Scenarios)
+                .HasForeignKey(item => item.WordId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
