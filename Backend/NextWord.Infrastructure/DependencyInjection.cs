@@ -61,6 +61,8 @@ public static class DependencyInjection
         services.AddScoped<IWeaknessProfiler, WeaknessProfiler>();
         services.AddScoped<IFindingVerifier, FindingVerifier>();
         services.AddScoped<IWeaknessProfileService, WeaknessProfileService>();
+        services.AddScoped<ILearningPlanService, LearningPlanService>();
+        services.AddScoped<PlannerWorker>();
         services.AddScoped<ReAnnotationWorker>();
         services.AddScoped<ScenarioAnnotationWorker>();
         services.AddScoped<SentenceLlmScoringWorker>();

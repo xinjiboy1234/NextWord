@@ -57,12 +57,17 @@ export function SentenceCard({ userLevel = 'A2' }: SentenceCardProps) {
                 {session.current.targetWord}
               </h2>
             </div>
-            <Badge variant="muted">{session.current.cefrLevel}</Badge>
+            <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
+              {session.current.fromPlan ? <Badge variant="info">来自今日计划</Badge> : null}
+              <Badge variant="muted">{session.current.cefrLevel}</Badge>
+            </div>
           </div>
 
-          <p style={{ marginTop: 'var(--space-4)', padding: 'var(--space-4)', background: 'var(--border-soft)', borderRadius: 'var(--radius-md)', fontSize: 'var(--text-sm)', lineHeight: 1.6 }}>
-            {session.current.content}
-          </p>
+          {session.current.content ? (
+            <p style={{ marginTop: 'var(--space-4)', padding: 'var(--space-4)', background: 'var(--border-soft)', borderRadius: 'var(--radius-md)', fontSize: 'var(--text-sm)', lineHeight: 1.6 }}>
+              {session.current.content}
+            </p>
+          ) : null}
 
           <div style={{ marginTop: 'var(--space-4)' }}>
             <SceneSelector value={scene} onChange={setScene} />

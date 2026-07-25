@@ -60,7 +60,11 @@ public sealed record DailyWordItem(
     IReadOnlyList<string> Meanings,
     int EffectiveDifficulty,
     bool IsWeak,
-    string? Phonetics);
+    string? Phonetics,
+    /// <summary>T-006：来自当日 LearningPlan（否则为难度带回退选词）。</summary>
+    bool FromPlan = false,
+    /// <summary>T-006：超带「接触词」，只进背词识别队列，认识即可。</summary>
+    bool IsExposure = false);
 
 public interface IUserFeedbackService
 {

@@ -52,7 +52,7 @@ docker-compose.yml        postgres:16-alpine + redis:7-alpine + api（容器内 
 
 ### 5.1 每日选词与新词记忆（`/learn`）
 
-- `GET /api/words/daily?count=`：按用户 Vocabulary 分取 `[score, score+12]` 难度带单词 + `EstimatedKnownRate<0.4` 弱词，各占约一半（`DailyWordSelectionService`）。
+- `GET /api/words/daily?count=`：**优先执行当日 LearningPlan 词队列**（T-006，见 §5.15：带内词 + ≤20% 超带接触词，`fromPlan`/`isExposure` 标记）；无 Plan、Plan 过期（>7 天）或当日队列为空 → 回退既有逻辑——按用户 Vocabulary 分取 `[score, score+12]` 难度带单词 + `EstimatedKnownRate<0.4` 弱词，各占约一半（`DailyWordSelectionService`）。
 - `POST /api/learning/submit`：提交词义作答 → SM-2 排程更新 + `MasteryScore`/`EstimatedKnownRate`/`PersonalDifficulty`（EMA）+ 连胜天数。
 - SM-2 变体（`Sm2Service`）：EF 下限 1.3，间隔上限 3650 天。
 - `POST /api/words` 新增单词时调用 LLM `RateDifficultyAsync` 自动定级（DifficultyLevel + CefrLevel + 0–100 IntrinsicScore 标注）。
@@ -65,12 +65,14 @@ docker-compose.yml        postgres:16-alpine + redis:7-alpine + api（容器内 
 ### 5.3 造句工作室（`/sentence`）
 
 - 两个 Tab：指定词造句（`GET /api/sentences/prompts` + `POST /api/sentences/rate`）与自由表达（`POST /api/free-expression/rate`）。
+- 指定词出题（T-006）：登录用户走个性化——有当日 Plan 用 Plan 造句目标（带内、主攻场景优先，`fromPlan` 标记）；无 Plan/过期回退**带内约束**选词（目标词 CEFR 与水平带一致，带池不足向下一带补充，产出任务只用带内词）；匿名保持既有按难度出题。
 - LLM 同步评分：语法/自然度/词汇/相关度各 0–5 + A–D 等级 + 改写建议；反馈语言默认 zh-CN（`Llm:SentenceRating:ExplanationLanguage`）。
 - 后台 `SentenceLlmScoringWorker` 会把造句成绩写入 Score 内核（写作维度）。
 
 ### 5.4 阅读（`/reading`、`/reading/:id`）
 
 - 短文库按难度/CEFR 筛选分组；种子含 21 篇分级短文。
+- `GET /api/articles/recommended`（T-006）：有当日 Plan 按主攻场景选文（TopicTag/场景匹配 + 难度就近，`fromPlan=true`）；无 Plan/过期按难度就近回退。前端短文库顶部展示「今日推荐」。
 - 阅读器：逐词渲染点词查义（`POST /api/reading/lookup`，先查 `ArticleVocabMappings` 文章级缓存，缺失再 LLM 并 upsert；返回音标 + 文中/其他场景双例句 + 熟悉度）。
 - `POST /api/articles/{id}/vocab-extract`：LLM 提取重点词汇（含音标 + 用法例句）并持久化；存量数据 lazy backfill。
 - 段落批注：`GET/POST /api/articles/{articleId}/comments`，可请求 AI 回复。
@@ -116,7 +118,7 @@ docker-compose.yml        postgres:16-alpine + redis:7-alpine + api（容器内 
 
 | Worker | 周期 | 职责 |
 |---|---|---|
-| `BackgroundJobWorker` | 2s 轮询 `BackgroundJobs` 表 | 处理 EvaluationReport / SentenceLlmScoring / ReAnnotation / ScenarioAnnotation 四类任务 |
+| `BackgroundJobWorker` | 2s 轮询 `BackgroundJobs` 表 | 处理 EvaluationReport / SentenceLlmScoring / ReAnnotation / ScenarioAnnotation / Planner 五类任务 |
 | `ReviewReminderWorker` | 6h | 刷新待复习数 |
 | `LevelCheckWorker` | 24h | 刷新升级候选标记 |
 | `ProfileScoreSnapshotWorker` | 24h | 写 Score 每日快照 |
@@ -154,6 +156,14 @@ Worker 异常不拖垮宿主（`BackgroundServiceExceptionBehavior=Ignore`）。
 - **Verifier Agent**（`FindingVerifier`，不调 LLM）：逐条机械核查——证据引用真实存在且属于本人（sentence_log 按 UserId 过滤）、引用数值与库内重算值一致（sentence_log 四维分 / assessment_dimension / word_stats / reading_stats）、证据条数支撑置信度（high≥3 / medium≥2 / low≥1）；任一不通过标 `Questioned` 并留原因，不展示、不进规划输入（T-006 只消费 Verified）。
 - **展示**：报告 `ContentJson` schemaVersion 2 = 已验证 Finding 列表（strengths/weaknesses 由 Finding 派生兼容旧前端）；画像失败或全部存疑时回退 schemaVersion 1 模板。前端 LevelPanel 优先渲染 findings（维度/置信度徽标 + 结论）。
 - **解析容错**：qwen 会把枚举白名单原样照抄（`"skill|grammar"`），`LlmResponseParser` 按 `|` 逐 token 取第一个可识别值；提示词模板已改为具体占位值。
+- **画像去重（T-010，随 T-006 修复）**：Profiler 提示词要求「每维度至多一条 Finding、不跨 Finding 复用同一证据」；草稿交 Verifier 前经 `WeaknessProfiler.Deduplicate` 后处理——同维度（Dimension+DimensionKey）保留证据更强者（条数多优先、并列取置信度高），同一证据引用被多条复用时只留在置信度最高者、被剥夺后无证据的整条丢弃。Verifier 职责不变。
+
+### 5.15 LearningPlan + PlannerWorker（I3 T-006）
+
+- **计划结构**：`LearningPlans` 表（`(UserId, StartDate)` 唯一 → 同日幂等；枚举-free，内容明细存 `ContentJson`）：7 日计划 = 主攻场景（1–2 个子场景）+ 每日词队列（带内词 + ≤20% 超带接触词）+ 阅读推荐（3 篇）+ 每日造句目标（3 词）+ 生成依据 Finding id 列表；设计见 `docs/DESIGN-planner-worker.md`。
+- **生成（`LearningPlanService`）**：主攻场景只取自最新画像的 **Verified 场景 weakness Finding**（存疑不进规划），画像不足按场景词覆盖率最低者兜底；水平带用 **CEFR**（`CefrDisplay`，与测评词池口径一致——词库词多数无 IntrinsicScore 标注，intrinsic 带会落空），带池过薄向下一带补充、绝不超带；接触词 = CEFR 严格高于水平带的词，每天 ≤2 个（10 × 20%），只进背词识别队列。
+- **触发（`PlannerWorker`，BackgroundJob 新任务类型）**：测评完成 → 评估报告任务处理时入队（幂等键 `planner:{userId}:{yyyyMMdd}`，同日重复触发复用同一 job 且不重复生成）；`POST /api/planner/jobs` 可手动触发当前用户当日任务；`GET /api/planner/current` 查当日有效 Plan。
+- **内容来源切换**：每日选词 / 阅读推荐 / 造句出题均优先执行当日 Plan（`GetActiveAsync`：StartDate 起 7 天内有效），无 Plan、过期（>7 天）或生成失败 → 回退既有逻辑（用户永远有内容可学）。前端以「来自今日计划」徽标标示（WordDisplay / SentenceCard / 短文库推荐区）。
 
 ## 6. API 全量清单
 
@@ -177,7 +187,7 @@ Worker 异常不拖垮宿主（`BackgroundServiceExceptionBehavior=Ignore`）。
 - `POST /api/free-expression/rate`
 
 **阅读**
-- `GET /api/articles?level&cefr`、`GET /api/articles/{id}`
+- `GET /api/articles?level&cefr`、`GET /api/articles/{id}`、`GET /api/articles/recommended`（当日 Plan 阅读推荐）
 - `POST /api/articles/{id}/reading/start`、`POST /api/reading-logs/{logId}/finish`、`POST /api/reading-logs/{logId}/lookup`
 - `POST /api/articles/{id}/vocab-extract`、`GET /api/articles/{id}/vocab`
 - `POST /api/articles/{id}/lookup`（前端未用，前端走 `/api/reading/lookup`）
@@ -202,15 +212,19 @@ Worker 异常不拖垮宿主（`BackgroundServiceExceptionBehavior=Ignore`）。
 - `POST /api/feedback`
 - `GET /api/tools`、`POST /api/tools/{name}`
 
+**学习计划（T-006）**
+- `POST /api/planner/jobs`（手动触发当日 Planner 任务，幂等按日）
+- `GET /api/planner/current`（当日有效 Plan 摘要）
+
 **日志 / 健康**
 - `GET /api/logs/summary`、`GET /api/logs/recent`
 - `GET /api/health`（匿名）、`GET /api/health/details`（匿名；DB CanConnect + LLM 注册检查）
 
 ## 7. 数据模型
 
-PostgreSQL，连接串 `ConnectionStrings:PostgreSql`（默认 `Host=localhost;Database=nextword`）。`ApplicationDbContext` 共 **29 个 DbSet**：
+PostgreSQL，连接串 `ConnectionStrings:PostgreSql`（默认 `Host=localhost;Database=nextword`）。`ApplicationDbContext` 共 **30 个 DbSet**：
 
-Users、UserLlmSettings、Words、WordScenarios、WordDifficultyAnnotations、DifficultyAnnotations、UserProgress、UserWordRelationships、WordLearningLogs、Sentences、SentenceLogs、FreeExpressionLogs、SpellingLogs、Articles、ReadingLogs、ArticleComments、ArticleVocabMappings、Assessments、AssessmentRecords、ChallengeRecords、ChallengeSessions、LevelHistories、LearningEvents、ProfileScoreSnapshots、EvaluationReports、WeaknessProfiles、ProfileFindings、BackgroundJobs、UserFeedbacks、UserWordExcludes。
+Users、UserLlmSettings、Words、WordScenarios、WordDifficultyAnnotations、DifficultyAnnotations、UserProgress、UserWordRelationships、WordLearningLogs、Sentences、SentenceLogs、FreeExpressionLogs、SpellingLogs、Articles、ReadingLogs、ArticleComments、ArticleVocabMappings、Assessments、AssessmentRecords、ChallengeRecords、ChallengeSessions、LevelHistories、LearningEvents、ProfileScoreSnapshots、EvaluationReports、WeaknessProfiles、ProfileFindings、LearningPlans、BackgroundJobs、UserFeedbacks、UserWordExcludes。
 
 - 列表属性（Meanings、ErrorTags 等）存 JSON 列；枚举存字符串。
 - 5 个 EF 迁移（`Data/Migrations/`）；`AddScoreKernelM1` 含 SQLite 专用 ALTER，由 `PostgreSqlSchemaPatcher` 用嵌入式 SQL（`Patch_PostgreSql_ScoreKernel.sql`）在 PG 上幂等补齐。
@@ -254,7 +268,7 @@ Users、UserLlmSettings、Words、WordScenarios、WordDifficultyAnnotations、Di
 
 ## 10. 测试
 
-**单元测试**（`NextWord.UnitTests`）：SM-2、LevelUpgradeEngine（锁级/升级候选/C1 封顶）、EffectiveDifficultyCalculator、AssessmentScoringService（表达力综合分/自适应决策）、AdaptiveAssessmentService（分块/词池/收敛/定级，连真实 PG + LLM 桩）、WeaknessProfile（生成持久化与幂等、Verifier 篡改/伪造/样本量核查、报告 schemaVersion 2 切换与回退、解析枚举容错，连真实 PG）、ScoreMappingService、ScoreProfileService（absolute 写入与幂等，连真实 PG `nextword_unit_test`）、LLM prompt/解析与 Mock Provider、ArticleVocabMapping 缓存、RedisCacheService 与 LlmTelemetryProvider。
+**单元测试**（`NextWord.UnitTests`）：SM-2、LevelUpgradeEngine（锁级/升级候选/C1 封顶）、EffectiveDifficultyCalculator、AssessmentScoringService（表达力综合分/自适应决策）、AdaptiveAssessmentService（分块/词池/收敛/定级，连真实 PG + LLM 桩）、WeaknessProfile（生成持久化与幂等、Verifier 篡改/伪造/样本量核查、报告 schemaVersion 2 切换与回退、解析枚举容错、T-010 画像去重，连真实 PG）、LearningPlan（Verified-only 主攻场景、接触词上限与超带、同日幂等、过期/无 Plan 回退、造句 Plan 目标、阅读推荐，连真实 PG）、ScoreMappingService、ScoreProfileService（absolute 写入与幂等，连真实 PG `nextword_unit_test`）、LLM prompt/解析与 Mock Provider、ArticleVocabMapping 缓存、RedisCacheService 与 LlmTelemetryProvider。
 
 **集成测试**（`NextWord.IntegrationTests`）：Testing 环境（移除后台 Worker），真实 PG `nextword_test`，真实注册/登录拿 JWT。覆盖：测评（401、开始、进度）、文章（401、种子列表）。覆盖较薄。
 
@@ -268,8 +282,8 @@ cd Frontend && npm run test:e2e # E2E
 
 ## 11. 已知限制
 
-- 画像场景/阅读维度依赖学习行为数据：初测后新用户无背词/阅读记录，首轮画像以技能维度为主（场景/阅读随学习积累出现）。
-- 画像仅测评后生成一次；周级刷新与 Planner 消费画像留给 T-006/T-007。
+- 画像场景/阅读维度依赖学习行为数据：初测后新用户无背词/阅读记录，首轮画像以技能维度为主（场景/阅读随学习积累出现）；此时 LearningPlan 主攻场景走场景词覆盖率兜底。
+- 画像仅测评后生成一次；周级刷新与瓶颈洞察重规划留给 T-007。
 - Mock LLM 下新词自动定级无效（未知词回退 Basic/A1）；Mock 画像结论带 [Mock] 前缀，不代表个性化成立。
 - 集成测试与 E2E 覆盖较薄；`npm run test:e2e` 全绿尚未纳入常规验证。
 - `/api/reading/agent` 无用户级限流。

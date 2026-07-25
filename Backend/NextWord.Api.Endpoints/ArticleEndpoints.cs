@@ -19,6 +19,21 @@ public static class ArticleEndpoints
             return Results.Ok(list.Select(ArticleDto.FromEntity));
         });
 
+        // T-006：阅读推荐——有当日 Plan 按主攻场景选文（fromPlan=true），否则难度就近回退
+        group.MapGet("/recommended", async (HttpContext http, IUserRepository users, IArticleService articles, CancellationToken ct) =>
+        {
+            var user = await UserResolver.ResolveAsync(http, null, users, ct);
+            if (user is null)
+            {
+                return Results.Unauthorized();
+            }
+
+            var result = await articles.GetRecommendedAsync(user.Id, ct);
+            return Results.Ok(new RecommendedArticlesDto(
+                result.FromPlan,
+                result.Articles.Select(ArticleDto.FromEntity).ToList()));
+        });
+
         group.MapGet("/{id:guid}", async (Guid id, IArticleService articles, CancellationToken ct) =>
         {
             var article = await articles.GetByIdAsync(id, ct);
@@ -237,6 +252,9 @@ public sealed record ArticleDto(
         article.Source,
         article.TopicTag);
 }
+
+/// <summary>T-006：阅读推荐响应。FromPlan=true 表示来自当日 LearningPlan 主攻场景选文。</summary>
+public sealed record RecommendedArticlesDto(bool FromPlan, IReadOnlyList<ArticleDto> Articles);
 
 public sealed record ArticleDetailDto(
     Guid Id,

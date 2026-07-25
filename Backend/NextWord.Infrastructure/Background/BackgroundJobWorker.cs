@@ -53,6 +53,11 @@ public sealed class BackgroundJobWorker(IServiceScopeFactory scopeFactory, ILogg
                             var scenarioWorker = scope.ServiceProvider.GetRequiredService<ScenarioAnnotationWorker>();
                             await scenarioWorker.ProcessAsync(job, stoppingToken);
                         }
+                        else if (job.JobType == PlannerWorker.JobType)
+                        {
+                            var planner = scope.ServiceProvider.GetRequiredService<PlannerWorker>();
+                            await planner.ProcessAsync(job, stoppingToken);
+                        }
 
                         job.Status = "Completed";
                         job.ProcessedAt = DateTimeOffset.UtcNow;

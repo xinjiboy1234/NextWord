@@ -23,6 +23,7 @@ export const endpoints = {
   logSummary: '/api/logs/summary',
   recentLogs: '/api/logs/recent',
   articles: '/api/articles',
+  articlesRecommended: '/api/articles/recommended',
   articleDetail: (id: string) => `/api/articles/${id}`,
   articleReadingStart: (id: string) => `/api/articles/${id}/reading/start`,
   articleVocabExtract: (id: string) => `/api/articles/${id}/vocab-extract`,

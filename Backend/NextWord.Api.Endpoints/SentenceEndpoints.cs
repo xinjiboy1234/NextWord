@@ -10,10 +10,18 @@ public static class SentenceEndpoints
     {
         var group = app.MapGroup("/api/sentences").WithTags("Sentences");
 
-        group.MapGet("/prompts", async (int? count, ISentenceService sentences, CancellationToken ct) =>
+        group.MapGet("/prompts", async (int? count, HttpContext http, ISentenceService sentences, CancellationToken ct) =>
         {
+            // 登录用户走个性化出题（T-006：Plan 造句目标 / 带内约束回退）；匿名保持既有出题
+            var userId = UserResolver.GetAuthenticatedUserId(http);
+            if (userId.HasValue)
+            {
+                var batch = await sentences.GetPersonalizedPromptsAsync(userId.Value, count ?? 10, ct);
+                return Results.Ok(batch.Prompts.Select(prompt => SentencePromptDto.FromEntity(prompt, batch.FromPlan)));
+            }
+
             var prompts = await sentences.GetPromptsAsync(count ?? 10, ct);
-            return Results.Ok(prompts.Select(SentencePromptDto.FromEntity));
+            return Results.Ok(prompts.Select(prompt => SentencePromptDto.FromEntity(prompt, false)));
         });
 
         group.MapPost("/rate", async (
@@ -63,9 +71,10 @@ public sealed record SentencePromptDto(
     string TargetWord,
     DifficultyLevel DifficultyLevel,
     CefrLevel CefrLevel,
-    string Scene)
+    string Scene,
+    bool FromPlan)
 {
-    public static SentencePromptDto FromEntity(Sentence sentence)
+    public static SentencePromptDto FromEntity(Sentence sentence, bool fromPlan = false)
     {
         return new SentencePromptDto(
             sentence.Id,
@@ -74,7 +83,8 @@ public sealed record SentencePromptDto(
             sentence.TargetWord,
             sentence.DifficultyLevel,
             sentence.CefrLevel,
-            sentence.Scene);
+            sentence.Scene,
+            fromPlan);
     }
 }
 

@@ -2,6 +2,43 @@
 
 按时间倒序记录需求、决策、实现与验收。
 
+## 2026-07-25 — I3 T-006 顾言验收
+
+**验收结论：通过。**
+
+- 周密七项标准全过且有实测：主攻场景来自 Verified Finding（构造用户实测 sourceFindingIds 精确匹配，存疑与非法 key 均被排除）；三处内容源 Plan 优先、无 Plan 回退正常；接触词 2/10 全超带、产出/测评无超带；过期回退、同日幂等实测通过；T-010 去重真实链路回归通过；单测 121+6、npm build 全过；
+- 不足 T-011（P2）**顾言判定：接受现状**。新用户画像缺场景维度、Planner 走覆盖率兜底是设计允许的冷启动路径；测评情境题与造句留痕都带场景标注，场景 Finding 会随学习行为自然积累，不为此加额外机制。T-011 保留 backlog 观察，不排期；
+- 附带修正记录：水平带口径从 IntrinsicScore 改为 CefrLevel（词库多数词无 Intrinsic 标注），与 T-004 测评词池同口径——决策合理，予以确认。
+
+---
+
+## 2026-07-25 — I3 T-006：PlannerWorker + 每日内容来源切换（含 T-010 画像去重）
+
+### 需求
+- 按 `docs/DESIGN-planner-worker.md`（已定稿）：夜间 Planner 依已验证画像排 7 日 LearningPlan（主攻场景/每日词队列/阅读推荐/造句目标/生成依据），每日内容从「难度带一刀切」切换为「执行 Plan」；随任务修复 T-010 画像去重。
+
+### 决策
+- **新表 `LearningPlans`**（走幂等补丁 SQL + Development 删库重建，不做 EF 迁移）：`(UserId, StartDate)` 唯一 → 同日幂等；内容明细（7 天 × 词队列/接触词/造句目标 + 主攻场景 + 阅读推荐 + 生成依据 Finding id）存 `ContentJson`。
+- **水平带用 CEFR 而非 IntrinsicScore**（实测修正）：词库词多数无 IntrinsicScore 标注，legacy 仅 25/50/75 三档，`[score, score+12]` intrinsic 带在 B2 用户实测带内词为 0、计划退化成只有接触词 → 改为 `CefrLevel == 用户带`（与 T-004 测评词池同一口径），带池过薄向下一带补充、绝不超带；接触词 = CEFR 严格高于用户带的词。
+- **触发链路复用现有基建**：测评完成 → 评估报告任务处理时入队 Planner 任务（幂等键 `planner:{userId}:{yyyyMMdd}`），`BackgroundJobWorker` 新增任务类型 dispatch；`POST /api/planner/jobs` 手动触发、`GET /api/planner/current` 只读查询。
+- **T-010 去重放 Profiler**：提示词加「每维度至多一条、证据不跨条复用」约束；草稿交 Verifier 前 `WeaknessProfiler.Deduplicate` 后处理（同维度留证据强者、证据复用留置信度高者、被剥光证据的整条丢弃），Verifier 职责不变。
+
+### 实现
+- Domain：`LearningPlan` 实体、`LearningPlanModels`（Content/Day）、`ILearningPlanService`（GenerateAsync/GetActiveAsync）。
+- Infrastructure：`LearningPlanService`（Verified 场景 weakness → 主攻场景，覆盖率兜底；词队列带内+≤20% 超带接触词；阅读按场景选文）、`PlannerWorker` + `BackgroundJobWorker` dispatch + `EvaluationReportService` 触发入队、`DailyWordSelectionService`/`ArticleService`/`SentenceService` 三处 Plan 优先 + 回退、补丁 SQL 补 `LearningPlans`。
+- API：`/api/planner/jobs|current`、`/api/articles/recommended`；`DailyWordItem`/`SentencePromptDto` 带 `fromPlan`（词项另带 `isExposure`）。
+- 前端：WordDisplay/SentenceCard「来自今日计划」徽标、接触词「认识即可」、短文库「今日推荐」区块。
+- 测试：`LearningPlanTests`（真实 PG，6 个：Verified-only+幂等、覆盖率兜底、每日词执行 Plan+接触词上限、过期/无 Plan 回退、造句 Plan 目标、阅读推荐与回退）+ T-010 去重 4 个（纯函数 3 + 全链路 1）。
+
+### 验收（开发自测）
+- [x] `dotnet build` 通过；`dotnet test` 121 单测 + 6 集成全过（真实 PG）
+- [x] `npm run build` 通过
+- [x] DashScope（qwen-plus）真实链路实测（独立库 nextword_verify_t006，验完已删、dev 库未动，脚本 `Backend/Scripts/verify-planner-t006.py` 可复用）：测评 2 块收敛定 B2 → 报告 schemaVersion 2（4 条 Finding 全 Verified、无同维度重复无证据复用）→ Planner 自动触发 → Plan 当日 8 带内+2 接触词、每日词/造句/阅读推荐全部 fromPlan、接触词 2/10 全超带、同日重复触发 LearningPlans 仅 1 行、无画像用户覆盖率兜底出 Plan
+- 观察：初测新用户画像无场景 weakness Finding（无学习行为数据，与已知限制一致），真实链路主攻场景走覆盖率兜底；「主攻场景来自 Verified Finding」路径由 LearningPlanTests（真实 PG）覆盖
+- [ ] 周密验收（status → testing）
+
+---
+
 ## 2026-07-24 — I2 T-005 顾言验收
 
 **验收结论：通过，WeaknessProfile v1 + Verifier 闭环，I2 全部完成。**

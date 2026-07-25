@@ -6,7 +6,10 @@ using NextWord.Infrastructure.Data;
 
 namespace NextWord.Infrastructure.Services;
 
-public sealed class ArticleService(ApplicationDbContext db) : IArticleService
+public sealed class ArticleService(
+    ApplicationDbContext db,
+    ILearningPlanService learningPlans,
+    IScoreProfileService scoreProfile) : IArticleService
 {
     public async Task<IReadOnlyList<Article>> ListAsync(DifficultyLevel? level, CefrLevel? cefr, CancellationToken cancellationToken)
     {
@@ -25,6 +28,38 @@ public sealed class ArticleService(ApplicationDbContext db) : IArticleService
             .OrderBy(article => article.DifficultyLevel)
             .ThenBy(article => article.Title)
             .ToListAsync(cancellationToken);
+    }
+
+    public async Task<RecommendedArticles> GetRecommendedAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        // 优先执行当日 Plan 的阅读推荐（主攻场景选文）
+        var active = await learningPlans.GetActiveAsync(userId, cancellationToken);
+        if (active is not null && active.Content.ArticleIds.Count > 0)
+        {
+            var planned = await db.Articles.AsNoTracking()
+                .Where(article => active.Content.ArticleIds.Contains(article.Id))
+                .ToListAsync(cancellationToken);
+            if (planned.Count > 0)
+            {
+                var ordered = active.Content.ArticleIds
+                    .Select(id => planned.FirstOrDefault(article => article.Id == id))
+                    .Where(article => article is not null)
+                    .Cast<Article>()
+                    .ToList();
+                return new RecommendedArticles(ordered, true);
+            }
+        }
+
+        // 回退：难度就近（用户永远有内容可学）
+        var scores = await scoreProfile.GetScoresAsync(userId, cancellationToken);
+        var userCefr = Enum.TryParse<CefrLevel>(scores.CefrDisplay, out var parsed) ? parsed : CefrLevel.A2;
+        var articles = await db.Articles.AsNoTracking().ToListAsync(cancellationToken);
+        var fallback = articles
+            .OrderBy(article => Math.Abs((int)article.CefrLevel - (int)userCefr))
+            .ThenBy(article => article.Title)
+            .Take(3)
+            .ToList();
+        return new RecommendedArticles(fallback, false);
     }
 
     public Task<Article?> GetByIdAsync(Guid id, CancellationToken cancellationToken)

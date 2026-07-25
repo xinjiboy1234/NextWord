@@ -110,7 +110,18 @@ public class WeaknessProfileTests
         Assert.Contains("无证据引用", results[5].Note);
 
         // 全链路：LLM 产出掺假草稿 → 持久化后仅真实条目为 Verified
-        var llm = new StubProfilerLlm(_ => [truthful, forgedRef, tamperedValue]);
+        // （T-010：同维度草稿会在核查前去重，这里用不同 dimensionKey 走核查路径）
+        var llm = new StubProfilerLlm(_ =>
+        [
+            truthful,
+            forgedRef with { DimensionKey = "natural" },
+            // 篡改数值走另一 metric，避免与 truthful 的证据 key 相同而在核查前去重阶段被剥夺
+            tamperedValue with
+            {
+                DimensionKey = "vocabulary",
+                Evidence = [new EvidenceClaim("sentence_log", ownLogs[0].Id.ToString(), "natural", "<=", 1)]
+            }
+        ]);
         var service = CreateProfileService(db, llm);
         var profile = await service.GenerateAsync(user.Id, assessment.Id, CancellationToken.None);
         Assert.Equal(3, profile.Findings.Count);
@@ -218,6 +229,100 @@ public class WeaknessProfileTests
         Assert.Equal(FindingDimension.Skill, finding.Dimension);
         Assert.Equal(FindingPolarity.Strength, finding.Polarity);
         Assert.Equal(FindingConfidence.High, finding.Confidence);
+    }
+
+    // ── T-010 画像去重 ─────────────────────────────────────
+
+    [Fact]
+    public void Deduplicate_keeps_strongest_finding_per_dimension()
+    {
+        var weak = new ProfileFindingDraft(
+            FindingDimension.Skill, "grammar", FindingPolarity.Weakness, "弱证据条目。",
+            [new EvidenceClaim("sentence_log", "a", "grammar", "<=", 2)],
+            FindingConfidence.Low);
+        var strong = new ProfileFindingDraft(
+            FindingDimension.Skill, "grammar", FindingPolarity.Weakness, "强证据条目。",
+            [new EvidenceClaim("sentence_log", "b", "grammar", "<=", 2),
+             new EvidenceClaim("sentence_log", "c", "grammar", "<=", 2)],
+            FindingConfidence.Medium);
+
+        var result = WeaknessProfiler.Deduplicate([weak, strong]);
+
+        var finding = Assert.Single(result);
+        Assert.Equal("强证据条目。", finding.Statement);
+    }
+
+    [Fact]
+    public void Deduplicate_resolves_evidence_reuse_by_confidence()
+    {
+        var shared = new EvidenceClaim("sentence_log", "shared-id", "grammar", "<=", 2);
+        var high = new ProfileFindingDraft(
+            FindingDimension.Skill, "grammar", FindingPolarity.Weakness, "高置信条目。",
+            [shared, new EvidenceClaim("sentence_log", "other-1", "grammar", "<=", 2),
+             new EvidenceClaim("sentence_log", "other-2", "grammar", "<=", 2)],
+            FindingConfidence.High);
+        var low = new ProfileFindingDraft(
+            FindingDimension.Scenario, "dining_out", FindingPolarity.Weakness, "低置信复用条目。",
+            [shared, new EvidenceClaim("word_stats", "dining_out", "coverage", "<=", 0.3)],
+            FindingConfidence.Low);
+
+        var result = WeaknessProfiler.Deduplicate([low, high]);
+
+        Assert.Equal(2, result.Count);
+        var highResult = result.Single(item => item.Statement == "高置信条目。");
+        Assert.Contains(shared, highResult.Evidence);
+        var lowResult = result.Single(item => item.Statement == "低置信复用条目。");
+        Assert.DoesNotContain(shared, lowResult.Evidence);
+        Assert.Single(lowResult.Evidence);
+    }
+
+    [Fact]
+    public void Deduplicate_drops_finding_left_without_evidence()
+    {
+        var shared = new EvidenceClaim("reading_stats", "reading", "avglookupcount", ">=", 3);
+        var keeper = new ProfileFindingDraft(
+            FindingDimension.Reading, "reading", FindingPolarity.Neutral, "保留条目。",
+            [shared], FindingConfidence.Medium);
+        var stripped = new ProfileFindingDraft(
+            FindingDimension.Skill, "vocabulary", FindingPolarity.Weakness, "全靠复用证据的条目。",
+            [shared], FindingConfidence.Low);
+
+        var result = WeaknessProfiler.Deduplicate([stripped, keeper]);
+
+        var finding = Assert.Single(result);
+        Assert.Equal("保留条目。", finding.Statement);
+    }
+
+    [Fact]
+    public async Task Generate_deduplicates_llm_drafts_before_verify()
+    {
+        await using var db = await PostgresTestDatabase.CreateContextAsync();
+        var user = await SeedUserAsync(db, "profile-dedup");
+        var logs = await SeedSentenceLogsAsync(db, user.Id, [4, 4, 4]);
+        var assessment = await SeedAssessmentWithFinalAsync(db, user.Id, grammar: 4.0, natural: 4.0, vocabulary: 3.0, relevance: 4.0);
+
+        var strong = new ProfileFindingDraft(
+            FindingDimension.Skill, "grammar", FindingPolarity.Strength, "语法稳定（强证据）。",
+            logs.Select(log => new EvidenceClaim("sentence_log", log.Id.ToString(), "grammar", "<=", (double)log.GrammarScore)).ToList(),
+            FindingConfidence.High);
+        var sameDimension = new ProfileFindingDraft(
+            FindingDimension.Skill, "grammar", FindingPolarity.Strength, "同维度重复条目。",
+            [new EvidenceClaim("sentence_log", logs[0].Id.ToString(), "grammar", "<=", 4)],
+            FindingConfidence.Low);
+        var evidenceReuse = new ProfileFindingDraft(
+            FindingDimension.Skill, "natural", FindingPolarity.Strength, "复用他人证据的条目。",
+            logs.Select(log => new EvidenceClaim("sentence_log", log.Id.ToString(), "grammar", "<=", (double)log.GrammarScore)).ToList(),
+            FindingConfidence.Low);
+
+        var llm = new StubProfilerLlm(_ => [strong, sameDimension, evidenceReuse]);
+        var service = CreateProfileService(db, llm);
+
+        var profile = await service.GenerateAsync(user.Id, assessment.Id, CancellationToken.None);
+
+        // 同维度去重 + 证据复用剥夺后整条丢弃 → 仅剩强证据条目
+        var finding = Assert.Single(profile.Findings);
+        Assert.Equal("语法稳定（强证据）。", finding.Statement);
+        Assert.Equal(FindingVerification.Verified, finding.Verification);
     }
 
     // ── 数据播种 ─────────────────────────────────────────────

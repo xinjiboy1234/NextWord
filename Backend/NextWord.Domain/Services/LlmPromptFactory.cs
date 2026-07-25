@@ -256,6 +256,8 @@ public static class LlmPromptFactory
 
         Rules:
         - 3 to 8 findings; cover at least two dimensions when data allows. Data-poor dimensions may be omitted.
+        - At most ONE finding per dimension+dimensionKey combination; merge weaker duplicates into the strongest one.
+        - Do NOT reuse the same evidence across findings: each sentence_log id / word_stats scenario / reading_stats metric / assessment_dimension metric may be cited by only ONE finding.
         - dimension must be exactly ONE word: scenario, skill, or reading. Do NOT copy a list like "scenario|skill|reading".
         - polarity must be exactly ONE word: strength, weakness, or neutral. confidence must be exactly ONE word: high, medium, or low.
         - dimensionKey: scenario key for scenario findings; grammar|natural|vocabulary|relevance for skill; "reading" for reading.

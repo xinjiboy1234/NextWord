@@ -18,6 +18,8 @@ const LEVEL_LABELS: Record<string, string> = {
 
 export function ArticleLibrary({ onOpen }: ArticleLibraryProps) {
   const [articles, setArticles] = useState<ArticleSummary[]>([])
+  const [recommended, setRecommended] = useState<ArticleSummary[]>([])
+  const [recommendedFromPlan, setRecommendedFromPlan] = useState(false)
   const [level, setLevel] = useState<DifficultyLevel | 'All'>('All')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -39,6 +41,20 @@ export function ArticleLibrary({ onOpen }: ArticleLibraryProps) {
   useEffect(() => {
     void load()
   }, [level])
+
+  // T-006：今日阅读推荐（有当日计划时来自计划主攻场景）
+  useEffect(() => {
+    api
+      .get<{ fromPlan: boolean; articles: ArticleSummary[] }>(endpoints.articlesRecommended)
+      .then((response) => {
+        setRecommended(response.data.articles)
+        setRecommendedFromPlan(response.data.fromPlan)
+      })
+      .catch(() => {
+        setRecommended([])
+        setRecommendedFromPlan(false)
+      })
+  }, [])
 
   const grouped = useMemo(() => {
     const map = new Map<string, ArticleSummary[]>()
@@ -75,6 +91,29 @@ export function ArticleLibrary({ onOpen }: ArticleLibraryProps) {
       </div>
 
       {error ? <div className="alert alert-error">{error}</div> : null}
+      {recommended.length > 0 ? (
+        <div className="card">
+          <p className="mono-label" style={{ textTransform: 'none' }}>
+            今日推荐{recommendedFromPlan ? '（来自今日计划）' : ''}
+          </p>
+          <div className="stack stack-sm" style={{ marginTop: 'var(--space-3)' }}>
+            {recommended.map((article) => (
+              <div key={article.id} className="row-between" style={{ flexWrap: 'wrap' }}>
+                <div>
+                  <h4 style={{ fontWeight: 540, fontSize: 'var(--text-base)' }}>{article.title}</h4>
+                  <p style={{ marginTop: 'var(--space-1)', fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>
+                    {article.wordCount} 词 · {article.cefrLevel}
+                  </p>
+                </div>
+                <button type="button" onClick={() => onOpen(article.id)} className="btn btn-primary btn-sm">
+                  <BookOpenText size={16} aria-hidden="true" />
+                  阅读
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
       {loading ? (
         <p style={{ color: 'var(--muted)', fontSize: 'var(--text-sm)' }}>加载中...</p>
       ) : grouped.length === 0 ? (

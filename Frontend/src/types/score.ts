@@ -57,6 +57,10 @@ export interface DailyWordItem {
   effectiveDifficulty: number
   isWeak: boolean
   phonetics: string | null
+  /** T-006：来自当日 LearningPlan */
+  fromPlan?: boolean
+  /** T-006：超带接触词，认识即可 */
+  isExposure?: boolean
 }
 
 export interface ChallengeStartResponse {

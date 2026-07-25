@@ -77,6 +77,13 @@ public sealed class EvaluationReportService(
             {
                 logger.LogWarning(ex, "WeaknessProfile generation failed for report {ReportId}, falling back to template", report.Id);
             }
+
+            // T-006：测评完成后触发夜间规划（幂等键按日，同日重复触发复用同一 job）
+            await backgroundJobs.EnqueueAsync(
+                PlannerWorker.JobType,
+                JsonSerializer.Serialize(new { report.UserId }, JsonOptions),
+                $"planner:{report.UserId}:{DateTimeOffset.UtcNow:yyyyMMdd}",
+                cancellationToken);
         }
 
         var strengths = new List<string>();

@@ -47,6 +47,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<UserFeedback> UserFeedbacks => Set<UserFeedback>();
     public DbSet<UserWordExclude> UserWordExcludes => Set<UserWordExclude>();
     public DbSet<ChallengeSession> ChallengeSessions => Set<ChallengeSession>();
+    public DbSet<LearningPlan> LearningPlans => Set<LearningPlan>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -512,6 +513,19 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.HasOne(session => session.User)
                 .WithMany()
                 .HasForeignKey(session => session.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<LearningPlan>(entity =>
+        {
+            entity.HasKey(plan => plan.Id);
+            // 幂等：同一用户同一天只生成一份计划
+            entity.HasIndex(plan => new { plan.UserId, plan.StartDate }).IsUnique();
+            entity.Property(plan => plan.ContentJson).HasMaxLength(16000).IsRequired();
+            entity.Property(plan => plan.ModelProfileId).HasMaxLength(80);
+            entity.HasOne(plan => plan.User)
+                .WithMany()
+                .HasForeignKey(plan => plan.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }

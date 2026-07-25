@@ -10,6 +10,7 @@ namespace NextWord.Infrastructure.Services;
 /// <summary>
 /// Profiler Agent（T-005）：聚合库内真实数据（造句留痕 / 测评 FinalLevel / 场景词统计 / 阅读行为）
 /// → 调 LLM 产出 Finding 草稿。草稿的真实性由 Verifier 核查，Profiler 本身不做断言。
+/// T-010：草稿先经 <see cref="Deduplicate"/> 语义去重（同维度至多一条、证据不跨条复用），再交 Verifier。
 /// </summary>
 public sealed class WeaknessProfiler(
     ApplicationDbContext db,
@@ -45,8 +46,50 @@ public sealed class WeaknessProfiler(
             new LlmRequestOptions("weakness-profile", "weakness_profile"));
 
         var llm = await llmFactory.GetForUserAsync(userId, cancellationToken);
-        return await llm.GenerateWeaknessProfileAsync(request, cancellationToken);
+        var response = await llm.GenerateWeaknessProfileAsync(request, cancellationToken);
+        return new WeaknessProfileResponse(Deduplicate(response.Findings));
     }
+
+    /// <summary>
+    /// T-010 后处理去重（语义去重是 Profiler 职责，Verifier 不变）：
+    /// 1) 同维度（Dimension + DimensionKey）多条只保留证据更强者（证据条数多者优先，并列取置信度高者）；
+    /// 2) 同一证据引用（Kind + RefId + Metric）被多条 Finding 复用时，只留在置信度最高者
+    ///    （并列取证据条数多者）；被剥夺后无任何证据的 Finding 整条丢弃。
+    /// </summary>
+    public static IReadOnlyList<ProfileFindingDraft> Deduplicate(IReadOnlyList<ProfileFindingDraft> drafts)
+    {
+        // 同维度去重
+        var perDimension = drafts
+            .GroupBy(draft => (draft.Dimension, Key: draft.DimensionKey.Trim().ToLowerInvariant()))
+            .Select(group => group
+                .OrderByDescending(draft => draft.Evidence.Count)
+                .ThenBy(draft => draft.Confidence)
+                .First())
+            .ToList();
+
+        // 证据复用去重：按置信度高 → 证据多的顺序占位
+        var claimed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var result = new List<ProfileFindingDraft>();
+        foreach (var draft in perDimension
+            .OrderBy(draft => draft.Confidence)
+            .ThenByDescending(draft => draft.Evidence.Count))
+        {
+            var owned = draft.Evidence
+                .Where(claim => claimed.Add(EvidenceKey(claim)))
+                .ToList();
+            if (owned.Count == 0)
+            {
+                continue;
+            }
+
+            result.Add(owned.Count == draft.Evidence.Count ? draft : draft with { Evidence = owned });
+        }
+
+        return result;
+    }
+
+    private static string EvidenceKey(EvidenceClaim claim)
+        => $"{claim.Kind}|{claim.RefId}|{claim.Metric ?? string.Empty}";
 
     internal static async Task<AssessmentFinalResult?> LoadFinalResultAsync(
         ApplicationDbContext db, Guid userId, Guid? assessmentId, CancellationToken cancellationToken)

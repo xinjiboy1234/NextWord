@@ -185,7 +185,7 @@ public class AdaptiveAssessmentServiceTests
     {
         var users = new UserRepository(db);
         var scoreProfile = new ScoreProfileService(db, new ScoreMappingService(new ScoreMappingOptions()));
-        var sentences = new SentenceService(db, new StubLlmFactory(llm), Options.Create(new LlmSentenceRatingOptions()));
+        var sentences = new SentenceService(db, new StubLlmFactory(llm), Options.Create(new LlmSentenceRatingOptions()), new LearningPlanService(db, scoreProfile), scoreProfile);
         return new AssessmentService(db, new AssessmentScoringService(), sentences, users, scoreProfile, new StubEvaluationReports());
     }
 

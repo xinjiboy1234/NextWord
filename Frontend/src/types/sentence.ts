@@ -8,6 +8,8 @@ export interface SentencePrompt {
   difficultyLevel: DifficultyLevel
   cefrLevel: string
   scene: string
+  /** T-006：来自当日 LearningPlan 造句目标 */
+  fromPlan?: boolean
 }
 
 export interface SentenceRating {
