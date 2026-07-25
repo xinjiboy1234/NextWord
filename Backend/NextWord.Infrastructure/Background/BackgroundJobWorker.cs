@@ -58,6 +58,11 @@ public sealed class BackgroundJobWorker(IServiceScopeFactory scopeFactory, ILogg
                             var planner = scope.ServiceProvider.GetRequiredService<PlannerWorker>();
                             await planner.ProcessAsync(job, stoppingToken);
                         }
+                        else if (job.JobType == BottleneckInsightWorker.JobType)
+                        {
+                            var insightWorker = scope.ServiceProvider.GetRequiredService<BottleneckInsightWorker>();
+                            await insightWorker.ProcessAsync(job, stoppingToken);
+                        }
 
                         job.Status = "Completed";
                         job.ProcessedAt = DateTimeOffset.UtcNow;

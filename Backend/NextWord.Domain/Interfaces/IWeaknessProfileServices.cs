@@ -6,6 +6,7 @@ namespace NextWord.Domain.Interfaces;
 /// <summary>
 /// WeaknessProfile 画像服务（T-005）：测评完成后由评估报告任务触发，
 /// Profiler 生成 Finding 草稿 → Verifier 机械核查 → 持久化；同一测评幂等（已生成则直接返回）。
+/// T-007：AssessmentId 为空时（事件驱动重规划）按日幂等——同日只重生成一次。
 /// </summary>
 public interface IWeaknessProfileService
 {

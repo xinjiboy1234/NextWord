@@ -29,18 +29,27 @@ public sealed class LearningPlanService(
 
     public static DateOnly Today() => DateOnly.FromDateTime(DateTimeOffset.UtcNow.UtcDateTime);
 
-    public async Task<LearningPlan> GenerateAsync(Guid userId, CancellationToken cancellationToken)
+    public async Task<LearningPlan> GenerateAsync(Guid userId, CancellationToken cancellationToken, bool force = false)
     {
         var today = Today();
         var existing = await db.LearningPlans
             .Where(plan => plan.UserId == userId && plan.StartDate == today)
             .FirstOrDefaultAsync(cancellationToken);
-        if (existing is not null)
+        if (existing is not null && !force)
         {
             return existing;
         }
 
         var content = await BuildContentAsync(userId, cancellationToken);
+        if (existing is not null)
+        {
+            // T-007 重规划（瓶颈性质变化 / 每周兜底）：同日已有计划则原地重建内容，保持 (UserId, StartDate) 唯一
+            existing.ContentJson = JsonSerializer.Serialize(content, JsonOptions);
+            existing.CreatedAt = DateTimeOffset.UtcNow;
+            await db.SaveChangesAsync(cancellationToken);
+            return existing;
+        }
+
         var plan = new LearningPlan
         {
             UserId = userId,

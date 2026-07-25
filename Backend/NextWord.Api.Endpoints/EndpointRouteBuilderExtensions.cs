@@ -7,6 +7,7 @@ public static class EndpointRouteBuilderExtensions
         WordEndpoints.Map(app);
         ScenarioEndpoints.Map(app);
         PlannerEndpoints.Map(app);
+        InsightEndpoints.Map(app);
         AuthEndpoints.Map(app);
         ProfileEndpoints.Map(app);
         LearningEndpoints.Map(app);

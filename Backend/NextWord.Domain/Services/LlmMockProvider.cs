@@ -245,6 +245,56 @@ public sealed class LlmMockProvider(IModelProfileResolver modelProfileResolver) 
         return Task.FromResult(new WeaknessProfileResponse(findings));
     }
 
+    /// <summary>
+    /// Mock 瓶颈洞察（T-007）：由触发信号与请求内真实分数确定性推导性质，证据引用请求内真实 SentenceLog id。
+    /// Mock 路径可运行但不假装细读成立：结论语句带 [Mock] 前缀。
+    /// </summary>
+    public Task<BottleneckInsightResponse> GenerateBottleneckInsightAsync(BottleneckInsightRequest request, CancellationToken cancellationToken)
+    {
+        var signals = request.Signals.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var samples = request.Productions;
+        BottleneckNature nature;
+        string statement;
+        if (signals.Contains("safe_word"))
+        {
+            nature = BottleneckNature.SafeWordStrategy;
+            statement = "[Mock] 造句目标词未进入自由产出，疑似安全词策略。";
+        }
+        else if (signals.Contains("avoidance"))
+        {
+            nature = BottleneckNature.AvoidancePattern;
+            statement = "[Mock] 复杂连接使用率持续走低，疑似回避模式。";
+        }
+        else
+        {
+            double Average(Func<ProductionSample, int> pick) =>
+                samples.Count == 0 ? 5.0 : samples.Average(sample => pick(sample));
+            if (Average(sample => sample.Grammar) < 2.5)
+            {
+                nature = BottleneckNature.GrammarErrors;
+                statement = "[Mock] 产出原文语法分持续偏低，疑似语法错误多。";
+            }
+            else if (Average(sample => sample.Vocabulary) < 2.5)
+            {
+                nature = BottleneckNature.VocabularyInsufficient;
+                statement = "[Mock] 产出原文词汇分持续偏低，疑似词汇量不足。";
+            }
+            else if (Average(sample => sample.Natural) < 2.5)
+            {
+                nature = BottleneckNature.CannotOrganizeSentences;
+                statement = "[Mock] 产出原文自然度分持续偏低，疑似会词但组织不成句。";
+            }
+            else
+            {
+                nature = BottleneckNature.MonotonousExpression;
+                statement = "[Mock] 产出原文分数平稳但平台无提升，疑似表达单调。";
+            }
+        }
+
+        var evidence = samples.Take(3).Select(sample => sample.Id).ToList();
+        return Task.FromResult(new BottleneckInsightResponse(nature, statement, evidence));
+    }
+
     private static double LogDimension(SentenceLogEvidence log, string metric) => metric switch
     {
         "natural" => log.Natural,

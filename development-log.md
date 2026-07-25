@@ -2,6 +2,67 @@
 
 按时间倒序记录需求、决策、实现与验收。
 
+## 2026-07-25 — I3 顾言验收（T-007 / T-012）
+
+**验收结论：通过，I3 闭环，愿景 §6 落地路径五项全部完成。**
+
+- 周密验证六项标准全过：三类信号触发/不误触发实测（含 5 组对照）；洞察带真实证据引用（LLM 宁空不编造）；性质变→重规划、未变→零副作用；每周兜底 14 个存量用户全部获新 Plan；未触发零 LLM 双重佐证；单测 131+6、npm build 全过；
+- **口径裁定确认**：性质变化「与上一条洞察比对」予以认可——设计的「与 Plan 主攻方向比对」本身不可执行（场景坐标系 vs 瓶颈 7 分类无映射），事件驱动主路径下两者等价，反例成本有界（日幂等封顶）；
+- 阈值边界实测与实现常量精确吻合，首版阈值合理，接受现状；
+- 不足处置：**T-012**（P1，安全词误触发）已在迭代内修复并复验通过（窗口从 Plan.CreatedAt 起算 + 24h 宽限期，复现场景零副作用、真信号不误杀）；**T-013**（僵尸 Processing 任务回收，P2）为 T-007 前既有基建缺口，每周兜底可兜住，保留 backlog 下轮处理；T-011 维持 backlog 观察；
+- 至此愿景 §6-1～6-5 全部落地：内容建设 → 测评重构 → 画像 + Verifier → Planner + 内容切换 → 瓶颈洞察 + 重规划，表达优先架构闭环成型。
+
+---
+
+## 2026-07-25 — I3 T-012：安全词筛查误触发修复
+
+### 需求
+- 周密 T-007 验收实测复现：用户原数据正确不触发，但每周兜底下发新 Plan 后，下一轮日筛查用「Plan 生效日 00:00 起」的自由产出（早于 Plan 创建时间）判定新目标词出现率为 0 → 误触发 safe_word 并产出错误洞察 + 一次重规划。
+
+### 决策（顾言定口径）
+- 自由产出窗口从 `Plan.CreatedAt` 起算（不是生效日 00:00——Plan 创建前的产出与新目标词无关，不该计入）；
+- 新 Plan 给 24h 宽限期（`SafeWordGracePeriod`）：创建未满 24h 不做安全词判定——双重保险，避免窗口内样本过少再误判。
+
+### 实现
+- `BottleneckScreeningService.IsSafeWordStrategyAsync`：宽限期提前返回 + 产出过滤条件 `Timestamp >= plan.CreatedAt`（替换原 `planStart = StartDate 零点`）。
+- 测试：`BottleneckInsightTests` 新增 3 个（真实 PG）——Plan 创建前的产出不计入（复现案例回归）、新 Plan 24h 内不判、宽限期后目标词 0 出现仍正确触发；既有安全词用例播种改为默认 Plan 创建于 2 天前（越过宽限期）。
+
+### 验收（开发自测）
+- [x] `dotnet test` 134 单测 + 6 集成全过（真实 PG）
+- [x] 周密复验（2026-07-25）：**通过**。真实 qwen-plus 链路 + 独立库（验完已删、dev 库未动，脚本 `Backend/Scripts/verify-safeword-t012-qa.py`）6/6：复现原误触发场景（产出在前 + 模拟兜底刚下发新 Plan）不再触发、日筛查与每周兜底过后仍零副作用；宽限期边界 23h 不判定；宽限期后真安全词仍触发且洞察落库 SafeWordStrategy；全量测试 134+6 通过
+
+---
+
+## 2026-07-25 — I3 T-007：瓶颈性质洞察 + 重规划触发
+
+### 需求
+- 按 `docs/DESIGN-bottleneck-insight.md`（已定稿）：愿景闭环最后一环（§6-5）——指标筛查（平台期/回避模式/安全词策略，规则零 LLM、日级）→ InsightAgent 细读产出原文判瓶颈性质（7 分类 + SentenceLog 证据引用）→ 性质变化事件驱动重规划 + 每周兜底重规划（补 T-006「无测评存量用户不获新 Plan」缺口）。
+
+### 决策
+- **新表 `BottleneckInsights`**（走幂等补丁 SQL + Development 删库重建，不做 EF 迁移，枚举存字符串）：性质 + 触发信号 + 中文结论 + 证据引用（SentenceLog id 列表）+ `ReplanTriggered`。
+- **「性质是否变化」与上一条洞察比对**（近似设计中的「与当前 Plan 主攻方向比对」——Plan 主攻方向由最近一次洞察驱动，两者等价）：首次发现或性质不同 = 已变 → 重规划；相同 → 仅记录。规则确定、可测、无重规划风暴。
+- **重规划绕开同日幂等的做法**：`LearningPlanService.GenerateAsync(force: true)` 同日已有 Plan **原地重建**内容（`(UserId, StartDate)` 唯一不破）；画像重生成走 `WeaknessProfileService.GenerateAsync(assessmentId: null)`，幂等维度从「按测评」扩展为「无测评时按日」。事件驱动入队键 `planner:replan:{userId}:{yyyyMMdd}`，每周兜底 `planner:weekly:{userId}:{ISO 年}-W{ISO 周}`。
+- **筛查挂日快照 worker**：`ProfileScoreSnapshotWorker` 快照后对全部完成初测用户跑 `BottleneckScreeningService`（纯规则），触发才入队 `BottleneckInsight` 任务（幂等键 `insight:{userId}:{yyyyMMdd}`）；洞察服务同日幂等（已有当日洞察直接返回，零 LLM）。
+- **证据纪律沿用画像**：LLM 返回的 evidenceLogIds 持久化前对照真实 SentenceLog 机械过滤（编造/越权 id 丢弃）； Mock 洞察由信号与真实分数确定性推导，结论带 [Mock] 前缀。
+
+### 实现
+- Domain：`BottleneckInsight` 实体、`BottleneckEnums`（Nature 7 分类 / Signal 3 信号 + 线上名）、`BottleneckInsightModels`（请求含产出原文样本 + Plan 主攻方向）、ILLMProvider 第 8 方法 `GenerateBottleneckInsightAsync`、Prompt/解析（枚举 `|` 容错，nature 无法识别整条失败回退 Mock）、Mock 确定性实现。
+- Infrastructure：`BottleneckScreeningService`（平台期：斜率≤0.05 且标准差≤0.5 且跨度≤30 天；回避：近 12 样本连接词率后半 ≤ 前半×0.5 且前半 ≥0.3/句；安全词：生效 Plan 目标词在 ≥3 篇自由产出出现率为 0）、`BottleneckInsightService`（细读 + 落库 + 性质比对 + 重规划触发）、`BottleneckInsightWorker`（BackgroundJob 新任务类型）、`WeeklyReplanWorker`（新 HostedService，24h 检查按 ISO 周入队）、`ProfileScoreSnapshotWorker` 挂筛查、`LearningPlanService` force 参数、`WeaknessProfileService` 无测评按日幂等、补丁 SQL 补 `BottleneckInsights`。
+- API：`POST /api/insights/bottleneck/jobs`（手动筛查 + 触发入队）、`GET /api/insights/bottleneck/latest`（验收调试只读；用户可见展示是设计明确的非目标）。
+- 测试：`BottleneckInsightTests`（真实 PG，9 个：三信号触发/不误触发 ×3、洞察落库证据过滤+性质变→重规划、性质未变→只记录、未触发零 LLM 计数桩、force 原地重建 Plan、每周兜底入队+同周幂等、无测评画像按日幂等、解析容错）。
+
+### 验收（开发自测）
+- [x] `dotnet build` 通过；`dotnet test` 131 单测 + 6 集成全过（真实 PG）
+- [x] `npm run build` 通过（前端无改动）
+- [x] DashScope（qwen-plus）真实链路实测（独立库 nextword_verify_t007，验完已删、dev 库未动，脚本 `Backend/Scripts/verify-bottleneck-t007.py` 可复用）：平台期用户触发 plateau → InsightAgent 真实细读判 GrammarErrors（结论点名 don't/wasn't/has/goes 误用，5 条证据全真实）→ 画像重生成（AssessmentId 空）+ planner:replan force → Plan 落库；同日重复触发复用同一 job 洞察仍 1 行；正常用户（分数爬升+连接词稳定）triggered=false 零洞察零任务；重启后 WeeklyReplanWorker 首轮为全部 assessed 用户入队 planner:weekly force 并处理完成、Plan 原地重建仍 1 行
+- 观察：真实 LLM 三次独立用户均判 GrammarErrors（播种数据即语法错误句，判断一致且结论具体到误用点，细读成立）；实测发现脚本竞态——画像重生成与洞察落库同属一个后台任务、在洞察之后完成，脚本需轮询等待（已在脚本内修正）
+- [x] 周密验收（2026-07-25）：**通过**。六项标准全过（真实 qwen-plus 链路 + 独立库 nextword_verify_t007_qa，验完已删、dev 库未动；QA 脚本 `Backend/Scripts/verify-bottleneck-t007-qa.py`、`verify-bottleneck-t007-qa-boundary.py` 可复用）：①三类信号触发/不误触发实测；②洞察落库 7 条性质全合法、SentenceLog 证据全部真实（5/5）、结论点名原文误用；③性质变化实测重规划（昨日 VocabularyInsufficient→今日 GrammarErrors：画像重生成+planner:replan force→Plan 原地重建）、性质未变实测只记录零副作用；④每周兜底 14 存量用户全获新 Plan、同周第二轮入队 0、未完成初测用户排除；⑤6 个未触发用户零洞察零任务零画像（零 LLM）；⑥dotnet test 131+6 全过、npm run build 通过
+- **口径裁定（重点 A）**：认可「与上一条洞察比对」替代设计的「与 Plan 主攻方向比对」——设计口径依赖的「瓶颈性质（7 分类）↔Plan 主攻方向（场景坐标系）映射」本未定义、无法直接执行；事件驱动主流路径两者结果一致；首条洞察算变化符合设计意图；理论反例（兜底重建使 Plan 已对新性质、洞察历史滞后）至多造成一次有界的多余重规划（日幂等封顶），非正确性问题
+- **阈值边界实测（重点 B）**：平台期斜率边界精确落在「末次 3 维+1（0.0409 触发）/4 维+1（0.0545 不触发）」之间，与实现常量一致；回避腰斩 ≤ 含边界（后半=前半×0.5 触发、×0.75 不触发）；安全词 1 篇用目标词即不触发；扁平但跨 36 天、剧烈波动（标准差 1.0）均不误触发
+- **不足另开**：T-012（P1，安全词筛查用早于新 Plan 创建的自由产出判定 → 新 Plan 下发后误触发 safe_word，实测复现）、T-013（P2，BackgroundJobWorker 无僵尸 Processing 回收，实测任务卡死致重规划链丢失、ReplanTriggered 名不副实）
+
+---
+
 ## 2026-07-25 — I3 T-006 顾言验收
 
 **验收结论：通过。**

@@ -48,6 +48,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<UserWordExclude> UserWordExcludes => Set<UserWordExclude>();
     public DbSet<ChallengeSession> ChallengeSessions => Set<ChallengeSession>();
     public DbSet<LearningPlan> LearningPlans => Set<LearningPlan>();
+    public DbSet<BottleneckInsight> BottleneckInsights => Set<BottleneckInsight>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -526,6 +527,21 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.HasOne(plan => plan.User)
                 .WithMany()
                 .HasForeignKey(plan => plan.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<BottleneckInsight>(entity =>
+        {
+            entity.HasKey(insight => insight.Id);
+            entity.HasIndex(insight => new { insight.UserId, insight.CreatedAt });
+            entity.Property(insight => insight.Nature).HasConversion<string>().HasMaxLength(32);
+            entity.Property(insight => insight.Signals).HasMaxLength(64).IsRequired();
+            entity.Property(insight => insight.Statement).HasMaxLength(500).IsRequired();
+            entity.Property(insight => insight.EvidenceJson).HasMaxLength(2000).IsRequired();
+            entity.Property(insight => insight.ModelProfileId).HasMaxLength(80);
+            entity.HasOne(insight => insight.User)
+                .WithMany()
+                .HasForeignKey(insight => insight.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }

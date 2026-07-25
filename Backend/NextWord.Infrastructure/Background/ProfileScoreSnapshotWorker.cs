@@ -4,13 +4,17 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NextWord.Domain.Entities;
+using NextWord.Domain.Enums;
 using NextWord.Domain.Interfaces;
 using NextWord.Infrastructure.Data;
+using NextWord.Infrastructure.Services;
 
 namespace NextWord.Infrastructure.Background;
 
 /// <summary>
 /// 每日为活跃用户写入 ProfileScoreSnapshot，供历史趋势与报告依据。
+/// T-007：快照后跑瓶颈指标筛查（纯规则、零 LLM），触发信号的用户入队 BottleneckInsight 任务
+/// （幂等键 insight:{userId}:{yyyyMMdd}，同日至多一次细读）。
 /// </summary>
 public sealed class ProfileScoreSnapshotWorker(
     IServiceScopeFactory scopeFactory,
@@ -77,6 +81,32 @@ public sealed class ProfileScoreSnapshotWorker(
         }
 
         logger.LogInformation("Profile score snapshot worker wrote {Count} snapshots for {Date}.", created, today);
+
+        // T-007 指标筛查（规则、零 LLM）：触发信号的用户入队 InsightAgent 细读任务
+        var screening = scope.ServiceProvider.GetRequiredService<IBottleneckScreeningService>();
+        var backgroundJobs = scope.ServiceProvider.GetRequiredService<IBackgroundJobService>();
+        var triggered = 0;
+        foreach (var userId in userIds)
+        {
+            var signals = await screening.ScreenAsync(userId, cancellationToken);
+            if (signals.Count == 0)
+            {
+                continue;
+            }
+
+            await backgroundJobs.EnqueueAsync(
+                BottleneckInsightWorker.JobType,
+                JsonSerializer.Serialize(new { userId, signals = signals.Select(signal => signal.ToWireName()) }, JsonOptions),
+                $"insight:{userId}:{today:yyyyMMdd}",
+                cancellationToken);
+            triggered += 1;
+        }
+
+        if (triggered > 0)
+        {
+            logger.LogInformation("Bottleneck screening triggered insight jobs for {Count} users.", triggered);
+        }
+
         return created;
     }
 }

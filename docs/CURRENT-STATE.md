@@ -1,6 +1,6 @@
 # NextWord 当前状态（Current State）
 
-> 版本：2026-07-24。本文描述**已实现并验证**的现状，是项目功能的权威参考。
+> 版本：2026-07-25。本文描述**已实现并验证**的现状，是项目功能的权威参考。
 > 待办事项见 [next-steps.md](../next-steps.md)；架构决策的「为什么」见 [DESIGN-ai-learning-architecture.md](DESIGN-ai-learning-architecture.md)。
 
 ## 1. 项目概览
@@ -21,9 +21,9 @@ NextWord 是 AI 驱动的英语词汇学习应用，核心闭环：
 ```
 Backend/                  .NET 10 解决方案（NextWord.slnx）
   NextWord.Api/           Web 宿主：Program.cs 组装、认证、CORS、健康检查、启动迁移+种子
-  NextWord.Api.Endpoints/ 全部 Minimal API 端点（18 个端点类，纯 HTTP 层）
-  NextWord.Domain/        28 个实体、11 个枚举、场景 taxonomy 常量、接口契约、领域服务（SM2/Score 映射/等级引擎/Prompt 工厂）
-  NextWord.Infrastructure/ EF Core + Npgsql、仓储、约 25 个业务服务、JWT/密码、4 个后台 Worker、缓存
+  NextWord.Api.Endpoints/ 全部 Minimal API 端点（19 个端点类，纯 HTTP 层）
+  NextWord.Domain/        29 个实体、12 个枚举、场景 taxonomy 常量、接口契约、领域服务（SM2/Score 映射/等级引擎/Prompt 工厂）
+  NextWord.Infrastructure/ EF Core + Npgsql、仓储、约 28 个业务服务、JWT/密码、5 个后台 Worker、缓存
   NextWord.UnitTests/     xUnit 单元测试（Score/缓存部分连真实 PostgreSQL）
   NextWord.IntegrationTests/ WebApplicationFactory + 真实 PostgreSQL 集成测试
   Scripts/                迁移 SQL 生成脚本、backfill drill 说明、生产迁移 runbook
@@ -114,20 +114,21 @@ docker-compose.yml        postgres:16-alpine + redis:7-alpine + api（容器内 
 - `GET /api/profile/weakness`：最新 WeaknessProfile（含每条 Finding 的核查状态与存疑原因）。
 - `POST /api/feedback`：释义错误 / 标记已知 / 排除单词（触发 ReAnnotation 后台任务）。
 
-### 5.10 后台 Worker（Infrastructure/Background，共 4 个 HostedService）
+### 5.10 后台 Worker（Infrastructure/Background，共 5 个 HostedService）
 
 | Worker | 周期 | 职责 |
 |---|---|---|
-| `BackgroundJobWorker` | 2s 轮询 `BackgroundJobs` 表 | 处理 EvaluationReport / SentenceLlmScoring / ReAnnotation / ScenarioAnnotation / Planner 五类任务 |
+| `BackgroundJobWorker` | 2s 轮询 `BackgroundJobs` 表 | 处理 EvaluationReport / SentenceLlmScoring / ReAnnotation / ScenarioAnnotation / Planner / BottleneckInsight 六类任务 |
 | `ReviewReminderWorker` | 6h | 刷新待复习数 |
 | `LevelCheckWorker` | 24h | 刷新升级候选标记 |
-| `ProfileScoreSnapshotWorker` | 24h | 写 Score 每日快照 |
+| `ProfileScoreSnapshotWorker` | 24h | 写 Score 每日快照 + 跑瓶颈指标筛查（T-007，零 LLM，触发则入队 BottleneckInsight） |
+| `WeeklyReplanWorker` | 24h 检查 | 每周兜底重规划（T-007）：活跃存量用户按 ISO 周入队 force Planner |
 
 Worker 异常不拖垮宿主（`BackgroundServiceExceptionBehavior=Ignore`）。
 
 ### 5.11 LLM 集成
 
-- 统一抽象 `ILLMProvider`（7 方法：难度标注 / 释义 / 造句评分 / 词汇提取 / 批注回复 / 场景标注 / 画像生成）；Prompt 由 `LlmPromptFactory` 生成。
+- 统一抽象 `ILLMProvider`（8 方法：难度标注 / 释义 / 造句评分 / 词汇提取 / 批注回复 / 场景标注 / 画像生成 / 瓶颈洞察）；Prompt 由 `LlmPromptFactory` 生成。
 - 默认 `LlmMockProvider`：内置词典启发式，零外部调用；**未知词难度一律回退 Basic/A1**（未启用真实 LLM 时 `POST /api/words` 自动定级基本无效）；**Mock 场景标注只按词性推 role、场景一律空（全落 core 桶）**，不代表真实标注质量。
 - `Llm:OpenAI:Enabled=true` 且有 key 时切 `LlmChatClientProvider`（OpenAI `ChatClient`，默认 `gpt-4o-mini`，Temperature 0.1，异常自动回退 Mock）；`Llm:OpenAI:BaseUrl` 可选，指向任意 OpenAI 兼容端点（如 DashScope compatible-mode）。
 - 装饰链：Inner → `LlmRetryProvider`（指数退避 3 次）→ `LlmTelemetryProvider`（记录耗时与 ModelProfileId）。
@@ -164,6 +165,17 @@ Worker 异常不拖垮宿主（`BackgroundServiceExceptionBehavior=Ignore`）。
 - **生成（`LearningPlanService`）**：主攻场景只取自最新画像的 **Verified 场景 weakness Finding**（存疑不进规划），画像不足按场景词覆盖率最低者兜底；水平带用 **CEFR**（`CefrDisplay`，与测评词池口径一致——词库词多数无 IntrinsicScore 标注，intrinsic 带会落空），带池过薄向下一带补充、绝不超带；接触词 = CEFR 严格高于水平带的词，每天 ≤2 个（10 × 20%），只进背词识别队列。
 - **触发（`PlannerWorker`，BackgroundJob 新任务类型）**：测评完成 → 评估报告任务处理时入队（幂等键 `planner:{userId}:{yyyyMMdd}`，同日重复触发复用同一 job 且不重复生成）；`POST /api/planner/jobs` 可手动触发当前用户当日任务；`GET /api/planner/current` 查当日有效 Plan。
 - **内容来源切换**：每日选词 / 阅读推荐 / 造句出题均优先执行当日 Plan（`GetActiveAsync`：StartDate 起 7 天内有效），无 Plan、过期（>7 天）或生成失败 → 回退既有逻辑（用户永远有内容可学）。前端以「来自今日计划」徽标标示（WordDisplay / SentenceCard / 短文库推荐区）。
+- **重规划（T-007）**：`GenerateAsync(force: true)` 同日已有 Plan 时原地重建内容（`(UserId, StartDate)` 唯一不破，`CreatedAt` 刷新）；由瓶颈性质变化（`planner:replan:{userId}:{yyyyMMdd}`）或每周兜底（`planner:weekly:{userId}:{ISO 周}`）触发。
+
+### 5.16 瓶颈性质洞察 + 重规划触发（I3 T-007）
+
+- **三层机制**（设计见 `docs/DESIGN-bottleneck-insight.md`）：指标筛查（规则、零 LLM、日级）→ InsightAgent（LLM、事件驱动、细读产出原文）→ 重规划（事件驱动 + 每周兜底）；洞察只影响解读与规划，不改任何分数。
+- **指标筛查**（`BottleneckScreeningService`，随 `ProfileScoreSnapshotWorker` 日级运行）：三类信号满足其一即触发——平台期（近 10 次产出四维均分斜率≤0.05 且标准差≤0.5、窗口跨度 ≤30 天）、回避模式（近 12 次样本复杂连接使用率后半段 ≤ 前半段 ×0.5 且前半段每句 ≥0.3 个）、安全词策略（生效 Plan 造句目标词在 ≥3 篇自由产出中出现率为 0；T-012：产出窗口从 `Plan.CreatedAt` 起算、新 Plan 24h 宽限期内不判定）；规则只判「要不要细看」，不触发零 LLM 成本。触发入队 `BottleneckInsight` 任务（幂等键 `insight:{userId}:{yyyyMMdd}`）。
+- **InsightAgent**（`BottleneckInsightService`，ILLMProvider 第 8 个方法 `GenerateBottleneckInsightAsync`）：取近 20 条 SentenceLogs **原文** + 当前生效 Plan 主攻方向细读，产出 `BottleneckInsights` 落库——瓶颈性质 7 分类（词汇量不足 / 会词但组织不成句 / 语法错误多 / 语法正确但表达单调 / 回避模式 / 中式搭配 / 安全词策略）+ 一句中文结论 + SentenceLog 证据引用（沿用画像证据纪律：编造/越权 id 持久化前机械过滤）；同日幂等（已有当日洞察直接返回，零 LLM）。
+- **性质变化判定**：与上一条洞察比对（Plan 主攻方向由最近一次洞察驱动，两者等价）——首次发现或性质不同 = 已变 → 事件驱动重规划：重生成画像（`WeaknessProfileService.GenerateAsync(assessmentId: null)`，幂等维度按日）→ 入队 force Planner；性质相同 → 仅记录（`ReplanTriggered=false`）。
+- **每周兜底**（`WeeklyReplanWorker`，24h 检查）：所有完成初测的存量用户按 ISO 周入队 force Planner（幂等键 `planner:weekly:{userId}:{yyyy}-W{ww}`）——补齐 T-006「无测评用户不获新 Plan」缺口。
+- **端点**：`POST /api/insights/bottleneck/jobs`（手动跑筛查，触发则入队，幂等按日）、`GET /api/insights/bottleneck/latest`（最新洞察，供验收调试；用户可见展示是后续迭代的非目标）。
+- Mock 洞察由信号与真实分数确定性推导性质，结论带 [Mock] 前缀。
 
 ## 6. API 全量清单
 
@@ -216,15 +228,19 @@ Worker 异常不拖垮宿主（`BackgroundServiceExceptionBehavior=Ignore`）。
 - `POST /api/planner/jobs`（手动触发当日 Planner 任务，幂等按日）
 - `GET /api/planner/current`（当日有效 Plan 摘要）
 
+**瓶颈洞察（T-007）**
+- `POST /api/insights/bottleneck/jobs`（手动跑指标筛查，触发则入队 InsightAgent，幂等按日）
+- `GET /api/insights/bottleneck/latest`（最新 BottleneckInsight：性质/结论/证据引用/是否触发重规划）
+
 **日志 / 健康**
 - `GET /api/logs/summary`、`GET /api/logs/recent`
 - `GET /api/health`（匿名）、`GET /api/health/details`（匿名；DB CanConnect + LLM 注册检查）
 
 ## 7. 数据模型
 
-PostgreSQL，连接串 `ConnectionStrings:PostgreSql`（默认 `Host=localhost;Database=nextword`）。`ApplicationDbContext` 共 **30 个 DbSet**：
+PostgreSQL，连接串 `ConnectionStrings:PostgreSql`（默认 `Host=localhost;Database=nextword`）。`ApplicationDbContext` 共 **31 个 DbSet**：
 
-Users、UserLlmSettings、Words、WordScenarios、WordDifficultyAnnotations、DifficultyAnnotations、UserProgress、UserWordRelationships、WordLearningLogs、Sentences、SentenceLogs、FreeExpressionLogs、SpellingLogs、Articles、ReadingLogs、ArticleComments、ArticleVocabMappings、Assessments、AssessmentRecords、ChallengeRecords、ChallengeSessions、LevelHistories、LearningEvents、ProfileScoreSnapshots、EvaluationReports、WeaknessProfiles、ProfileFindings、LearningPlans、BackgroundJobs、UserFeedbacks、UserWordExcludes。
+Users、UserLlmSettings、Words、WordScenarios、WordDifficultyAnnotations、DifficultyAnnotations、UserProgress、UserWordRelationships、WordLearningLogs、Sentences、SentenceLogs、FreeExpressionLogs、SpellingLogs、Articles、ReadingLogs、ArticleComments、ArticleVocabMappings、Assessments、AssessmentRecords、ChallengeRecords、ChallengeSessions、LevelHistories、LearningEvents、ProfileScoreSnapshots、EvaluationReports、WeaknessProfiles、ProfileFindings、LearningPlans、BottleneckInsights、BackgroundJobs、UserFeedbacks、UserWordExcludes。
 
 - 列表属性（Meanings、ErrorTags 等）存 JSON 列；枚举存字符串。
 - 5 个 EF 迁移（`Data/Migrations/`）；`AddScoreKernelM1` 含 SQLite 专用 ALTER，由 `PostgreSqlSchemaPatcher` 用嵌入式 SQL（`Patch_PostgreSql_ScoreKernel.sql`）在 PG 上幂等补齐。
@@ -268,7 +284,7 @@ Users、UserLlmSettings、Words、WordScenarios、WordDifficultyAnnotations、Di
 
 ## 10. 测试
 
-**单元测试**（`NextWord.UnitTests`）：SM-2、LevelUpgradeEngine（锁级/升级候选/C1 封顶）、EffectiveDifficultyCalculator、AssessmentScoringService（表达力综合分/自适应决策）、AdaptiveAssessmentService（分块/词池/收敛/定级，连真实 PG + LLM 桩）、WeaknessProfile（生成持久化与幂等、Verifier 篡改/伪造/样本量核查、报告 schemaVersion 2 切换与回退、解析枚举容错、T-010 画像去重，连真实 PG）、LearningPlan（Verified-only 主攻场景、接触词上限与超带、同日幂等、过期/无 Plan 回退、造句 Plan 目标、阅读推荐，连真实 PG）、ScoreMappingService、ScoreProfileService（absolute 写入与幂等，连真实 PG `nextword_unit_test`）、LLM prompt/解析与 Mock Provider、ArticleVocabMapping 缓存、RedisCacheService 与 LlmTelemetryProvider。
+**单元测试**（`NextWord.UnitTests`）：SM-2、LevelUpgradeEngine（锁级/升级候选/C1 封顶）、EffectiveDifficultyCalculator、AssessmentScoringService（表达力综合分/自适应决策）、AdaptiveAssessmentService（分块/词池/收敛/定级，连真实 PG + LLM 桩）、WeaknessProfile（生成持久化与幂等、Verifier 篡改/伪造/样本量核查、报告 schemaVersion 2 切换与回退、解析枚举容错、T-010 画像去重，连真实 PG）、LearningPlan（Verified-only 主攻场景、接触词上限与超带、同日幂等、过期/无 Plan 回退、造句 Plan 目标、阅读推荐，连真实 PG）、BottleneckInsight（T-007：三类信号触发/不误触发、洞察落库证据过滤、性质变→重规划、性质未变→只记录、未触发零 LLM 计数桩、force 原地重建 Plan、每周兜底入队与幂等、解析容错，连真实 PG）、ScoreMappingService、ScoreProfileService（absolute 写入与幂等，连真实 PG `nextword_unit_test`）、LLM prompt/解析与 Mock Provider、ArticleVocabMapping 缓存、RedisCacheService 与 LlmTelemetryProvider。
 
 **集成测试**（`NextWord.IntegrationTests`）：Testing 环境（移除后台 Worker），真实 PG `nextword_test`，真实注册/登录拿 JWT。覆盖：测评（401、开始、进度）、文章（401、种子列表）。覆盖较薄。
 
@@ -283,8 +299,8 @@ cd Frontend && npm run test:e2e # E2E
 ## 11. 已知限制
 
 - 画像场景/阅读维度依赖学习行为数据：初测后新用户无背词/阅读记录，首轮画像以技能维度为主（场景/阅读随学习积累出现）；此时 LearningPlan 主攻场景走场景词覆盖率兜底。
-- 画像仅测评后生成一次；周级刷新与瓶颈洞察重规划留给 T-007。
-- Mock LLM 下新词自动定级无效（未知词回退 Basic/A1）；Mock 画像结论带 [Mock] 前缀，不代表个性化成立。
+- 瓶颈洞察（T-007）先服务重规划、不做用户可见展示；多瓶颈并存只取最主要性质（优先级排序留待迭代）；「性质是否变化」与上一条洞察比对（近似「与当前 Plan 主攻方向比对」）。
+- Mock LLM 下新词自动定级无效（未知词回退 Basic/A1）；Mock 画像/洞察结论带 [Mock] 前缀，不代表个性化成立。
 - 集成测试与 E2E 覆盖较薄；`npm run test:e2e` 全绿尚未纳入常规验证。
 - `/api/reading/agent` 无用户级限流。
 - Release Blockers B1–B8 未正式 sign-off（详见 next-steps.md）。

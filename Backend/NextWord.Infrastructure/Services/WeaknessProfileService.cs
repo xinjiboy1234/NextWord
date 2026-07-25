@@ -9,6 +9,7 @@ namespace NextWord.Infrastructure.Services;
 /// <summary>
 /// WeaknessProfile 画像服务（T-005）：测评完成后触发一次（评估报告后台任务），
 /// Profiler 草稿 → Verifier 核查 → 持久化；同一测评幂等，重复触发直接返回已生成画像。
+/// T-007：AssessmentId 为空时（事件驱动重规划触发的画像重生成）幂等维度改为按日——同日只重生成一次。
 /// </summary>
 public sealed class WeaknessProfileService(
     ApplicationDbContext db,
@@ -19,11 +20,19 @@ public sealed class WeaknessProfileService(
 
     public async Task<WeaknessProfile> GenerateAsync(Guid userId, Guid? assessmentId, CancellationToken cancellationToken)
     {
-        var existing = await db.WeaknessProfiles
+        var query = db.WeaknessProfiles
             .Include(profile => profile.Findings)
-            .Where(profile => profile.UserId == userId && profile.AssessmentId == assessmentId)
-            .OrderByDescending(profile => profile.CreatedAt)
-            .FirstOrDefaultAsync(cancellationToken);
+            .Where(profile => profile.UserId == userId);
+        var todayStart = new DateTimeOffset(DateTimeOffset.UtcNow.UtcDateTime.Date, TimeSpan.Zero);
+        var existing = assessmentId.HasValue
+            ? await query
+                .Where(profile => profile.AssessmentId == assessmentId)
+                .OrderByDescending(profile => profile.CreatedAt)
+                .FirstOrDefaultAsync(cancellationToken)
+            : await query
+                .Where(profile => profile.AssessmentId == null && profile.CreatedAt >= todayStart)
+                .OrderByDescending(profile => profile.CreatedAt)
+                .FirstOrDefaultAsync(cancellationToken);
         if (existing is not null)
         {
             return existing;

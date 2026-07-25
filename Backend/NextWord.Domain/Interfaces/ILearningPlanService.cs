@@ -10,8 +10,11 @@ namespace NextWord.Domain.Interfaces;
 /// </summary>
 public interface ILearningPlanService
 {
-    /// <summary>为指定用户生成当日起的 7 日计划；同日已有计划则直接返回（幂等）。</summary>
-    Task<LearningPlan> GenerateAsync(Guid userId, CancellationToken cancellationToken);
+    /// <summary>
+    /// 为指定用户生成当日起的 7 日计划；同日已有计划则直接返回（幂等）。
+    /// force = true 用于 T-007 重规划（瓶颈性质变化 / 每周兜底）：同日已有计划原地重建内容。
+    /// </summary>
+    Task<LearningPlan> GenerateAsync(Guid userId, CancellationToken cancellationToken, bool force = false);
 
     /// <summary>取当日有效计划（含反序列化内容与当日下标）；无计划或已过期返回 null。</summary>
     Task<ActiveLearningPlan?> GetActiveAsync(Guid userId, CancellationToken cancellationToken);

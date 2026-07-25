@@ -63,6 +63,9 @@ public static class DependencyInjection
         services.AddScoped<IWeaknessProfileService, WeaknessProfileService>();
         services.AddScoped<ILearningPlanService, LearningPlanService>();
         services.AddScoped<PlannerWorker>();
+        services.AddScoped<IBottleneckScreeningService, BottleneckScreeningService>();
+        services.AddScoped<IBottleneckInsightService, BottleneckInsightService>();
+        services.AddScoped<BottleneckInsightWorker>();
         services.AddScoped<ReAnnotationWorker>();
         services.AddScoped<ScenarioAnnotationWorker>();
         services.AddScoped<SentenceLlmScoringWorker>();
@@ -115,6 +118,7 @@ public static class DependencyInjection
         services.AddHostedService<ReviewReminderWorker>();
         services.AddHostedService<LevelCheckWorker>();
         services.AddHostedService<ProfileScoreSnapshotWorker>();
+        services.AddHostedService<WeeklyReplanWorker>();
         services.AddHostedService<BackgroundJobWorker>();
 
         return services;

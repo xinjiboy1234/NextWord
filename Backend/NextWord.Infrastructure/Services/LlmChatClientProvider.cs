@@ -130,4 +130,23 @@ public sealed class LlmChatClientProvider(IChatClient chatClient, LlmMockProvide
             return await fallback.GenerateWeaknessProfileAsync(request, cancellationToken);
         }
     }
+
+    public async Task<BottleneckInsightResponse> GenerateBottleneckInsightAsync(BottleneckInsightRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var response = await chatClient.GetResponseAsync(
+                [
+                    new ChatMessage(ChatRole.System, "You return compact, valid JSON for an English learner bottleneck insight."),
+                    new ChatMessage(ChatRole.User, LlmPromptFactory.BuildBottleneckInsightPrompt(request))
+                ],
+                new ChatOptions { Temperature = 0.2f, MaxOutputTokens = 1000 },
+                cancellationToken);
+            return LlmResponseParser.ParseBottleneckInsight(response.Text);
+        }
+        catch
+        {
+            return await fallback.GenerateBottleneckInsightAsync(request, cancellationToken);
+        }
+    }
 }

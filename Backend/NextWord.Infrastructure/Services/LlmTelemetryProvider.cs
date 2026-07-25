@@ -31,6 +31,9 @@ public sealed class LlmTelemetryProvider(ILLMProvider inner, ILogger<LlmTelemetr
     public Task<WeaknessProfileResponse> GenerateWeaknessProfileAsync(WeaknessProfileRequest request, CancellationToken cancellationToken)
         => ExecuteAsync("GenerateWeaknessProfile", request.Options?.ModelProfileId, token => inner.GenerateWeaknessProfileAsync(request, token), cancellationToken);
 
+    public Task<BottleneckInsightResponse> GenerateBottleneckInsightAsync(BottleneckInsightRequest request, CancellationToken cancellationToken)
+        => ExecuteAsync("GenerateBottleneckInsight", request.Options?.ModelProfileId, token => inner.GenerateBottleneckInsightAsync(request, token), cancellationToken);
+
     private async Task<T> ExecuteAsync<T>(
         string operation,
         string? modelProfileId,

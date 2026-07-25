@@ -148,6 +148,9 @@ public sealed class ArticleVocabCacheTests
 
         public Task<WeaknessProfileResponse> GenerateWeaknessProfileAsync(WeaknessProfileRequest request, CancellationToken cancellationToken)
             => throw new NotImplementedException();
+
+        public Task<BottleneckInsightResponse> GenerateBottleneckInsightAsync(BottleneckInsightRequest request, CancellationToken cancellationToken)
+            => throw new NotImplementedException();
     }
 
     private sealed class FixedLlmFactory(ILLMProvider provider) : IUserLlmProviderFactory

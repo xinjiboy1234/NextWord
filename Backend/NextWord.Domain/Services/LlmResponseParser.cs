@@ -194,6 +194,50 @@ public static class LlmResponseParser
         return false;
     }
 
+    /// <summary>
+    /// 解析 InsightAgent 产出的瓶颈洞察（T-007）：nature 无法识别视为整条失败（由调用方回退）；
+    /// 证据 id 的真实性不在此判断，持久化前由服务层对照真实 SentenceLog 机械过滤。
+    /// </summary>
+    public static BottleneckInsightResponse ParseBottleneckInsight(string content)
+    {
+        var json = ExtractJson(content);
+        var parsed = JsonSerializer.Deserialize<BottleneckInsightJson>(json, new JsonSerializerOptions(JsonSerializerDefaults.Web))
+            ?? throw new InvalidOperationException("LLM returned empty bottleneck insight.");
+        if (!TryParseNature(parsed.Nature, out var nature))
+        {
+            throw new InvalidOperationException($"LLM returned unrecognized bottleneck nature: {parsed.Nature}");
+        }
+
+        var evidenceIds = parsed.EvidenceLogIds
+            .Select(raw => Guid.TryParse(raw, out var id) ? id : (Guid?)null)
+            .Where(id => id.HasValue)
+            .Select(id => id!.Value)
+            .Distinct()
+            .ToList();
+
+        return new BottleneckInsightResponse(nature, parsed.Statement.Trim(), evidenceIds);
+    }
+
+    private static bool TryParseNature(string value, out BottleneckNature nature)
+    {
+        foreach (var token in EnumTokens(value))
+        {
+            switch (token)
+            {
+                case "vocabulary_insufficient": nature = BottleneckNature.VocabularyInsufficient; return true;
+                case "cannot_organize_sentences": nature = BottleneckNature.CannotOrganizeSentences; return true;
+                case "grammar_errors": nature = BottleneckNature.GrammarErrors; return true;
+                case "monotonous_expression": nature = BottleneckNature.MonotonousExpression; return true;
+                case "avoidance_pattern": nature = BottleneckNature.AvoidancePattern; return true;
+                case "chinglish_collocation": nature = BottleneckNature.ChinglishCollocation; return true;
+                case "safe_word_strategy": nature = BottleneckNature.SafeWordStrategy; return true;
+            }
+        }
+
+        nature = default;
+        return false;
+    }
+
     /// <summary>qwen 等模型可能把枚举白名单原样照抄（"skill|grammar"、"scenario|skill|reading"）：逐 token 取第一个可识别值。</summary>
     private static IEnumerable<string> EnumTokens(string value) =>
         value.Trim().ToLowerInvariant().Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);

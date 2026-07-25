@@ -272,4 +272,51 @@ public static class LlmPromptFactory
         - NEVER invent ids, scenario keys, or numbers not shown above.
         """;
     }
+
+    /// <summary>
+    /// InsightAgent 提示词（T-007，DESIGN-bottleneck-insight §2.2）：给筛查信号 + 近期产出原文，
+    /// 要求贴近原文判断瓶颈性质（不只是看分数），证据只引用给定 SentenceLog id（防幻觉靠机械过滤）。
+    /// </summary>
+    public static string BuildBottleneckInsightPrompt(BottleneckInsightRequest request)
+    {
+        var productionLines = request.Productions.Count == 0
+            ? "(none)"
+            : string.Join("\n", request.Productions.Select(sample =>
+                $"- id={sample.Id} word={sample.TargetWord} scene={sample.Scene} grammar={sample.Grammar} natural={sample.Natural} vocabulary={sample.Vocabulary} relevance={sample.Relevance} errorTags=[{string.Join(",", sample.ErrorTags)}] text=\"{sample.Text}\""));
+
+        var focus = request.PlanFocusScenarios.Count == 0 ? "(none)" : string.Join(", ", request.PlanFocusScenarios);
+        var targets = request.PlanSentenceTargets.Count == 0 ? "(none)" : string.Join(", ", request.PlanSentenceTargets);
+
+        return $$"""
+        You are the Insight agent of an English learning app. Rule-based screening flagged signals about this learner. Read the ORIGINAL sentences below closely — judge the PRIMARY nature of the current bottleneck from the writing itself, not just from the scores.
+
+        User level: {{request.UserLevel}}
+        Screening signals: {{string.Join(", ", request.Signals)}}
+        Current plan focus scenarios: {{focus}}
+        Current plan sentence targets (words the plan asks the learner to produce): {{targets}}
+
+        Recent production (LLM-graded, 0-5 per dimension, with original text):
+        {{productionLines}}
+
+        Return only JSON:
+        {
+          "nature": "grammar_errors",
+          "statement": "一句中文结论，点名具体行为",
+          "evidenceLogIds": ["<log id>"]
+        }
+
+        Rules:
+        - nature must be exactly ONE word from this list (do NOT copy the whole list):
+          vocabulary_insufficient — 词汇量不足：想表达但词不够，反复用最简单的词或卡壳。
+          cannot_organize_sentences — 会词但组织不成句：用词尚可但句子破碎、语序混乱。
+          grammar_errors — 语法错误多：时态/单复数/主谓一致等错误频繁。
+          monotonous_expression — 语法正确但表达单调：句子都对但句式词汇重复、没有变化。
+          avoidance_pattern — 回避模式：只写简单句，回避从句与复杂连接，能力范围收缩。
+          chinglish_collocation — 中式搭配：搭配直译中文、不地道。
+          safe_word_strategy — 安全词策略：新学的目标词从不进入自由产出，只用早已熟练的词。
+        - evidenceLogIds: 1-5 ids from the production list above that best support the judgment. NEVER invent ids.
+        - statement: one concise Chinese sentence naming the concrete behavior, e.g. "造句几乎全是主谓宾短句，because/which 从句近两周完全消失".
+        - Pick the SINGLE most important nature even if several apply.
+        """;
+    }
 }
