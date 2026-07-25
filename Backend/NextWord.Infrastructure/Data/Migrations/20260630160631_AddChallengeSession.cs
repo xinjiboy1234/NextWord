@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -11,6 +11,13 @@ namespace NextWord.Infrastructure.Data.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            // T-015：本迁移为 SQLite 口味（TEXT/INTEGER 类型），PostgreSQL 上由
+            // Patch_PostgreSql_ScoreKernel.sql 幂等建表，直接跳过避免类型分叉。
+            if (migrationBuilder.ActiveProvider == "Npgsql.EntityFrameworkCore.PostgreSQL")
+            {
+                return;
+            }
+
             migrationBuilder.CreateTable(
                 name: "ChallengeSessions",
                 columns: table => new
@@ -42,6 +49,12 @@ namespace NextWord.Infrastructure.Data.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            // T-015：与 Up 对称，PostgreSQL 上不执行（该表由幂等补丁负责）。
+            if (migrationBuilder.ActiveProvider == "Npgsql.EntityFrameworkCore.PostgreSQL")
+            {
+                return;
+            }
+
             migrationBuilder.DropTable(
                 name: "ChallengeSessions");
         }

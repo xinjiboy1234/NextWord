@@ -85,18 +85,12 @@ if (!app.Environment.IsEnvironment("Testing"))
     {
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
-        // Development / AutoMigrate：先 EF 迁移（InitialCreate 等），再 PG 幂等补丁（Score 内核）
+        // Development / AutoMigrate：先 EF 迁移（T-015 起迁移链在 PG 上可完整跑通，
+        // 失败即抛错快速失败，不再吞错带病进种子），再 PG 幂等补丁（Score 内核）
         var autoMigrate = app.Configuration.GetValue<bool>("Database:AutoMigrate");
         if (app.Environment.IsDevelopment() || autoMigrate)
         {
-            try
-            {
-                await db.Database.MigrateAsync();
-            }
-            catch (Exception ex) when (ex is DbUpdateException or Npgsql.PostgresException)
-            {
-                // AddScoreKernelM1 含 SQLite ALTER，在已有 PostgreSQL schema 上可能失败；由补丁补齐
-            }
+            await db.Database.MigrateAsync();
 
             await PostgreSqlSchemaPatcher.ApplyAsync(db);
         }

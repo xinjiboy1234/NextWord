@@ -66,7 +66,7 @@ NextWord 已从「词汇学习工具」修正为「**以表达能力为核心**�
 
 - 修改实体或 `ApplicationDbContext` 后，**必须立即用 `dotnet ef` 命令生成一次迁移**（如 `dotnet ef migrations add <Name>`），不要攒多次实体变更再一次迁移——攒太多容易生成错误的大迁移；
 - **不手工修改迁移命令生成的文件**；生成结果有问题就回退后调整实体重新生成；
-- **当前迭代例外**：本轮开发期间暂不做迁移，等开发完成后**删库重建**（Development 启动自动 Migrate + 种子）。
+- **当前迭代例外（T-015 已收口）**：I1–I4 期间暂不做迁移的例外已由 `ConsolidateI1ToI4Schema` 迁移收口——I1–I4 全部 schema 变化进入迁移链，空库 `MigrateAsync` 一次建全 + 种子可跑；`Patch_PostgreSql_ScoreKernel.sql` 幂等补丁保留，作为存量 dev/prod 库的升级路径（与迁移幂等共存）。该迁移的 PG 幂等守卫分支为「不手工修改迁移文件」纪律的一次性例外；此后实体变更恢复上面的正常迁移纪律。
 
 ## 6. 注释、文档与提交纪律
 

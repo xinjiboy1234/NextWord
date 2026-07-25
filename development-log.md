@@ -2,6 +2,78 @@
 
 按时间倒序记录需求、决策、实现与验收。
 
+## 2026-07-25 — I4 顾言验收（T-013 / T-014 / T-015）
+
+**验收结论：通过，I4 闭环。**
+
+- T-014 周密六项标准全过：四阶段流转实测 25→50→75→100 吻合；自评切断全库核查彻底（mastery 写入仅 WordLifecycleService、Score 写入仅三处授权路径、EstimatedKnownRate 确认只做排程输入）；候选池 7 天顺次消耗；指定目标词不算自发、自由表达误用不毕业；存量映射幂等；
+- **三个口径裁定确认**：①待自发不单列第五阶段（时间戳语义完整）接受；②毕业不强制先经确认——自发正确使用是更强证据、且仍需先过回忆考察进候选池，接受；③留痕 FreeExpressionLog id（自由表达实际通道）正确；
+- T-013 僵尸任务回收实测：超时重置重跑、超限 Failed 留痕；
+- T-015 迁移链收口复验三场景全过（空库一键、存量库兼容、重复启动幂等）；AGENTS.md 恢复正常迁移纪律——本轮迭代例外正式结束；
+- 至此 VISION §5.2 背词重新定位全部落地（选词权上交 T-006、毕业四阶段 T-014、自评退出掌握度），§6 路径五项 + 生命周期改造全部完成。
+
+---
+
+## 2026-07-25 — I4 T-015：迁移链收口——空库一键启动建 schema
+
+### 需求
+- I4 验收不足（周密实测）：全新空 PG 库 `dotnet run` 启动依赖「MigrateAsync 吞错 + 补丁兜底」的脆弱路径（AddScoreKernelM1 的 IsCore ALTER 在 PG 必失败被吞、后续两个迁移永不执行、靠补丁补建并在迁移历史上补记），与 AGENTS.md「删库重建靠 Development 启动自动 Migrate + 种子」的预期不符。顾言定方向：按例外条款本意收口，生成正式迁移把 I1–I4 全部 schema 变化纳入迁移链。
+
+### 决策
+- **新增 `ConsolidateI1ToI4Schema` 迁移**：`dotnet ef migrations add` 生成后，按顾言方向第 3 条手工加 PG 守卫分支（AGENTS.md「不手工修改迁移文件」纪律的本任务例外）——PG 走幂等 SQL（`IF NOT EXISTS`，口径逐条对齐补丁：列类型、默认值、枚举存字符串、索引、唯一约束），已打补丁的存量库执行全部 no-op；非 PG（SQLite）路径保留生成代码。生成代码里 `LifecycleStage` 默认值空串（枚举转字符串的脚手架缺陷）手工修正为 `'Recognized'`。
+- **旧迁移 PG 守卫**：`AddScoreKernelM1`、`AddChallengeSession`（SQLite 口味，PG 执行必失败或产生类型分叉）Up/Down 加 `ActiveProvider` 守卫，PG 上跳过——对应 schema 继续由补丁幂等负责（存量 PG 库历史里这两个迁移本就没真正执行过，守卫只是让空库 MigrateAsync 不再半途中断）。`AddArticleVocabPhoneticsAndExamples` 本身是 PG 类型且与补丁逐字一致，不动。
+- **启动不再吞错**：`Program.cs` 移除 MigrateAsync 的 try/catch 吞错（周密建议「补丁失败显式报错而非带病进种子」）——迁移链修通后，失败即快速失败。
+- **补丁保留不动**：`Patch_PostgreSql_ScoreKernel.sql` 继续作为存量 dev/prod 库的幂等升级路径；与新迁移重叠部分天然幂等共存（两边都是 IF NOT EXISTS 口径）。
+- 口径差异知情确认：`ProfileFindings.VerificationNote` 模型为非空 string（EnsureCreated 建 NOT NULL），补丁 PG 列为可空——PG 分支沿用补丁可空口径（写路径总有值，无实际影响）；迁移 PG 分支额外补 `IX_WeaknessProfiles_AssessmentId`（EF FK 约定索引，补丁漏建，纯补齐无副作用）。
+
+### 实现
+- `Data/Migrations/20260725085338_ConsolidateI1ToI4Schema.{cs,Designer.cs}` + 快照更新：I1–I4 全量（WordScenarios、Words.Utility/Role/ScenarioAnnotationVersion、WeaknessProfiles/ProfileFindings、LearningPlans、BottleneckInsights、BackgroundJobs.StartedAt/RetryCount、UWR 生命周期四列 + 存量阶段映射 UPDATE）。
+- `AddScoreKernelM1`/`AddChallengeSession` Up/Down 加 PG 守卫；`Program.cs` 去吞错；`DependencyInjection` 注释同步。
+- `dotnet ef migrations has-pending-model-changes` 确认快照与模型一致。
+
+### 验收（开发自测）
+- [x] 空库一键：新建空库 `nextword_t015_empty` → `dotnet run`（Development）→ 6 个迁移全部干净应用（无吞错、无失败，唯一 fail 日志为 EF 探测历史表的良性首查）→ 种子 1523 词灌入 → 注册用户后 `GET /api/scenarios` 返回 7 大类场景与词数（验完库已删）
+- [x] 存量库兼容：`pg_dump` 复制 dev 库 `nextword` → `nextword_t015_copy`（该库停在 I1 前，缺 I1–I4 全部表/列）→ 启动仅应用 Consolidate 迁移、零报错 → 数据行数不变（words 6 / uwr 3 / users 4）、缺失 schema 全部补齐、存量映射按补丁口径执行（RepeatCount<2 → Recognized/25）→ dev 库本体未动（验完副本已删）
+- [x] `dotnet build` 通过；`dotnet test` 143 单测 + 6 集成全过（真实 PG）；`npm run build` 通过
+- 复现备注：修复前在当前代码上空库实测其实可启动（吞错+补丁兜底路径工作），但属带病路径——任何补丁执行异常都会以「relation 不存在」的形式在种子期爆炸，正是周密观察到的故障形态；T-015 后该路径被正式迁移链取代
+- 已知取舍：dotnet-ef 全局工具从 9.0.10 升到 10.0.10 以对齐 EF 10.0.9 包；生产 SQL 脚本路径（`generate-migration-sql.ps1` → `Upgrade_Idempotent.sql`）未重新生成，prod 升级继续走补丁（脚本是否重生成留给部署窗口决定）
+
+### 复验（周密 2026-07-25）：通过，T-015 done
+- [x] 空库一键：新建空库 `nextword_verify_t015_empty` → `ASPNETCORE_ENVIRONMENT=Development dotnet run` → 6 个迁移干净应用（历史表 6 行）、33 张表、种子 1523 词/21 文章/2383 WordScenarios、注册后 `GET /api/scenarios` 正常、日志零异常（唯一 fail 记录为 EF 首次探测 `__EFMigrationsHistory` 的良性首查）、全程无手动 ef/手动补丁（验完库已删）
+- [x] 存量库兼容：`pg_dump` 复制 dev 库到 `nextword_verify_t015_existing`（缺 I1–I4 全部表列、历史 5 行）→ 仅应用 `ConsolidateI1ToI4Schema` 一行迁移零异常、数据行数逐项不变（words 6/users 4/uwr 3/sentencelogs 1/articles 21/bgjobs 0）、7 张缺失新表补齐、T-014 四列到位、存量关系映射 Recognized/25 无误判、注册与 daily 接口正常、dev 库本体未动（验完副本已删）
+- [x] 重复启动幂等：同库二次启动零 `Applying migration` 零异常、种子不重复（仍 1523 词）
+- [x] `dotnet test` 143 单测 + 6 集成全过（真实 PG）
+- 观察（不阻断）：`--no-launch-profile`（Production 环境）空库启动按设计跳过自动迁移、在种子期快速失败报 relation 不存在——非缺陷（prod 走 SQL 脚本路径），快速失败行为符合预期；生产 SQL 脚本未重生成为开发已声明取舍
+
+---
+
+## 2026-07-25 — I4 T-014：词毕业四阶段生命周期（含 T-013 僵尸任务回收）
+
+### 需求
+- 按 `docs/DESIGN-word-lifecycle.md`（已定稿）：词的毕业标准是「能用」不是「认识」——四阶段闭环（认识→回忆→造句使用→自发使用）；SM-2 只管前两阶段调度；Remembered/Forgot 自评只改排程、不再参与掌握度与 Score；产出候选池由 Planner 优先编排；自由产出自发正确使用一次才毕业；顺带修 T-013（BackgroundJobWorker 只捞 Pending，进程中断后 Processing 任务永久僵尸）。
+
+### 决策
+- **四阶段状态机为纯规则领域服务**（`WordLifecycleService`）：认识→回忆 = SM-2 成熟阈值 `RepeatCount≥2`（复用 repetitions/interval 口径，不新造指标）；回忆→造句使用 = 回忆模式考察通过（看义正确拼词）；造句使用→待自发 = 提示造句词边界命中 + A/B 档（`PromptedUseConfirmedAt` 留痕）；待自发→毕业 = 自由表达中自发出现 + 当次 A/B 档（复用 T-007 分词口径），留痕 `GraduatedFreeExpressionLogId`。回退仅造句使用阶段（D 档或词汇维 ≤2 → 退回回忆重进 SM-2）；认识/回忆不回退。
+- **掌握度阶段派生**（25/50/75/100）：切断两处自评/结果直写——`LearningEndpoints` 的 `ScoreDelta` 掌握度加减（整段删除）、`SpellingService` 的 ±10；EstimatedKnownRate/PersonalDifficulty EMA 保留（接触词排程输入，非掌握度/Score）；Score 三个写入点（测评/挑战/后台造句评分）本就不经自评路径，无需改动。
+- **毕业留痕指 FreeExpressionLog**：设计的「SentenceLog」口径落地为自由表达留痕表（自发判定只发生在自由表达通道；指定目标词造句永不毕业）。
+- **T-013 回收口径**：`BackgroundJobs` 增 `StartedAt/RetryCount`；worker 每轮先回收——Processing 超 5 分钟（或存量空 StartedAt）重置 Pending（RetryCount+1），超 3 次标记 Failed 留痕。
+- **不做 EF 迁移**：新列走 `Patch_PostgreSql_ScoreKernel.sql` 幂等补丁 + 存量映射（RepeatCount≥2 → recalled，掌握度回填）；Development 删库重建。
+
+### 实现
+- Domain：`WordLifecycleStage`/`WordQuizMode` 枚举、`UserWordRelationship` 四列、`WordLifecycleService`（推进/回退/毕业/阶段派生掌握度/考察模式与 token 换算）、`BackgroundJob` 两列。
+- Infrastructure：`StaleJobReclaimer` + worker 接线（StartedAt 打点）；`SentenceService.RateAsync` 造句证据（确认/回退）；`FreeExpressionService.RateAsync` 自发毕业判定；`LearningPlanService` 候选池优先编排（7 天顺次消耗，confirmed/超带词排除）；`DailyWordSelectionService` 复习词带 stage/quizMode；`SpellingService` 掌握度直写改阶段派生；DbContext 配置 + 补丁 SQL。
+- API：`/api/learning/submit` 增 `mode`（回忆模式按 lemma 判对）、响应带 `stage`/`quizMode`；`/api/words/daily` 项带 stage/quizMode。
+- 前端（最小适配）：WordCard 回忆模式题面（看义想词、隐藏单词、提交后揭示）、阶段徽标（认识/回忆/会用/毕业）、FeedbackArea 显示阶段；useLearningLog 传 mode。
+- 测试：`WordLifecycleTests` 6 个 + `BackgroundJobReclaimTests` 2 个（真实 PG）；实测脚本 `Backend/Scripts/verify-lifecycle-t014.py`。
+
+### 验收（开发自测）
+- [x] `dotnet build` 通过；`dotnet test` 143 单测 + 6 集成全过（真实 PG）；`npm run build` 通过
+- [x] DashScope（qwen-plus）真实链路实测 8/8（独立库 nextword_verify_t014，验完已删、dev 库未动）：认识 ×2 成熟推进（25→50）、Forgot 自评 mastery/Score 四维不变且 SM-2 interval 重置、回忆通过进候选池（75）、Planner 当日造句目标候选池词在列、每日词带阶段/模式、指定目标词造句 A 档确认但不毕业、自由表达 B 档自发毕业 + 留痕 log id、T-013 超时回收重跑 + 超限 Failed 留痕
+- 实测插曲：首轮造句用「decide my English skills」被真实 LLM 判低分触发回退（误用→recalled）——回退规则在真实链路上自然生效；脚本换自然句后全过
+- 已知取舍：「待自发」不单列第五阶段（设计四阶段口径），以 `PromptedUseConfirmedAt` 留痕表达；毕业不强制先确认（自发证据更强）；掌握度 25/50/75/100 为阶段映射档位非连续评分
+
+---
+
 ## 2026-07-25 — I3 顾言验收（T-007 / T-012）
 
 **验收结论：通过，I3 闭环，愿景 §6 落地路径五项全部完成。**

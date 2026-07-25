@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -11,6 +11,13 @@ namespace NextWord.Infrastructure.Data.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            // T-015：本迁移为 SQLite 口味（uuid/boolean → TEXT/INTEGER 的 ALTER 在 PG 上会失败），
+            // PostgreSQL 上对应 schema 由 Patch_PostgreSql_ScoreKernel.sql 幂等补齐，直接跳过。
+            if (migrationBuilder.ActiveProvider == "Npgsql.EntityFrameworkCore.PostgreSQL")
+            {
+                return;
+            }
+
             migrationBuilder.AlterColumn<string>(
                 name: "Phonetics",
                 table: "Words",
@@ -2001,6 +2008,12 @@ namespace NextWord.Infrastructure.Data.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            // T-015：与 Up 对称，PostgreSQL 上不执行（对应表/列由幂等补丁负责）。
+            if (migrationBuilder.ActiveProvider == "Npgsql.EntityFrameworkCore.PostgreSQL")
+            {
+                return;
+            }
+
             migrationBuilder.DropTable(
                 name: "BackgroundJobs");
 
