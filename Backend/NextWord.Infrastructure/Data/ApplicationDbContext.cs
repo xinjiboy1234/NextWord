@@ -163,6 +163,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.HasKey(relationship => relationship.Id);
             entity.HasIndex(relationship => new { relationship.UserId, relationship.WordId }).IsUnique();
             entity.Property(relationship => relationship.Source).HasConversion<string>().HasMaxLength(32);
+            // T-014 生命周期阶段枚举存字符串；毕业留痕/确认时间为可空列
+            entity.Property(relationship => relationship.LifecycleStage).HasConversion<string>().HasMaxLength(32);
             entity.HasOne(relationship => relationship.User)
                 .WithMany(user => user.WordRelationships)
                 .HasForeignKey(relationship => relationship.UserId)

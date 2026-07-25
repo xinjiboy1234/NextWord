@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using NextWord.Domain.Entities;
 using NextWord.Domain.Enums;
 using NextWord.Domain.Interfaces;
+using NextWord.Domain.Services;
 using NextWord.Infrastructure.Data;
 
 namespace NextWord.Infrastructure.Services;
@@ -42,8 +43,9 @@ public sealed class SpellingService(ApplicationDbContext db, ISm2Service sm2) : 
 
         relationship.TimesLearned += 1;
         relationship.TimesCorrect += isCorrect ? 1 : 0;
-        relationship.MasteryScore = Math.Clamp(relationship.MasteryScore + (isCorrect ? 10 : -10), 0, 100);
         sm2.ApplyReview(relationship, isCorrect ? AssessmentResult.Remembered : AssessmentResult.Forgot, DateTimeOffset.UtcNow);
+        // T-014：掌握度阶段派生（不再按结果直接加减）；拼写正确 = 回忆级产出证据，recalled 阶段词进候选池
+        WordLifecycleService.ApplyReview(relationship, WordQuizMode.Recall, isCorrect, DateTimeOffset.UtcNow);
 
         if (!isCorrect && await HasPreviousSpellingMissAsync(userId, word.Id, cancellationToken))
         {

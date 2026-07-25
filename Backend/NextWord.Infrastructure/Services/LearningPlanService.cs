@@ -159,7 +159,7 @@ public sealed class LearningPlanService(
     /// <summary>
     /// 每日词队列（设计方案 §2）：主攻场景 + core 桶选词，带内（CefrLevel == 用户水平带，
     /// 带池过薄向下一带补充，绝不超带；utility 非 low）为主，每天掺 ≤20% 超带接触词；
-    /// 造句目标取当日带内词（主攻场景优先）。
+    /// 造句目标优先取 T-014 产出候选池（prompted_use 未确认词），剩余名额取当日带内词（主攻场景优先）。
     /// </summary>
     private async Task<List<LearningPlanDay>> BuildDaysAsync(
         Guid userId, IReadOnlyList<string> focusScenarios, CefrLevel userCefr, CancellationToken cancellationToken)
@@ -208,16 +208,23 @@ public sealed class LearningPlanService(
         var exposurePerDay = (int)(DailyWordCount * MaxExposureRatio);
         var inBandPerDay = DailyWordCount - exposurePerDay;
 
+        // T-014 产出候选池：prompted_use 未确认词优先编入造句目标，7 天顺次消耗
+        var candidatePool = await GetPromptedUsePoolAsync(userId, userCefr, cancellationToken);
+
         var days = new List<LearningPlanDay>();
         for (var day = 0; day < PlanDays; day++)
         {
             var dayWords = orderedInBand.Skip(day * inBandPerDay).Take(inBandPerDay).ToList();
             var dayExposure = exposure.Skip(day * exposurePerDay).Take(exposurePerDay).ToList();
-            var targets = dayWords
-                .OrderByDescending(item => item.InFocus)
-                .Take(DailySentenceTargets)
-                .Select(item => item.Word.Lemma)
-                .ToList();
+            var targets = candidatePool.Skip(day * DailySentenceTargets).Take(DailySentenceTargets).ToList();
+            if (targets.Count < DailySentenceTargets)
+            {
+                targets.AddRange(dayWords
+                    .OrderByDescending(item => item.InFocus)
+                    .Select(item => item.Word.Lemma)
+                    .Take(DailySentenceTargets - targets.Count));
+            }
+
             days.Add(new LearningPlanDay(
                 dayWords.Select(item => item.Word.Id).ToList(),
                 dayExposure.Select(item => item.Word.Id).ToList(),
@@ -225,6 +232,23 @@ public sealed class LearningPlanService(
         }
 
         return days;
+    }
+
+    /// <summary>T-014 产出候选池：prompted_use 阶段且未确认的词（带内约束与产出任务口径一致，utility 非 low），按进池时间排序。</summary>
+    private async Task<List<string>> GetPromptedUsePoolAsync(Guid userId, CefrLevel userCefr, CancellationToken cancellationToken)
+    {
+        var relationships = await db.UserWordRelationships.AsNoTracking()
+            .Include(item => item.Word)
+            .Where(item => item.UserId == userId
+                && item.LifecycleStage == WordLifecycleStage.PromptedUse
+                && item.PromptedUseConfirmedAt == null)
+            .ToListAsync(cancellationToken);
+        return relationships
+            .Where(item => item.Word is not null && item.Word.CefrLevel <= userCefr && item.Word.Utility != WordUtility.Low)
+            .OrderBy(item => item.StageUpdatedAt)
+            .Select(item => item.Word!.Lemma)
+            .Distinct()
+            .ToList();
     }
 
     /// <summary>阅读推荐：主攻场景 TopicTag/场景名匹配优先，难度（CEFR）就近，取前 3 篇。</summary>

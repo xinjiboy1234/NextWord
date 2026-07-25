@@ -21,6 +21,10 @@ export interface LearningResult {
   masteryScore: number
   nextReviewDue: string
   intervalDays: number
+  /** T-014：当前生命周期阶段（掌握度由阶段派生） */
+  stage?: string
+  /** T-014：下次考察模式 */
+  quizMode?: 'recognition' | 'recall'
 }
 
 export interface ProgressSummary {

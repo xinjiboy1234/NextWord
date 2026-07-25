@@ -4,7 +4,8 @@ import { AnswerInput } from '../components/AnswerInput'
 import { FeedbackArea } from '../components/FeedbackArea'
 import { ProgressBar } from '../components/ProgressBar'
 import { StepNavigator } from '../components/StepNavigator'
-import { WordDisplay } from '../components/WordDisplay'
+import { Badge } from '../components/ui/Badge'
+import { WordDisplay, stageLabel } from '../components/WordDisplay'
 import { useLearningLog } from '../hooks/useLearningLog'
 import { useWordSession } from '../hooks/useWordSession'
 import type { AssessmentResult } from '../types/models'
@@ -23,6 +24,9 @@ export function WordCard() {
     learning.reset()
   }, [session.currentWord?.id])
 
+  // T-014：考察模式随生命周期阶段切换（认识=看词知义，回忆及以后=看义想词）
+  const quizMode = session.currentWord?.quizMode === 'recall' ? 'recall' : 'recognition'
+
   function normalizeAnswer(value: string) {
     return value.trim().toLowerCase().replaceAll('，', ',').replaceAll('。', '.')
   }
@@ -38,9 +42,13 @@ export function WordCard() {
 
   async function submitAnswer() {
     if (!session.currentWord || answer.trim().length === 0) return
-    const rating: AssessmentResult = isAnswerCorrect(answer, session.currentWord.meanings) ? 'Remembered' : 'Forgot'
+    // 回忆模式（看义想词）需正确拼出词本身；认识模式（看词知义）答释义
+    const correct = quizMode === 'recall'
+      ? normalizeAnswer(answer) === normalizeAnswer(session.currentWord.lemma)
+      : isAnswerCorrect(answer, session.currentWord.meanings)
+    const rating: AssessmentResult = correct ? 'Remembered' : 'Forgot'
     const elapsed = Date.now() - startedAt.current
-    const result = await learning.submit(session.currentWord.id, answer, rating, elapsed)
+    const result = await learning.submit(session.currentWord.id, answer, rating, elapsed, quizMode)
     if (result) {
       setSubmitted(true)
     }
@@ -49,7 +57,7 @@ export function WordCard() {
   async function markForgot() {
     if (!session.currentWord || learning.submitting || submitted) return
     const elapsed = Date.now() - startedAt.current
-    const result = await learning.submit(session.currentWord.id, '', 'Forgot', elapsed)
+    const result = await learning.submit(session.currentWord.id, '', 'Forgot', elapsed, quizMode)
     if (result) {
       setSubmitted(true)
     }
@@ -102,7 +110,21 @@ export function WordCard() {
         <ProgressBar value={session.progress} />
       </div>
 
-      <WordDisplay word={session.currentWord} />
+      {quizMode === 'recall' ? (
+        <section className="word-card" style={{ padding: 'var(--space-12) var(--space-8)', minHeight: 280 }}>
+          <p className="word-pos">回忆考察 · 看义想词</p>
+          <h2 className="word-word" style={{ fontSize: 'var(--text-lg)' }}>
+            {session.currentWord.meanings.join('；')}
+          </h2>
+          <p className="word-phonetic">根据释义写出英文单词</p>
+          <div style={{ marginTop: 'var(--space-4)' }}>
+            <Badge variant="muted">{stageLabel(session.currentWord.stage)} · 看义想词</Badge>{' '}
+            {session.currentWord.fromPlan ? <Badge variant="info">来自今日计划</Badge> : null}
+          </div>
+        </section>
+      ) : (
+        <WordDisplay word={session.currentWord} />
+      )}
 
       {!submitted ? (
         <AnswerInput
@@ -114,6 +136,13 @@ export function WordCard() {
         />
       ) : (
         <>
+          {quizMode === 'recall' && (
+            <div className="card" style={{ padding: 'var(--space-3) var(--space-4)' }}>
+              <span className="mono-label" style={{ textTransform: 'none' }}>正确单词</span>{' '}
+              <strong>{session.currentWord.lemma}</strong>{' '}
+              <span style={{ color: 'var(--muted)' }}>{session.currentWord.phonetics}</span>
+            </div>
+          )}
           <FeedbackArea result={learning.result} error={learning.error} />
           <div className="card">
             <StepNavigator

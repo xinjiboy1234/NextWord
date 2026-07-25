@@ -1,5 +1,7 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using NextWord.Domain.Entities;
+using NextWord.Domain.Enums;
 using NextWord.Domain.Interfaces;
 using NextWord.Domain.Models;
 using NextWord.Domain.Services;
@@ -41,6 +43,47 @@ public sealed class FreeExpressionService(
 
         db.FreeExpressionLogs.Add(log);
         await db.SaveChangesAsync(cancellationToken);
+        // T-014 自发使用毕业判定：自由表达（非指定目标词的产出）中自发使用候选池词且当次评分达标 → 毕业留痕
+        await GraduatedSpontaneousUseAsync(userId, log, cancellationToken);
         return log;
+    }
+
+    /// <summary>
+    /// T-014（DESIGN-word-lifecycle §2）：复用 T-007 安全词检测的词边界分词口径做词级判定——
+    /// 当次评分达标（A/B）时，文中出现的 prompted_use 候选池词毕业（spontaneous_use），
+    /// 留痕所在 FreeExpressionLog Id；评分不达标或词未出现不毕业。
+    /// </summary>
+    private async Task GraduatedSpontaneousUseAsync(Guid userId, FreeExpressionLog log, CancellationToken cancellationToken)
+    {
+        if (!WordLifecycleService.IsPassingGrade(log.OverallGrade))
+        {
+            return;
+        }
+
+        var candidates = await db.UserWordRelationships
+            .Include(item => item.Word)
+            .Where(item => item.UserId == userId && item.LifecycleStage == WordLifecycleStage.PromptedUse)
+            .ToListAsync(cancellationToken);
+        if (candidates.Count == 0)
+        {
+            return;
+        }
+
+        var tokens = BottleneckScreeningService.Tokenize(log.UserText);
+        var now = DateTimeOffset.UtcNow;
+        var graduated = false;
+        foreach (var relationship in candidates)
+        {
+            if (relationship.Word is not null && tokens.Contains(relationship.Word.Lemma))
+            {
+                WordLifecycleService.Graduate(relationship, log.Id, now);
+                graduated = true;
+            }
+        }
+
+        if (graduated)
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
     }
 }

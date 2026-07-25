@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using NextWord.Domain.Entities;
 using NextWord.Domain.Interfaces;
 using NextWord.Domain.Models;
+using NextWord.Domain.Services;
 using NextWord.Infrastructure.Data;
 
 namespace NextWord.Infrastructure.Services;
@@ -120,13 +121,16 @@ public sealed class DailyWordSelectionService(
         foreach (var rel in weak)
         {
             if (rel.Word is null) continue;
+            // T-014：复习词带生命周期阶段与考察模式（认识=看词知义，回忆及以后=看义想词）
             merged.Add(new DailyWordItem(
                 rel.Word.Id,
                 rel.Word.Lemma,
                 rel.Word.Meanings,
                 rel.PersonalDifficulty ?? LegacyScoreHelper.FromDifficulty(rel.Word.DifficultyLevel),
                 true,
-                rel.Word.Phonetics));
+                rel.Word.Phonetics,
+                Stage: WordLifecycleService.ToToken(rel.LifecycleStage),
+                QuizMode: WordLifecycleService.QuizModeToken(WordLifecycleService.QuizModeForStage(rel.LifecycleStage))));
         }
 
         foreach (var (word, intrinsic) in bandWords)

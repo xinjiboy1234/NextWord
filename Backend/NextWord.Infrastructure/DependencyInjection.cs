@@ -27,7 +27,7 @@ public static class DependencyInjection
         services.AddDbContext<ApplicationDbContext>(options =>
         {
             options.UseNpgsql(connectionString);
-            // 模型快照与历史 SQLite 迁移存在差异；Development 仍允许 MigrateAsync 继续。
+            // T-015 已收口迁移链（快照与模型一致）；保留忽略仅作迭代期间补丁先行的防御。
             options.ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning));
         });
 

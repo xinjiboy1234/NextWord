@@ -64,7 +64,11 @@ public sealed record DailyWordItem(
     /// <summary>T-006：来自当日 LearningPlan（否则为难度带回退选词）。</summary>
     bool FromPlan = false,
     /// <summary>T-006：超带「接触词」，只进背词识别队列，认识即可。</summary>
-    bool IsExposure = false);
+    bool IsExposure = false,
+    /// <summary>T-014：生命周期阶段 token（recognized/recalled/prompted_use/spontaneous_use），新词默认 recognized。</summary>
+    string Stage = "recognized",
+    /// <summary>T-014：考察模式 recognition（看词知义）/ recall（看义想词），随阶段切换。</summary>
+    string QuizMode = "recognition");
 
 public interface IUserFeedbackService
 {

@@ -153,7 +153,49 @@ public sealed class SentenceService(
 
         db.SentenceLogs.Add(log);
         await db.SaveChangesAsync(cancellationToken);
+        // T-014：提示造句的生命周期证据——正确使用确认（待自发），使用错误退回回忆阶段；
+        // 指定目标词的产出永远不算自发使用（毕业只看自由表达）
+        await ApplyLifecycleEvidenceAsync(userId, wordId, log, cancellationToken);
         return log;
+    }
+
+    /// <summary>T-014（DESIGN-word-lifecycle §2）：造句评分后按目标词使用情况推进/回退生命周期。</summary>
+    private async Task ApplyLifecycleEvidenceAsync(Guid userId, Guid? wordId, SentenceLog log, CancellationToken cancellationToken)
+    {
+        var lemma = log.TargetWord;
+        var resolvedWordId = wordId ?? await db.Words.AsNoTracking()
+            .Where(word => word.Lemma == lemma)
+            .Select(word => (Guid?)word.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (resolvedWordId is null)
+        {
+            return;
+        }
+
+        var relationship = await db.UserWordRelationships
+            .FirstOrDefaultAsync(item => item.UserId == userId && item.WordId == resolvedWordId.Value, cancellationToken);
+        if (relationship is null || relationship.LifecycleStage != WordLifecycleStage.PromptedUse)
+        {
+            return;
+        }
+
+        // 词边界命中（复用 T-007 安全词检测的分词口径），避免子串误判
+        var tokens = BottleneckScreeningService.Tokenize(log.UserSentence);
+        var now = DateTimeOffset.UtcNow;
+        if (WordLifecycleService.IsPromptedUseCorrect(tokens, lemma, log.OverallGrade))
+        {
+            WordLifecycleService.ConfirmPromptedUse(relationship, now);
+        }
+        else if (WordLifecycleService.IsPromptedUseMisuse(tokens, lemma, log.OverallGrade, log.VocabularyScore))
+        {
+            WordLifecycleService.RegressToRecall(relationship, now);
+        }
+        else
+        {
+            return;
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
     }
 
     private static int ClampScore(int score) => Math.Clamp(score, 0, 5);

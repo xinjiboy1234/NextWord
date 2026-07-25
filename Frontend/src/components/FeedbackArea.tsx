@@ -1,5 +1,6 @@
 import { CalendarClock, CheckCircle2, XCircle } from 'lucide-react'
 import type { LearningResult } from '../types/models'
+import { stageLabel } from './WordDisplay'
 
 interface FeedbackAreaProps {
   result: LearningResult | null
@@ -33,7 +34,9 @@ export function FeedbackArea({ result, error }: FeedbackAreaProps) {
         </div>
         <div className="row" style={{ color: 'var(--muted)' }}>
           <CalendarClock size={18} aria-hidden="true" />
-          <span>下次复习间隔 {result.intervalDays} 天，掌握度 {Math.round(result.masteryScore)}%</span>
+          <span>
+            下次复习间隔 {result.intervalDays} 天，阶段 {stageLabel(result.stage)}（掌握度 {Math.round(result.masteryScore)}%）
+          </span>
         </div>
       </dl>
     </div>

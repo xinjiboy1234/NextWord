@@ -61,6 +61,10 @@ export interface DailyWordItem {
   fromPlan?: boolean
   /** T-006：超带接触词，认识即可 */
   isExposure?: boolean
+  /** T-014：生命周期阶段 recognized/recalled/prompted_use/spontaneous_use */
+  stage?: string
+  /** T-014：考察模式 recognition（看词知义）/ recall（看义想词） */
+  quizMode?: 'recognition' | 'recall'
 }
 
 export interface ChallengeStartResponse {

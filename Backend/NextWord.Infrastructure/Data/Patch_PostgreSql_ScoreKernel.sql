@@ -186,3 +186,17 @@ CREATE TABLE IF NOT EXISTS "BottleneckInsights" (
     CONSTRAINT "FK_BottleneckInsights_Users_UserId" FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS "IX_BottleneckInsights_UserId_CreatedAt" ON "BottleneckInsights" ("UserId", "CreatedAt");
+
+-- T-013 僵尸任务回收（本轮不做 EF 迁移，幂等补丁）：Processing 开始时间 + 回收重试计数
+ALTER TABLE "BackgroundJobs" ADD COLUMN IF NOT EXISTS "StartedAt" timestamp with time zone;
+ALTER TABLE "BackgroundJobs" ADD COLUMN IF NOT EXISTS "RetryCount" integer NOT NULL DEFAULT 0;
+
+-- T-014 词毕业四阶段生命周期（本轮不做 EF 迁移，幂等补丁，枚举存字符串）
+ALTER TABLE "UserWordRelationships" ADD COLUMN IF NOT EXISTS "LifecycleStage" character varying(32) NOT NULL DEFAULT 'Recognized';
+ALTER TABLE "UserWordRelationships" ADD COLUMN IF NOT EXISTS "StageUpdatedAt" timestamp with time zone;
+ALTER TABLE "UserWordRelationships" ADD COLUMN IF NOT EXISTS "PromptedUseConfirmedAt" timestamp with time zone;
+ALTER TABLE "UserWordRelationships" ADD COLUMN IF NOT EXISTS "GraduatedFreeExpressionLogId" uuid;
+-- 存量映射：SM-2 已成熟（连续 Remembered >= 2）→ Recalled，掌握度按阶段派生回填
+UPDATE "UserWordRelationships" SET "LifecycleStage" = 'Recalled' WHERE "LifecycleStage" = 'Recognized' AND "RepeatCount" >= 2;
+UPDATE "UserWordRelationships" SET "MasteryScore" = 50 WHERE "LifecycleStage" = 'Recalled';
+UPDATE "UserWordRelationships" SET "MasteryScore" = 25 WHERE "LifecycleStage" = 'Recognized';

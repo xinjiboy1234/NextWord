@@ -21,6 +21,9 @@ public sealed class BackgroundJobWorker(IServiceScopeFactory scopeFactory, ILogg
                 var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
                 var evaluation = scope.ServiceProvider.GetRequiredService<IEvaluationReportService>();
 
+                // T-013：先回收僵尸 Processing 任务（进程中断遗留），再捞 Pending
+                await StaleJobReclaimer.ReclaimAsync(db, DateTimeOffset.UtcNow, stoppingToken);
+
                 var jobs = (await db.BackgroundJobs
                     .Where(job => job.Status == "Pending")
                     .ToListAsync(stoppingToken))
@@ -31,6 +34,7 @@ public sealed class BackgroundJobWorker(IServiceScopeFactory scopeFactory, ILogg
                 foreach (var job in jobs)
                 {
                     job.Status = "Processing";
+                    job.StartedAt = DateTimeOffset.UtcNow;
                     await db.SaveChangesAsync(stoppingToken);
                     try
                     {

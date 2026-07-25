@@ -8,7 +8,13 @@ export function useLearningLog() {
   const [result, setResult] = useState<LearningResult | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const submit = useCallback(async (wordId: string, answer: string, rating: AssessmentResult, responseTimeMs: number) => {
+  const submit = useCallback(async (
+    wordId: string,
+    answer: string,
+    rating: AssessmentResult,
+    responseTimeMs: number,
+    mode?: 'recognition' | 'recall',
+  ) => {
     setSubmitting(true)
     setError(null)
     try {
@@ -17,6 +23,7 @@ export function useLearningLog() {
         answer,
         rating,
         responseTimeMs,
+        mode,
       })
       setResult(response.data)
       return response.data
