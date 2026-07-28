@@ -25,10 +25,11 @@ export function RadioGroup({
   className = 'option-tags',
   optionClassName = 'option-tag',
 }: RadioGroupProps) {
+  // 始终受控：value 传 undefined 时 base-ui 进入非受控模式，内部选中值会跨题残留（T-016），空串占位表示「未选择」
   return (
     <BaseRadioGroup
       name={name}
-      value={value ?? undefined}
+      value={value ?? ''}
       onValueChange={onValueChange}
       disabled={disabled}
       className={className}

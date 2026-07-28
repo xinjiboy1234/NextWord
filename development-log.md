@@ -2,6 +2,22 @@
 
 按时间倒序记录需求、决策、实现与验收。
 
+## 2026-07-28 — T-016：选项 RadioGroup 非受控致跨题重选失效修复
+
+### 需求
+- 演示录屏实测复现：挑战页连续两题点同一下标选项，第二题不触发 `onValueChange`，「下一个」永远禁用（视觉上 aria-checked 已变）。
+
+### 决策与实现
+- 根因：`ui/RadioGroup` 把 `value=undefined` 传给 base-ui `RadioGroup`，进入非受控模式，内部选中值跨题残留；下一题点同一下标时 base-ui 判定值未变化、不发回调。
+- 修复（`Frontend/src/components/ui/RadioGroup.tsx` 一行）：始终受控，`value ?? ''` 空串占位表示「未选择」。封装层一处改动，测评/挑战/阅读题所有选项组同愈；附注释说明原因。
+
+### 验收（开发自测）
+- [x] 复现脚本 `Frontend/e2e/repro-t016.mjs`（真实 API + 前端）：连续两题点同一下标选项，「下一个」均正常解禁——通过
+- [x] `npm run build` 通过
+- [ ] 周密复验（status → testing）
+
+---
+
 ## 2026-07-25 — I4 顾言验收（T-013 / T-014 / T-015）
 
 **验收结论：通过，I4 闭环。**
