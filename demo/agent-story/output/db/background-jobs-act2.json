@@ -1,0 +1,12 @@
+[
+  {
+    "Id": 2,
+    "JobType": "Planner",
+    "Status": "Completed",
+    "IdempotencyKey": "planner:16515d4a-8d36-4d7b-b525-34b97003e2fe:20260728",
+    "CreatedAt": "2026-07-28T16:09:03.446893+00:00",
+    "StartedAt": "2026-07-28T16:09:05.470074+00:00",
+    "ProcessedAt": "2026-07-28T16:09:05.650769+00:00",
+    "RetryCount": 0
+  }
+]

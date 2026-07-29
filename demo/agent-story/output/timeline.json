@@ -1,0 +1,1024 @@
+[
+  {
+    "seq": 1,
+    "ts": "2026-07-29T00:08:09",
+    "story": "序幕",
+    "actor": "系统",
+    "action": "演示环境就绪",
+    "detail": "API=http://localhost:5108 DB=nextword_demo LLM=qwen-plus（经 :5299 记录代理）"
+  },
+  {
+    "seq": 2,
+    "ts": "2026-07-29T00:08:10",
+    "story": "Day 1 上午",
+    "actor": "林晓",
+    "action": "登录账号（已注册）",
+    "detail": "linxiao@demo.nextword.local"
+  },
+  {
+    "seq": 3,
+    "ts": "2026-07-29T00:08:10",
+    "story": "Day 1 上午",
+    "actor": "林晓",
+    "action": "开始首次水平测评",
+    "detail": "assessmentId=c4a717d2-ff95-47e1-a6ec-c1a2abd1f512"
+  },
+  {
+    "seq": 4,
+    "ts": "2026-07-29T00:08:31",
+    "story": "Day 1 上午",
+    "actor": "规则引擎",
+    "action": "测评第 1 块评分（产出题真实 LLM 四维评分）",
+    "detail": "带=A2→A2 表达分=58",
+    "data": {
+      "converged": false,
+      "blockIndex": 1,
+      "band": "A2",
+      "nextBand": "A2",
+      "blockExpressionScore": 58,
+      "final": null
+    }
+  },
+  {
+    "seq": 5,
+    "ts": "2026-07-29T00:08:42",
+    "story": "Day 1 上午",
+    "actor": "规则引擎",
+    "action": "测评第 2 块评分（产出题真实 LLM 四维评分）",
+    "detail": "带=A2→None 表达分=56",
+    "data": {
+      "converged": true,
+      "blockIndex": 2,
+      "band": "A2",
+      "nextBand": null,
+      "blockExpressionScore": 56,
+      "final": {
+        "overallLevel": "B2",
+        "expressionScore": 57,
+        "vocabularyReferenceScore": 0,
+        "readingReferenceScore": 0,
+        "vocabularyReferenceLevel": "A1",
+        "readingReferenceLevel": "A1",
+        "dimensions": {
+          "grammar": 3.7,
+          "natural": 2.5,
+          "vocabulary": 2.3,
+          "relevance": 2.7,
+          "topErrorTags": [
+            "'no big deal' 表示‘没什么大不了的’，通常用于淡化某事的重要性，本身不‘听起来难’；说它‘sounds difficult’逻辑矛盾，不符合该短语的语义和常见用法。",
+            "A2学习者应使用更基础、更贴合真实语境的搭配，如'sounds easy'或'I find it hard at first'。",
+            "'Nice one' 不是单个单词，而是固定表达（感叹语），常用于口语中表示赞许或祝贺，不能当作普通词汇‘the word nice one’来理解；句子中‘I look it up’的‘it’指代不清（‘nice one’是短语，不可数且非具体名词，不宜用‘it’直接指代）；A2学习者应避免将习语误作可查字典的独立‘word’；‘before I move on’虽语法正确，但在此语境中不够自然，母语者更常说‘before continuing’或‘before reading further’。",
+            "目标词'free expression'未在句子中出现；用户误将'free time'（空闲时间）与'free expression'（自由表达）混淆；该主题场景为'payment_services'（支付服务），但整段内容完全无关，涉及家庭探访，严重偏离主题。",
+            "动词 'realize' 在句中作名词使用（加了引号）不符合 A2 水平对词性基本用法的要求；原句 'I see it everywhere' 中 'it' 指代模糊，未体现 'realize' 作为动词的实际使用场景，缺乏真实语境；A2 学习者应能用简单句展示该词的核心含义（如：'I realized I forgot my homework'），而非仅谈论词频。"
+          ],
+          "comments": [
+            "表达力综合分 57/100：语法 3.7、自然度 2.5、词汇 2.3、相关度 2.7（各维度满分 5）。",
+            "主定级 B2 由表达力综合分决定；词汇识别 0、阅读 0 仅作参考，不影响定级。"
+          ]
+        },
+        "evaluationReportId": 1
+      }
+    }
+  },
+  {
+    "seq": 6,
+    "ts": "2026-07-29T00:08:42",
+    "story": "Day 1 上午",
+    "actor": "规则引擎",
+    "action": "测评收敛定级 + 写入 Score 内核",
+    "detail": "final={\"overallLevel\": \"B2\", \"expressionScore\": 57, \"vocabularyReferenceScore\": 0, \"readingReferenceScore\": 0, \"vocabularyReferenceLevel\": \"A1\", \"readingReferenceLevel\": \"A1\", \"dimensions\": {\"grammar\": 3.7, \"natural\": 2.5, \"vocabulary\": 2.3, \"relevance\": 2.7, \"topErrorTags\": [\"'no big deal' 表示‘没什么大不了的’，通常用于淡化某事的重要性，本身不‘听起来难’；说它‘sounds difficult’逻辑矛盾，不符合该短语的语义和常见用法。\", \"A2学习者应使用更基础、更贴合真实语境的搭配，如'sounds eas"
+  },
+  {
+    "seq": 7,
+    "ts": "2026-07-29T00:08:42",
+    "story": "Day 1 晚",
+    "actor": "系统",
+    "action": "测评收敛自动入队 EvaluationReport 后台任务",
+    "detail": "链路：Profiler Agent 生成画像 → Verifier Agent 核查 → 报告 v2 → 自动入队 Planner"
+  },
+  {
+    "seq": 8,
+    "ts": "2026-07-29T00:08:43",
+    "story": "幕后",
+    "actor": "系统",
+    "action": "用户 Id 解析",
+    "detail": "16515d4a-8d36-4d7b-b525-34b97003e2fe"
+  },
+  {
+    "seq": 9,
+    "ts": "2026-07-29T00:09:07",
+    "story": "Day 1 晚",
+    "actor": "Profiler Agent",
+    "action": "生成 WeaknessProfile 画像草稿（LLM 对话 P1，见 llm-conversations）",
+    "detail": "报告 schemaVersion=2，findings=4 条"
+  },
+  {
+    "seq": 10,
+    "ts": "2026-07-29T00:09:07",
+    "story": "Day 1 晚",
+    "actor": "Verifier Agent",
+    "action": "逐条机械核查 Finding（证据真实性/数值一致性/样本量）",
+    "detail": "Verified 4 条，存疑 0 条",
+    "data": {
+      "verified": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "questioned": []
+    }
+  },
+  {
+    "seq": 11,
+    "ts": "2026-07-29T00:09:07",
+    "story": "Day 1 晚",
+    "actor": "Planner Agent",
+    "action": "生成 7 日学习计划（只消费 Verified Finding，零 LLM）",
+    "detail": "主攻场景=['agree_disagree', 'daily_routine'] 今日词=8（含接触词 2）造句目标=['take issue with', 'counters', 'up in arms']",
+    "data": {
+      "active": true,
+      "startDate": "2026-07-28",
+      "dayIndex": 0,
+      "focusScenarios": [
+        "agree_disagree",
+        "daily_routine"
+      ],
+      "sourceFindingIds": [],
+      "articleIds": [
+        "ec1cbd48-fbd3-4f3b-8fef-64ff1ffe6176",
+        "51aabaf5-0fc2-4a37-a024-79fb1b943067",
+        "98d807bb-f1bf-4ed8-8b00-b87a7bbca2e5"
+      ],
+      "todayWordCount": 8,
+      "todayExposureCount": 2,
+      "todaySentenceTargets": [
+        "take issue with",
+        "counters",
+        "up in arms"
+      ]
+    }
+  },
+  {
+    "seq": 12,
+    "ts": "2026-07-29T00:09:07",
+    "story": "Day 1 晚",
+    "actor": "系统",
+    "action": "后台任务执行留痕（BackgroundJobs 表）",
+    "detail": "Planner:Completed"
+  },
+  {
+    "seq": 13,
+    "ts": "2026-07-29T00:09:07",
+    "story": "Day 2",
+    "actor": "林晓",
+    "action": "领取今日词队列（Plan 优先）",
+    "detail": "10 词：fromPlan 10、超带接触词 2、阶段分布=['recognized']",
+    "data": [
+      {
+        "lemma": "take issue with",
+        "fromPlan": true,
+        "isExposure": false,
+        "stage": "recognized",
+        "quizMode": "recognition"
+      },
+      {
+        "lemma": "counters",
+        "fromPlan": true,
+        "isExposure": false,
+        "stage": "recognized",
+        "quizMode": "recognition"
+      },
+      {
+        "lemma": "up in arms",
+        "fromPlan": true,
+        "isExposure": false,
+        "stage": "recognized",
+        "quizMode": "recognition"
+      },
+      {
+        "lemma": "irritated",
+        "fromPlan": true,
+        "isExposure": false,
+        "stage": "recognized",
+        "quizMode": "recognition"
+      },
+      {
+        "lemma": "weigh in",
+        "fromPlan": true,
+        "isExposure": false,
+        "stage": "recognized",
+        "quizMode": "recognition"
+      },
+      {
+        "lemma": "see eye to eye",
+        "fromPlan": true,
+        "isExposure": false,
+        "stage": "recognized",
+        "quizMode": "recognition"
+      },
+      {
+        "lemma": "blow off steam",
+        "fromPlan": true,
+        "isExposure": false,
+        "stage": "recognized",
+        "quizMode": "recognition"
+      },
+      {
+        "lemma": "that rings true",
+        "fromPlan": true,
+        "isExposure": false,
+        "stage": "recognized",
+        "quizMode": "recognition"
+      },
+      {
+        "lemma": "consequently",
+        "fromPlan": true,
+        "isExposure": true,
+        "stage": "recognized",
+        "quizMode": "recognition"
+      },
+      {
+        "lemma": "ambiguous",
+        "fromPlan": true,
+        "isExposure": true,
+        "stage": "recognized",
+        "quizMode": "recognition"
+      }
+    ]
+  },
+  {
+    "seq": 14,
+    "ts": "2026-07-29T00:09:07",
+    "story": "Day 2",
+    "actor": "林晓",
+    "action": "背词作答：take issue with",
+    "detail": "mode=recognition 正确=False 阶段=recognized→下次 recognition"
+  },
+  {
+    "seq": 15,
+    "ts": "2026-07-29T00:09:07",
+    "story": "Day 2",
+    "actor": "林晓",
+    "action": "背词作答：counters",
+    "detail": "mode=recognition 正确=False 阶段=recognized→下次 recognition"
+  },
+  {
+    "seq": 16,
+    "ts": "2026-07-29T00:09:07",
+    "story": "Day 2",
+    "actor": "林晓",
+    "action": "背词作答：up in arms",
+    "detail": "mode=recognition 正确=False 阶段=recognized→下次 recognition"
+  },
+  {
+    "seq": 17,
+    "ts": "2026-07-29T00:09:07",
+    "story": "Day 2",
+    "actor": "林晓",
+    "action": "背词作答：irritated",
+    "detail": "mode=recognition 正确=False 阶段=recognized→下次 recognition"
+  },
+  {
+    "seq": 18,
+    "ts": "2026-07-29T00:09:07",
+    "story": "Day 2",
+    "actor": "林晓",
+    "action": "背词作答：weigh in",
+    "detail": "mode=recognition 正确=False 阶段=recognized→下次 recognition"
+  },
+  {
+    "seq": 19,
+    "ts": "2026-07-29T00:09:14",
+    "story": "Day 2",
+    "actor": "林晓",
+    "action": "造句（正常期）：take issue with",
+    "detail": "「Although take issue with sounds difficult, I still try to use it in my…」评分 2/1/2/4 档=C"
+  },
+  {
+    "seq": 20,
+    "ts": "2026-07-29T00:09:19",
+    "story": "Day 2",
+    "actor": "林晓",
+    "action": "造句（正常期）：counters",
+    "detail": "「When I write emails to foreign colleagues, I use counters carefully, b…」评分 2/1/1/2 档=D"
+  },
+  {
+    "seq": 21,
+    "ts": "2026-07-29T00:09:19",
+    "story": "Day 2",
+    "actor": "林晓",
+    "action": "阅读推荐文章：Digital Privacy Basics",
+    "detail": "fromPlan=True 难度=B2"
+  },
+  {
+    "seq": 22,
+    "ts": "2026-07-29T00:09:24",
+    "story": "Day 2",
+    "actor": "林晓",
+    "action": "点词查义：Digital",
+    "detail": "释义="
+  },
+  {
+    "seq": 23,
+    "ts": "2026-07-29T00:09:24",
+    "story": "Day 3",
+    "actor": "林晓",
+    "action": "领取今日词队列（Plan 优先）",
+    "detail": "10 词：fromPlan 10、超带接触词 2、阶段分布=['recognized']",
+    "data": [
+      {
+        "lemma": "take issue with",
+        "fromPlan": true,
+        "isExposure": false,
+        "stage": "recognized",
+        "quizMode": "recognition"
+      },
+      {
+        "lemma": "counters",
+        "fromPlan": true,
+        "isExposure": false,
+        "stage": "recognized",
+        "quizMode": "recognition"
+      },
+      {
+        "lemma": "up in arms",
+        "fromPlan": true,
+        "isExposure": false,
+        "stage": "recognized",
+        "quizMode": "recognition"
+      },
+      {
+        "lemma": "irritated",
+        "fromPlan": true,
+        "isExposure": false,
+        "stage": "recognized",
+        "quizMode": "recognition"
+      },
+      {
+        "lemma": "weigh in",
+        "fromPlan": true,
+        "isExposure": false,
+        "stage": "recognized",
+        "quizMode": "recognition"
+      },
+      {
+        "lemma": "see eye to eye",
+        "fromPlan": true,
+        "isExposure": false,
+        "stage": "recognized",
+        "quizMode": "recognition"
+      },
+      {
+        "lemma": "blow off steam",
+        "fromPlan": true,
+        "isExposure": false,
+        "stage": "recognized",
+        "quizMode": "recognition"
+      },
+      {
+        "lemma": "that rings true",
+        "fromPlan": true,
+        "isExposure": false,
+        "stage": "recognized",
+        "quizMode": "recognition"
+      },
+      {
+        "lemma": "consequently",
+        "fromPlan": true,
+        "isExposure": true,
+        "stage": "recognized",
+        "quizMode": "recognition"
+      },
+      {
+        "lemma": "ambiguous",
+        "fromPlan": true,
+        "isExposure": true,
+        "stage": "recognized",
+        "quizMode": "recognition"
+      }
+    ]
+  },
+  {
+    "seq": 24,
+    "ts": "2026-07-29T00:09:25",
+    "story": "Day 3",
+    "actor": "林晓",
+    "action": "背词作答：take issue with",
+    "detail": "mode=recognition 正确=False 阶段=recognized→下次 recognition"
+  },
+  {
+    "seq": 25,
+    "ts": "2026-07-29T00:09:25",
+    "story": "Day 3",
+    "actor": "林晓",
+    "action": "背词作答：counters",
+    "detail": "mode=recognition 正确=False 阶段=recognized→下次 recognition"
+  },
+  {
+    "seq": 26,
+    "ts": "2026-07-29T00:09:25",
+    "story": "Day 3",
+    "actor": "林晓",
+    "action": "背词作答：up in arms",
+    "detail": "mode=recognition 正确=False 阶段=recognized→下次 recognition"
+  },
+  {
+    "seq": 27,
+    "ts": "2026-07-29T00:09:25",
+    "story": "Day 3",
+    "actor": "林晓",
+    "action": "背词作答：irritated",
+    "detail": "mode=recognition 正确=False 阶段=recognized→下次 recognition"
+  },
+  {
+    "seq": 28,
+    "ts": "2026-07-29T00:09:25",
+    "story": "Day 3",
+    "actor": "林晓",
+    "action": "背词作答：weigh in",
+    "detail": "mode=recognition 正确=False 阶段=recognized→下次 recognition"
+  },
+  {
+    "seq": 29,
+    "ts": "2026-07-29T00:09:29",
+    "story": "Day 3",
+    "actor": "林晓",
+    "action": "造句（正常期）：take issue with",
+    "detail": "「My colleague told me that take issue with is common in business emails…」评分 2/1/2/4 档=C"
+  },
+  {
+    "seq": 30,
+    "ts": "2026-07-29T00:09:33",
+    "story": "Day 3",
+    "actor": "林晓",
+    "action": "造句（正常期）：counters",
+    "detail": "「If I use counters in the right place, my sentences sound more natural,…」评分 4/3/2/3 档=C"
+  },
+  {
+    "seq": 31,
+    "ts": "2026-07-29T00:09:40",
+    "story": "Day 3",
+    "actor": "林晓",
+    "action": "自由表达（Day 3）",
+    "detail": "aiScore=65 档=B 文本=Today was busy but interesting. Although I had many meetings…"
+  },
+  {
+    "seq": 32,
+    "ts": "2026-07-29T00:09:40",
+    "story": "Day 4",
+    "actor": "林晓",
+    "action": "领取今日词队列（Plan 优先）",
+    "detail": "10 词：fromPlan 10、超带接触词 2、阶段分布=['recognized']",
+    "data": [
+      {
+        "lemma": "take issue with",
+        "fromPlan": true,
+        "isExposure": false,
+        "stage": "recognized",
+        "quizMode": "recognition"
+      },
+      {
+        "lemma": "counters",
+        "fromPlan": true,
+        "isExposure": false,
+        "stage": "recognized",
+        "quizMode": "recognition"
+      },
+      {
+        "lemma": "up in arms",
+        "fromPlan": true,
+        "isExposure": false,
+        "stage": "recognized",
+        "quizMode": "recognition"
+      },
+      {
+        "lemma": "irritated",
+        "fromPlan": true,
+        "isExposure": false,
+        "stage": "recognized",
+        "quizMode": "recognition"
+      },
+      {
+        "lemma": "weigh in",
+        "fromPlan": true,
+        "isExposure": false,
+        "stage": "recognized",
+        "quizMode": "recognition"
+      },
+      {
+        "lemma": "see eye to eye",
+        "fromPlan": true,
+        "isExposure": false,
+        "stage": "recognized",
+        "quizMode": "recognition"
+      },
+      {
+        "lemma": "blow off steam",
+        "fromPlan": true,
+        "isExposure": false,
+        "stage": "recognized",
+        "quizMode": "recognition"
+      },
+      {
+        "lemma": "that rings true",
+        "fromPlan": true,
+        "isExposure": false,
+        "stage": "recognized",
+        "quizMode": "recognition"
+      },
+      {
+        "lemma": "consequently",
+        "fromPlan": true,
+        "isExposure": true,
+        "stage": "recognized",
+        "quizMode": "recognition"
+      },
+      {
+        "lemma": "ambiguous",
+        "fromPlan": true,
+        "isExposure": true,
+        "stage": "recognized",
+        "quizMode": "recognition"
+      }
+    ]
+  },
+  {
+    "seq": 33,
+    "ts": "2026-07-29T00:09:40",
+    "story": "Day 4",
+    "actor": "林晓",
+    "action": "背词作答：take issue with",
+    "detail": "mode=recognition 正确=False 阶段=recognized→下次 recognition"
+  },
+  {
+    "seq": 34,
+    "ts": "2026-07-29T00:09:40",
+    "story": "Day 4",
+    "actor": "林晓",
+    "action": "背词作答：counters",
+    "detail": "mode=recognition 正确=False 阶段=recognized→下次 recognition"
+  },
+  {
+    "seq": 35,
+    "ts": "2026-07-29T00:09:40",
+    "story": "Day 4",
+    "actor": "林晓",
+    "action": "背词作答：up in arms",
+    "detail": "mode=recognition 正确=False 阶段=recognized→下次 recognition"
+  },
+  {
+    "seq": 36,
+    "ts": "2026-07-29T00:09:40",
+    "story": "Day 4",
+    "actor": "林晓",
+    "action": "背词作答：irritated",
+    "detail": "mode=recognition 正确=False 阶段=recognized→下次 recognition"
+  },
+  {
+    "seq": 37,
+    "ts": "2026-07-29T00:09:40",
+    "story": "Day 4",
+    "actor": "林晓",
+    "action": "背词作答：weigh in",
+    "detail": "mode=recognition 正确=False 阶段=recognized→下次 recognition"
+  },
+  {
+    "seq": 38,
+    "ts": "2026-07-29T00:09:46",
+    "story": "Day 4",
+    "actor": "林晓",
+    "action": "造句（正常期）：take issue with",
+    "detail": "「Since I joined the new team, I have used take issue with many times, b…」评分 2/1/1/3 档=D"
+  },
+  {
+    "seq": 39,
+    "ts": "2026-07-29T00:09:53",
+    "story": "Day 4",
+    "actor": "林晓",
+    "action": "造句（正常期）：counters",
+    "detail": "「I keep counters on my study list, because I want to remember it when I…」评分 2/1/2/3 档=D"
+  },
+  {
+    "seq": 40,
+    "ts": "2026-07-29T00:09:53",
+    "story": "Day 4",
+    "actor": "林晓",
+    "action": "阅读推荐文章：Digital Privacy Basics",
+    "detail": "fromPlan=True 难度=B2"
+  },
+  {
+    "seq": 41,
+    "ts": "2026-07-29T00:09:53",
+    "story": "Day 4",
+    "actor": "林晓",
+    "action": "点词查义：Digital",
+    "detail": "释义="
+  },
+  {
+    "seq": 42,
+    "ts": "2026-07-29T00:09:53",
+    "story": "Day 4",
+    "actor": "系统",
+    "action": "行为基线形成",
+    "detail": "近 6 条造句连接词率约 1.5-2 个/句（because/although/when/since/if/that 等），分数平稳"
+  },
+  {
+    "seq": 43,
+    "ts": "2026-07-29T00:09:53",
+    "story": "Day 5",
+    "actor": "林晓",
+    "action": "领取今日词队列（Plan 优先）",
+    "detail": "10 词：fromPlan 10、超带接触词 2、阶段分布=['recognized']",
+    "data": [
+      {
+        "lemma": "take issue with",
+        "fromPlan": true,
+        "isExposure": false,
+        "stage": "recognized",
+        "quizMode": "recognition"
+      },
+      {
+        "lemma": "counters",
+        "fromPlan": true,
+        "isExposure": false,
+        "stage": "recognized",
+        "quizMode": "recognition"
+      },
+      {
+        "lemma": "up in arms",
+        "fromPlan": true,
+        "isExposure": false,
+        "stage": "recognized",
+        "quizMode": "recognition"
+      },
+      {
+        "lemma": "irritated",
+        "fromPlan": true,
+        "isExposure": false,
+        "stage": "recognized",
+        "quizMode": "recognition"
+      },
+      {
+        "lemma": "weigh in",
+        "fromPlan": true,
+        "isExposure": false,
+        "stage": "recognized",
+        "quizMode": "recognition"
+      },
+      {
+        "lemma": "see eye to eye",
+        "fromPlan": true,
+        "isExposure": false,
+        "stage": "recognized",
+        "quizMode": "recognition"
+      },
+      {
+        "lemma": "blow off steam",
+        "fromPlan": true,
+        "isExposure": false,
+        "stage": "recognized",
+        "quizMode": "recognition"
+      },
+      {
+        "lemma": "that rings true",
+        "fromPlan": true,
+        "isExposure": false,
+        "stage": "recognized",
+        "quizMode": "recognition"
+      },
+      {
+        "lemma": "consequently",
+        "fromPlan": true,
+        "isExposure": true,
+        "stage": "recognized",
+        "quizMode": "recognition"
+      },
+      {
+        "lemma": "ambiguous",
+        "fromPlan": true,
+        "isExposure": true,
+        "stage": "recognized",
+        "quizMode": "recognition"
+      }
+    ]
+  },
+  {
+    "seq": 44,
+    "ts": "2026-07-29T00:09:53",
+    "story": "Day 5",
+    "actor": "林晓",
+    "action": "背词作答：take issue with",
+    "detail": "mode=recognition 正确=False 阶段=recognized→下次 recognition"
+  },
+  {
+    "seq": 45,
+    "ts": "2026-07-29T00:09:53",
+    "story": "Day 5",
+    "actor": "林晓",
+    "action": "背词作答：counters",
+    "detail": "mode=recognition 正确=False 阶段=recognized→下次 recognition"
+  },
+  {
+    "seq": 46,
+    "ts": "2026-07-29T00:09:53",
+    "story": "Day 5",
+    "actor": "林晓",
+    "action": "背词作答：up in arms",
+    "detail": "mode=recognition 正确=False 阶段=recognized→下次 recognition"
+  },
+  {
+    "seq": 47,
+    "ts": "2026-07-29T00:09:53",
+    "story": "Day 5",
+    "actor": "林晓",
+    "action": "背词作答：irritated",
+    "detail": "mode=recognition 正确=False 阶段=recognized→下次 recognition"
+  },
+  {
+    "seq": 48,
+    "ts": "2026-07-29T00:09:53",
+    "story": "Day 5",
+    "actor": "林晓",
+    "action": "背词作答：weigh in",
+    "detail": "mode=recognition 正确=False 阶段=recognized→下次 recognition"
+  },
+  {
+    "seq": 49,
+    "ts": "2026-07-29T00:09:58",
+    "story": "Day 5",
+    "actor": "林晓",
+    "action": "造句（回避期·全简单句）：take issue with",
+    "detail": "「I used take issue with in my email today. My manager liked it.…」评分 2/1/2/4 档=C"
+  },
+  {
+    "seq": 50,
+    "ts": "2026-07-29T00:10:02",
+    "story": "Day 5",
+    "actor": "林晓",
+    "action": "造句（回避期·全简单句）：counters",
+    "detail": "「The word counters is hard for me. I wrote it five times.…」评分 4/3/2/5 档=C"
+  },
+  {
+    "seq": 51,
+    "ts": "2026-07-29T00:10:06",
+    "story": "Day 5",
+    "actor": "林晓",
+    "action": "造句（回避期·全简单句）：up in arms",
+    "detail": "「I saw up in arms in a report. It looked important.…」评分 2/1/1/3 档=D"
+  },
+  {
+    "seq": 52,
+    "ts": "2026-07-29T00:10:10",
+    "story": "Day 5",
+    "actor": "林晓",
+    "action": "自由表达（Day 5）",
+    "detail": "aiScore=50 档=D 文本=I wrote my weekly report today. It took me two hours. I was …"
+  },
+  {
+    "seq": 53,
+    "ts": "2026-07-29T00:10:10",
+    "story": "Day 6",
+    "actor": "林晓",
+    "action": "领取今日词队列（Plan 优先）",
+    "detail": "10 词：fromPlan 10、超带接触词 2、阶段分布=['recognized']",
+    "data": [
+      {
+        "lemma": "take issue with",
+        "fromPlan": true,
+        "isExposure": false,
+        "stage": "recognized",
+        "quizMode": "recognition"
+      },
+      {
+        "lemma": "counters",
+        "fromPlan": true,
+        "isExposure": false,
+        "stage": "recognized",
+        "quizMode": "recognition"
+      },
+      {
+        "lemma": "up in arms",
+        "fromPlan": true,
+        "isExposure": false,
+        "stage": "recognized",
+        "quizMode": "recognition"
+      },
+      {
+        "lemma": "irritated",
+        "fromPlan": true,
+        "isExposure": false,
+        "stage": "recognized",
+        "quizMode": "recognition"
+      },
+      {
+        "lemma": "weigh in",
+        "fromPlan": true,
+        "isExposure": false,
+        "stage": "recognized",
+        "quizMode": "recognition"
+      },
+      {
+        "lemma": "see eye to eye",
+        "fromPlan": true,
+        "isExposure": false,
+        "stage": "recognized",
+        "quizMode": "recognition"
+      },
+      {
+        "lemma": "blow off steam",
+        "fromPlan": true,
+        "isExposure": false,
+        "stage": "recognized",
+        "quizMode": "recognition"
+      },
+      {
+        "lemma": "that rings true",
+        "fromPlan": true,
+        "isExposure": false,
+        "stage": "recognized",
+        "quizMode": "recognition"
+      },
+      {
+        "lemma": "consequently",
+        "fromPlan": true,
+        "isExposure": true,
+        "stage": "recognized",
+        "quizMode": "recognition"
+      },
+      {
+        "lemma": "ambiguous",
+        "fromPlan": true,
+        "isExposure": true,
+        "stage": "recognized",
+        "quizMode": "recognition"
+      }
+    ]
+  },
+  {
+    "seq": 54,
+    "ts": "2026-07-29T00:10:10",
+    "story": "Day 6",
+    "actor": "林晓",
+    "action": "背词作答：take issue with",
+    "detail": "mode=recognition 正确=False 阶段=recognized→下次 recognition"
+  },
+  {
+    "seq": 55,
+    "ts": "2026-07-29T00:10:10",
+    "story": "Day 6",
+    "actor": "林晓",
+    "action": "背词作答：counters",
+    "detail": "mode=recognition 正确=False 阶段=recognized→下次 recognition"
+  },
+  {
+    "seq": 56,
+    "ts": "2026-07-29T00:10:10",
+    "story": "Day 6",
+    "actor": "林晓",
+    "action": "背词作答：up in arms",
+    "detail": "mode=recognition 正确=False 阶段=recognized→下次 recognition"
+  },
+  {
+    "seq": 57,
+    "ts": "2026-07-29T00:10:10",
+    "story": "Day 6",
+    "actor": "林晓",
+    "action": "背词作答：irritated",
+    "detail": "mode=recognition 正确=False 阶段=recognized→下次 recognition"
+  },
+  {
+    "seq": 58,
+    "ts": "2026-07-29T00:10:10",
+    "story": "Day 6",
+    "actor": "林晓",
+    "action": "背词作答：weigh in",
+    "detail": "mode=recognition 正确=False 阶段=recognized→下次 recognition"
+  },
+  {
+    "seq": 59,
+    "ts": "2026-07-29T00:10:15",
+    "story": "Day 6",
+    "actor": "林晓",
+    "action": "造句（回避期·全简单句）：take issue with",
+    "detail": "「My colleague used take issue with in a meeting. I noted it down.…」评分 2/1/2/4 档=C"
+  },
+  {
+    "seq": 60,
+    "ts": "2026-07-29T00:10:21",
+    "story": "Day 6",
+    "actor": "林晓",
+    "action": "造句（回避期·全简单句）：counters",
+    "detail": "「I tried counters in a short message. It felt strange.…」评分 2/1/1/3 档=D"
+  },
+  {
+    "seq": 61,
+    "ts": "2026-07-29T00:10:26",
+    "story": "Day 6",
+    "actor": "林晓",
+    "action": "造句（回避期·全简单句）：up in arms",
+    "detail": "「This word up in arms is useful. I will keep it in mind.…」评分 3/1/2/4 档=D"
+  },
+  {
+    "seq": 62,
+    "ts": "2026-07-29T00:10:29",
+    "story": "Day 6",
+    "actor": "林晓",
+    "action": "自由表达（Day 6）",
+    "detail": "aiScore=55 档=C 文本=Today was hard. I wrote three emails. They were short. I use…"
+  },
+  {
+    "seq": 63,
+    "ts": "2026-07-29T00:10:29",
+    "story": "Day 6",
+    "actor": "系统",
+    "action": "回避期数据落库（规则引擎沉默记录，无即时反馈）",
+    "detail": "近 6 条造句零复杂连接词；分数未崩（简单句语法仍正确）——传统产品盲区"
+  },
+  {
+    "seq": 64,
+    "ts": "2026-07-29T00:10:29",
+    "story": "Day 7",
+    "actor": "规则引擎",
+    "action": "日级指标筛查（零 LLM；剧本以手动端点调整触发时机）",
+    "detail": "triggered=True signals=['avoidance']"
+  },
+  {
+    "seq": 65,
+    "ts": "2026-07-29T00:10:37",
+    "story": "Day 7",
+    "actor": "Insight Agent",
+    "action": "细读近 20 条产出原文，判定瓶颈性质（LLM 对话 P2）",
+    "detail": "nature=VocabularyInsufficient replanTriggered=True 证据=5 条；结论：频繁误用目标词汇（如将counters当作‘要点’‘连接词’‘词语’，up in arms当作可数名词，take issue with无宾语硬套），暴露核心词义理解缺失与基础搭配库严重不足",
+    "data": {
+      "found": true,
+      "nature": "VocabularyInsufficient",
+      "signals": "avoidance",
+      "statement": "频繁误用目标词汇（如将counters当作‘要点’‘连接词’‘词语’，up in arms当作可数名词，take issue with无宾语硬套），暴露核心词义理解缺失与基础搭配库严重不足",
+      "evidenceLogIds": [
+        "1e527e7d-c830-4c1b-ac35-ca3817539501",
+        "943f66ea-470c-45ee-aa05-6d544fb7eb13",
+        "93743d4a-c7f1-420d-acd2-a9924ccd7422",
+        "509ae9da-c457-426b-b2b7-f5b8de672559",
+        "bc51da58-cad3-4ed6-a680-598e7d73b639"
+      ],
+      "replanTriggered": true,
+      "createdAt": "2026-07-28T16:10:35.775791+00:00"
+    }
+  },
+  {
+    "seq": 66,
+    "ts": "2026-07-29T00:11:02",
+    "story": "Day 7",
+    "actor": "Planner Agent",
+    "action": "重规划：当日 Plan 原地重建（force）",
+    "detail": "新主攻场景=['agree_disagree'] 造句目标=['draw the line', 'back up', 'see eye to eye']",
+    "data": {
+      "active": true,
+      "startDate": "2026-07-28",
+      "dayIndex": 0,
+      "focusScenarios": [
+        "agree_disagree"
+      ],
+      "sourceFindingIds": [
+        9
+      ],
+      "articleIds": [
+        "ec1cbd48-fbd3-4f3b-8fef-64ff1ffe6176",
+        "51aabaf5-0fc2-4a37-a024-79fb1b943067",
+        "98d807bb-f1bf-4ed8-8b00-b87a7bbca2e5"
+      ],
+      "todayWordCount": 8,
+      "todayExposureCount": 2,
+      "todaySentenceTargets": [
+        "draw the line",
+        "back up",
+        "see eye to eye"
+      ]
+    }
+  },
+  {
+    "seq": 67,
+    "ts": "2026-07-29T00:11:02",
+    "story": "Day 7",
+    "actor": "Profiler Agent",
+    "action": "画像重生成（assessmentId=null，对话 P3）",
+    "detail": "findings=6 条"
+  },
+  {
+    "seq": 68,
+    "ts": "2026-07-29T00:12:15",
+    "story": "终评",
+    "actor": "系统",
+    "action": "全部快照与数据库留痕导出完成",
+    "detail": "见 output/api-snapshots 与 output/db"
+  },
+  {
+    "seq": 69,
+    "ts": "2026-07-29T00:12:15",
+    "story": "终评",
+    "actor": "系统",
+    "action": "剧本执行完毕",
+    "detail": "事件 68 条（finalize 模式补齐）"
+  }
+]

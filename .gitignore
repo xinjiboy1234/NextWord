@@ -25,3 +25,7 @@ Frontend/.vite/
 # Git worktrees
 .worktrees/
 Backend/Scripts/wordlist-work/
+
+# Report tooling
+report/.venv/
+~$*.pptx

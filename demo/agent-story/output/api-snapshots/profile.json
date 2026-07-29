@@ -1,0 +1,29 @@
+{
+  "userId": "16515d4a-8d36-4d7b-b525-34b97003e2fe",
+  "email": "linxiao@demo.nextword.local",
+  "displayName": "林晓",
+  "overallLevel": "B2",
+  "vocabLevel": "A1",
+  "spellingLevel": "A1",
+  "sentenceLevel": "B2",
+  "readingLevel": "A1",
+  "streakDays": 1,
+  "lastStudyDate": "2026-07-29",
+  "hasCompletedInitialAssessment": true,
+  "isUpgradeCandidate": false,
+  "totalLearned": 5,
+  "dueReviews": 0,
+  "pendingReviewCount": 0,
+  "totalLogs": 25,
+  "accuracyPercent": 0,
+  "recentHistory": [
+    {
+      "id": "f93d1501-3a9c-4ec1-8aa1-4fc3474d8786",
+      "fromLevel": "A1",
+      "toLevel": "B2",
+      "reason": "Initial",
+      "changedAt": "2026-07-28T16:08:42.846163+00:00"
+    }
+  ],
+  "llmSettings": null
+}

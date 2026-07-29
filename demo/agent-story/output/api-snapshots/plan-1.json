@@ -1,0 +1,22 @@
+{
+  "active": true,
+  "startDate": "2026-07-28",
+  "dayIndex": 0,
+  "focusScenarios": [
+    "agree_disagree",
+    "daily_routine"
+  ],
+  "sourceFindingIds": [],
+  "articleIds": [
+    "ec1cbd48-fbd3-4f3b-8fef-64ff1ffe6176",
+    "51aabaf5-0fc2-4a37-a024-79fb1b943067",
+    "98d807bb-f1bf-4ed8-8b00-b87a7bbca2e5"
+  ],
+  "todayWordCount": 8,
+  "todayExposureCount": 2,
+  "todaySentenceTargets": [
+    "take issue with",
+    "counters",
+    "up in arms"
+  ]
+}

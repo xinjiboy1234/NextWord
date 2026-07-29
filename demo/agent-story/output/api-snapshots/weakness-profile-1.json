@@ -1,0 +1,97 @@
+{
+  "id": 1,
+  "assessmentId": "c4a717d2-ff95-47e1-a6ec-c1a2abd1f512",
+  "createdAt": "2026-07-28T16:09:03.357003+00:00",
+  "findings": [
+    {
+      "id": 1,
+      "dimension": "skill",
+      "dimensionKey": "vocabulary",
+      "polarity": "weakness",
+      "statement": "目标词理解与使用严重偏离语义和语境，如将习语'no big deal'误判为‘听起来难’、混淆'free time'与'free expression'。",
+      "confidence": "medium",
+      "verification": "verified",
+      "verificationNote": "",
+      "evidence": [
+        {
+          "kind": "sentence_log",
+          "refId": "ff67736b-c76d-471c-8541-f45804ba0a58",
+          "metric": "vocabulary",
+          "op": "=",
+          "value": 2
+        },
+        {
+          "kind": "sentence_log",
+          "refId": "a16ec6e5-90c2-4271-a4ca-ac614f26fb37",
+          "metric": "vocabulary",
+          "op": "=",
+          "value": 3
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "dimension": "skill",
+      "dimensionKey": "relevance",
+      "polarity": "weakness",
+      "statement": "任务响应严重偏离指定场景与目标词，如在支付服务场景中描述家庭探访、在购物任务中谈论工作演讲。",
+      "confidence": "medium",
+      "verification": "verified",
+      "verificationNote": "",
+      "evidence": [
+        {
+          "kind": "sentence_log",
+          "refId": "a4649db2-ff78-4d74-b983-b2fa429b12ab",
+          "metric": "relevance",
+          "op": "=",
+          "value": 1
+        },
+        {
+          "kind": "sentence_log",
+          "refId": "a16ec6e5-90c2-4271-a4ca-ac614f26fb37",
+          "metric": "relevance",
+          "op": "=",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "dimension": "skill",
+      "dimensionKey": "natural",
+      "polarity": "weakness",
+      "statement": "固定表达与搭配使用不自然，如将'Nice one'当作可查字典的单词、用'before I move on'替代更地道的'before continuing'。",
+      "confidence": "low",
+      "verification": "verified",
+      "verificationNote": "",
+      "evidence": [
+        {
+          "kind": "sentence_log",
+          "refId": "6b9a828a-3462-4793-a2d4-411fc8bec9fd",
+          "metric": "natural",
+          "op": "=",
+          "value": 2
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "dimension": "skill",
+      "dimensionKey": "grammar",
+      "polarity": "weakness",
+      "statement": "词性误用频发，如将动词'realize'加引号作名词使用，违反A2对基本词类功能的认知要求。",
+      "confidence": "low",
+      "verification": "verified",
+      "verificationNote": "",
+      "evidence": [
+        {
+          "kind": "sentence_log",
+          "refId": "09d93c53-66e9-4f08-8ce4-41fafbf0e11e",
+          "metric": "grammar",
+          "op": "=",
+          "value": 3
+        }
+      ]
+    }
+  ]
+}

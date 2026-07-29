@@ -1,0 +1,23 @@
+[
+  {
+    "Id": "8c3454f8-035b-40fc-bd30-d54cace87812",
+    "AiScore": 65,
+    "OverallGrade": "B",
+    "Timestamp": "2026-07-28T16:09:40.073532+00:00",
+    "UserText": "Today was busy but interesting. Although I had many meetings, I still finished my weekly report on time, because I planned my morning carefully. When my manager read it, she said my English was getting better. I felt encouraged, so I will keep writing in English every day."
+  },
+  {
+    "Id": "89e0e932-f21b-4842-9537-e61e2dcfed46",
+    "AiScore": 50,
+    "OverallGrade": "D",
+    "Timestamp": "2026-07-28T16:10:10.841167+00:00",
+    "UserText": "I wrote my weekly report today. It took me two hours. I was tired. My manager asked for changes. I felt bad. I will try again tomorrow."
+  },
+  {
+    "Id": "09b1ff1a-fec8-494b-8ba5-933b31e2fc1e",
+    "AiScore": 55,
+    "OverallGrade": "C",
+    "Timestamp": "2026-07-28T16:10:29.845442+00:00",
+    "UserText": "Today was hard. I wrote three emails. They were short. I used easy words. I did not want to make mistakes. My colleague helped me once. I went home late."
+  }
+]

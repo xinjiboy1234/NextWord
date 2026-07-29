@@ -1,0 +1,61 @@
+{
+  "user": {
+    "displayName": "林晓",
+    "email": "linxiao@demo.nextword.local",
+    "password": "Linxiao#2026"
+  },
+  "persona": "28 岁外企行政专员，约 B1：语法基本正确、连接词使用自然、词汇普通；阅读偏弱。第 5 天起因英文周报压力产出退化回避复杂句。",
+  "assessment": {
+    "note": "产出题答案带 {word} 占位（提示造句题用题目 targetWord 填充）；情境表达题不带占位直接使用。识别题策略 = 固定选第 1 项（阅读偏弱人设，识别分不参与定级）。",
+    "sentenceTemplates": [
+      "Although {word} sounds difficult, I still try to use it, because practice makes perfect.",
+      "When I read English articles, I often see the word {word}, so I look it up before I move on.",
+      "My teacher says that {word} is very useful, and I agree because I see it everywhere.",
+      "If I want to improve my English, I must remember words like {word} whenever I study.",
+      "Since last month, I have tried to use {word} in my emails, although it still feels unnatural.",
+      "I wrote down {word} in my notebook, because I always forget it when I need it."
+    ],
+    "scenarioTexts": [
+      "Last week I gave a short talk at work. Although I was nervous, I prepared well because the topic mattered to me. When I finished, my manager said that my ideas were clear. I felt proud of myself.",
+      "Yesterday my friend missed the bus, so he was late for class. Because the traffic was heavy, he decided to walk. When he arrived, the teacher had already started, but she smiled and let him in.",
+      "If I have free time this weekend, I will visit my grandmother, because she lives alone. Although the trip is long, I always enjoy it. We usually cook together while we talk about family news."
+    ],
+    "recognitionStrategy": "always-index-0"
+  },
+  "sentencePractice": {
+    "note": "phase1 = Day2-4 风格正常期（每句含 1-2 个复杂连接词，回避信号的前半段基线）；phase2 = Day5-6 回避期（零复杂连接词简单句，回避信号的后半段）。targetWord 由驱动脚本从当日 Plan 造句目标/每日词中动态取，填充 {word}。",
+    "phase1": [
+      "Although {word} sounds difficult, I still try to use it in my weekly report, because my manager cares about clear writing.",
+      "When I write emails to foreign colleagues, I use {word} carefully, because the wrong word can confuse the reader.",
+      "My colleague told me that {word} is common in business emails, so I practice it whenever I write a report.",
+      "If I use {word} in the right place, my sentences sound more natural, although I still make mistakes sometimes.",
+      "Since I joined the new team, I have used {word} many times, because our reports need formal language.",
+      "I keep {word} on my study list, because I want to remember it when I write the next weekly summary."
+    ],
+    "phase2": [
+      "I used {word} in my email today. My manager liked it.",
+      "The word {word} is hard for me. I wrote it five times.",
+      "I saw {word} in a report. It looked important.",
+      "My colleague used {word} in a meeting. I noted it down.",
+      "I tried {word} in a short message. It felt strange.",
+      "This word {word} is useful. I will keep it in mind."
+    ]
+  },
+  "freeExpressions": [
+    {
+      "day": "Day 3",
+      "text": "Today was busy but interesting. Although I had many meetings, I still finished my weekly report on time, because I planned my morning carefully. When my manager read it, she said my English was getting better. I felt encouraged, so I will keep writing in English every day."
+    },
+    {
+      "day": "Day 5",
+      "text": "I wrote my weekly report today. It took me two hours. I was tired. My manager asked for changes. I felt bad. I will try again tomorrow."
+    },
+    {
+      "day": "Day 6",
+      "text": "Today was hard. I wrote three emails. They were short. I used easy words. I did not want to make mistakes. My colleague helped me once. I went home late."
+    }
+  ],
+  "reading": {
+    "note": "Day 2 与 Day 4 各读 1 篇 Plan 推荐文章，查询 1 个生词；lookup 的具体词由驱动脚本从正文动态选取。"
+  }
+}

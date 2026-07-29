@@ -1,0 +1,149 @@
+{
+  "id": 2,
+  "assessmentId": null,
+  "createdAt": "2026-07-28T16:10:59.299373+00:00",
+  "findings": [
+    {
+      "id": 5,
+      "dimension": "skill",
+      "dimensionKey": "vocabulary",
+      "polarity": "weakness",
+      "statement": "高频混淆近义词与场景专用词，如将‘counters’（柜台/计数器）误作‘要点’‘连接词’或‘词语’",
+      "confidence": "high",
+      "verification": "verified",
+      "verificationNote": "",
+      "evidence": [
+        {
+          "kind": "sentence_log",
+          "refId": "1e527e7d-c830-4c1b-ac35-ca3817539501",
+          "metric": "vocabulary",
+          "op": "<=",
+          "value": 1
+        },
+        {
+          "kind": "sentence_log",
+          "refId": "93743d4a-c7f1-420d-acd2-a9924ccd7422",
+          "metric": "vocabulary",
+          "op": "<=",
+          "value": 2
+        },
+        {
+          "kind": "sentence_log",
+          "refId": "bc51da58-cad3-4ed6-a680-598e7d73b639",
+          "metric": "vocabulary",
+          "op": "<=",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "dimension": "skill",
+      "dimensionKey": "grammar",
+      "polarity": "weakness",
+      "statement": "固定短语动词时态错误频发，如‘take issue with’误用‘used take issue’而非‘took issue’",
+      "confidence": "medium",
+      "verification": "verified",
+      "verificationNote": "",
+      "evidence": [
+        {
+          "kind": "sentence_log",
+          "refId": "943f66ea-470c-45ee-aa05-6d544fb7eb13",
+          "metric": "grammar",
+          "op": "<=",
+          "value": 2
+        },
+        {
+          "kind": "sentence_log",
+          "refId": "b5746ab4-3262-4e9c-9701-c78484e14cb3",
+          "metric": "grammar",
+          "op": "<=",
+          "value": 2
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "dimension": "skill",
+      "dimensionKey": "natural",
+      "polarity": "weakness",
+      "statement": "习语使用脱离真实语境且结构残缺，如‘up in arms’单独出现、无主语无介词短语",
+      "confidence": "medium",
+      "verification": "verified",
+      "verificationNote": "",
+      "evidence": [
+        {
+          "kind": "sentence_log",
+          "refId": "3abc5f6f-139e-4b54-a44f-10caf78e2410",
+          "metric": "natural",
+          "op": "<=",
+          "value": 1
+        },
+        {
+          "kind": "sentence_log",
+          "refId": "61badb88-3da3-4976-8147-08ba2c0fd90e",
+          "metric": "natural",
+          "op": "<=",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "dimension": "skill",
+      "dimensionKey": "relevance",
+      "polarity": "weakness",
+      "statement": "任务场景严重偏离，如在payment_services场景中描述家庭探访，完全未使用目标词‘free expression’",
+      "confidence": "low",
+      "verification": "verified",
+      "verificationNote": "",
+      "evidence": [
+        {
+          "kind": "sentence_log",
+          "refId": "a16ec6e5-90c2-4271-a4ca-ac614f26fb37",
+          "metric": "relevance",
+          "op": "=",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "dimension": "scenario",
+      "dimensionKey": "agree_disagree",
+      "polarity": "weakness",
+      "statement": "同意与反对场景词汇覆盖极低，标注词76个仅掌握4个，正确率0%",
+      "confidence": "low",
+      "verification": "verified",
+      "verificationNote": "",
+      "evidence": [
+        {
+          "kind": "word_stats",
+          "refId": "agree_disagree",
+          "metric": "correctrate",
+          "op": "=",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "dimension": "reading",
+      "dimensionKey": "reading",
+      "polarity": "weakness",
+      "statement": "查词行为缺失，两轮阅读会话中平均查词次数为0",
+      "confidence": "low",
+      "verification": "verified",
+      "verificationNote": "",
+      "evidence": [
+        {
+          "kind": "reading_stats",
+          "refId": "reading",
+          "metric": "avglookupcount",
+          "op": "=",
+          "value": 0
+        }
+      ]
+    }
+  ]
+}

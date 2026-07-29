@@ -1,0 +1,106 @@
+[
+  {
+    "Id": 1,
+    "CreatedAt": "2026-07-28T16:09:03.357003+00:00",
+    "AssessmentId": "c4a717d2-ff95-47e1-a6ec-c1a2abd1f512",
+    "findings": [
+      {
+        "Dimension": "Skill",
+        "DimensionKey": "vocabulary",
+        "Polarity": "Weakness",
+        "Confidence": "Medium",
+        "Verification": "Verified",
+        "VerificationNote": "",
+        "Statement": "目标词理解与使用严重偏离语义和语境，如将习语'no big deal'误判为‘听起来难’、混淆'free time'与'free expression'。"
+      },
+      {
+        "Dimension": "Skill",
+        "DimensionKey": "relevance",
+        "Polarity": "Weakness",
+        "Confidence": "Medium",
+        "Verification": "Verified",
+        "VerificationNote": "",
+        "Statement": "任务响应严重偏离指定场景与目标词，如在支付服务场景中描述家庭探访、在购物任务中谈论工作演讲。"
+      },
+      {
+        "Dimension": "Skill",
+        "DimensionKey": "natural",
+        "Polarity": "Weakness",
+        "Confidence": "Low",
+        "Verification": "Verified",
+        "VerificationNote": "",
+        "Statement": "固定表达与搭配使用不自然，如将'Nice one'当作可查字典的单词、用'before I move on'替代更地道的'before continuing'。"
+      },
+      {
+        "Dimension": "Skill",
+        "DimensionKey": "grammar",
+        "Polarity": "Weakness",
+        "Confidence": "Low",
+        "Verification": "Verified",
+        "VerificationNote": "",
+        "Statement": "词性误用频发，如将动词'realize'加引号作名词使用，违反A2对基本词类功能的认知要求。"
+      }
+    ]
+  },
+  {
+    "Id": 2,
+    "CreatedAt": "2026-07-28T16:10:59.299373+00:00",
+    "AssessmentId": null,
+    "findings": [
+      {
+        "Dimension": "Skill",
+        "DimensionKey": "vocabulary",
+        "Polarity": "Weakness",
+        "Confidence": "High",
+        "Verification": "Verified",
+        "VerificationNote": "",
+        "Statement": "高频混淆近义词与场景专用词，如将‘counters’（柜台/计数器）误作‘要点’‘连接词’或‘词语’"
+      },
+      {
+        "Dimension": "Skill",
+        "DimensionKey": "grammar",
+        "Polarity": "Weakness",
+        "Confidence": "Medium",
+        "Verification": "Verified",
+        "VerificationNote": "",
+        "Statement": "固定短语动词时态错误频发，如‘take issue with’误用‘used take issue’而非‘took issue’"
+      },
+      {
+        "Dimension": "Skill",
+        "DimensionKey": "natural",
+        "Polarity": "Weakness",
+        "Confidence": "Medium",
+        "Verification": "Verified",
+        "VerificationNote": "",
+        "Statement": "习语使用脱离真实语境且结构残缺，如‘up in arms’单独出现、无主语无介词短语"
+      },
+      {
+        "Dimension": "Skill",
+        "DimensionKey": "relevance",
+        "Polarity": "Weakness",
+        "Confidence": "Low",
+        "Verification": "Verified",
+        "VerificationNote": "",
+        "Statement": "任务场景严重偏离，如在payment_services场景中描述家庭探访，完全未使用目标词‘free expression’"
+      },
+      {
+        "Dimension": "Scenario",
+        "DimensionKey": "agree_disagree",
+        "Polarity": "Weakness",
+        "Confidence": "Low",
+        "Verification": "Verified",
+        "VerificationNote": "",
+        "Statement": "同意与反对场景词汇覆盖极低，标注词76个仅掌握4个，正确率0%"
+      },
+      {
+        "Dimension": "Reading",
+        "DimensionKey": "reading",
+        "Polarity": "Weakness",
+        "Confidence": "Low",
+        "Verification": "Verified",
+        "VerificationNote": "",
+        "Statement": "查词行为缺失，两轮阅读会话中平均查词次数为0"
+      }
+    ]
+  }
+]

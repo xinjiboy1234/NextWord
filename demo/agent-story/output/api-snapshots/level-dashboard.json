@@ -1,0 +1,30 @@
+{
+  "overallLevel": "B2",
+  "vocabLevel": "A1",
+  "spellingLevel": "A1",
+  "sentenceLevel": "B2",
+  "readingLevel": "A1",
+  "hasCompletedInitialAssessment": true,
+  "upgradeCandidate": false,
+  "recentHistory": [
+    {
+      "id": "f93d1501-3a9c-4ec1-8aa1-4fc3474d8786",
+      "userId": "16515d4a-8d36-4d7b-b525-34b97003e2fe",
+      "fromLevel": "A1",
+      "toLevel": "B2",
+      "reason": "Initial",
+      "timestamp": "2026-07-28T16:08:42.846163+00:00",
+      "user": null
+    }
+  ],
+  "scores": {
+    "vocabulary": 57,
+    "reading": 57,
+    "writing": 57,
+    "spelling": null,
+    "overall": 57,
+    "difficultyBucket": "Intermediate",
+    "cefrDisplay": "B2",
+    "updatedAt": "2026-07-28T16:08:42.774358+00:00"
+  }
+}

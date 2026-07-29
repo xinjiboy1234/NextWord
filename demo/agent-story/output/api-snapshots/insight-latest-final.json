@@ -1,0 +1,15 @@
+{
+  "found": true,
+  "nature": "VocabularyInsufficient",
+  "signals": "avoidance",
+  "statement": "频繁误用目标词汇（如将counters当作‘要点’‘连接词’‘词语’，up in arms当作可数名词，take issue with无宾语硬套），暴露核心词义理解缺失与基础搭配库严重不足",
+  "evidenceLogIds": [
+    "1e527e7d-c830-4c1b-ac35-ca3817539501",
+    "943f66ea-470c-45ee-aa05-6d544fb7eb13",
+    "93743d4a-c7f1-420d-acd2-a9924ccd7422",
+    "509ae9da-c457-426b-b2b7-f5b8de672559",
+    "bc51da58-cad3-4ed6-a680-598e7d73b639"
+  ],
+  "replanTriggered": true,
+  "createdAt": "2026-07-28T16:10:35.775791+00:00"
+}

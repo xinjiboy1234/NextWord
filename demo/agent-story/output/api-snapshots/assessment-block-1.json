@@ -1,0 +1,33 @@
+{
+  "converged": true,
+  "blockIndex": 2,
+  "band": "A2",
+  "nextBand": null,
+  "blockExpressionScore": 56,
+  "final": {
+    "overallLevel": "B2",
+    "expressionScore": 57,
+    "vocabularyReferenceScore": 0,
+    "readingReferenceScore": 0,
+    "vocabularyReferenceLevel": "A1",
+    "readingReferenceLevel": "A1",
+    "dimensions": {
+      "grammar": 3.7,
+      "natural": 2.5,
+      "vocabulary": 2.3,
+      "relevance": 2.7,
+      "topErrorTags": [
+        "'no big deal' 表示‘没什么大不了的’，通常用于淡化某事的重要性，本身不‘听起来难’；说它‘sounds difficult’逻辑矛盾，不符合该短语的语义和常见用法。",
+        "A2学习者应使用更基础、更贴合真实语境的搭配，如'sounds easy'或'I find it hard at first'。",
+        "'Nice one' 不是单个单词，而是固定表达（感叹语），常用于口语中表示赞许或祝贺，不能当作普通词汇‘the word nice one’来理解；句子中‘I look it up’的‘it’指代不清（‘nice one’是短语，不可数且非具体名词，不宜用‘it’直接指代）；A2学习者应避免将习语误作可查字典的独立‘word’；‘before I move on’虽语法正确，但在此语境中不够自然，母语者更常说‘before continuing’或‘before reading further’。",
+        "目标词'free expression'未在句子中出现；用户误将'free time'（空闲时间）与'free expression'（自由表达）混淆；该主题场景为'payment_services'（支付服务），但整段内容完全无关，涉及家庭探访，严重偏离主题。",
+        "动词 'realize' 在句中作名词使用（加了引号）不符合 A2 水平对词性基本用法的要求；原句 'I see it everywhere' 中 'it' 指代模糊，未体现 'realize' 作为动词的实际使用场景，缺乏真实语境；A2 学习者应能用简单句展示该词的核心含义（如：'I realized I forgot my homework'），而非仅谈论词频。"
+      ],
+      "comments": [
+        "表达力综合分 57/100：语法 3.7、自然度 2.5、词汇 2.3、相关度 2.7（各维度满分 5）。",
+        "主定级 B2 由表达力综合分决定；词汇识别 0、阅读 0 仅作参考，不影响定级。"
+      ]
+    },
+    "evaluationReportId": 1
+  }
+}
