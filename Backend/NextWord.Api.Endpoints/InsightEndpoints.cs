@@ -9,7 +9,7 @@ namespace NextWord.Api.Endpoints;
 
 /// <summary>
 /// 瓶颈洞察端点（T-007）：手动跑指标筛查并在触发时入队 InsightAgent（幂等按日）+ 查询最新洞察。
-/// 洞察先服务重规划，不做用户可见展示；这里的只读查询供验收与调试。
+/// 只读查询自 T-019 起供前端「学习洞察」卡用户可见展示。
 /// </summary>
 public static class InsightEndpoints
 {

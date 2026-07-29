@@ -2,6 +2,48 @@
 
 按时间倒序记录需求、决策、实现与验收。
 
+## 2026-07-29 — I6：Agent 价值用户可见（T-018 计划卡 / T-019 洞察卡 / T-011 裁决）
+
+### 需求
+- 画像/计划/洞察闭环此前只在后台运转，用户看不到 Agent 的价值。顾言提两个体验闭环任务：Dashboard 展示「今日学习计划」与「学习洞察」；顺带裁决积压的 T-011。
+
+### 决策
+- **T-011 裁决 deferred**：新用户无学习数据时不编造场景信号（违背 Verified 证据原则），覆盖率兜底是诚实路径；T-017 演示已证明积累行为后自动演进为 Verified 场景驱动，接受现状。
+- 两张卡全部消费既有只读端点（`GET /api/planner/current`、`GET /api/insights/bottleneck/latest`），后端零改动（仅同步一条过时注释）；来源标注口径：`sourceFindingIds` 非空=个性化（Verified 画像驱动）、空=探索期（覆盖率兜底）。
+- 洞察卡措辞面向用户：7 类瓶颈性质中文名 + 人话解释（前端 NATURE_META 常量），不暴露 evidenceLogIds 等内部 id。
+
+### 实现（程实，前端纯增量）
+- `types/planner.ts`（三个接口）、`hooks/useLearningPlan.ts`（计划 + scenarios 中文名映射，映射失败回退原始 key）、`hooks/useBottleneckInsight.ts`（NATURE_META 7 类映射）、Dashboard 欢迎条与模块网格之间两卡、`styles/overrides.css` 少量样式。
+- 失败/加载中卡片不渲染（静默降级）；无计划=引导文案、无洞察=「状态良好」文案。
+
+### 验收（周密 2026-07-29，独立库 nextword_verify_i6，验完已删、dev 库未动）
+- [x] 无数据两态：计划卡引导文案、洞察卡「状态良好」（截图 case1）
+- [x] 有计划态：POST /api/planner/jobs 触发后卡片逐项与 API JSON 核对一致——场景中文名（agree_disagree→同意与反对）、第 1/7 天、带内 8+接触 2、造句目标、探索期徽章（截图 case2）
+- [x] 有洞察态：直插 AvoidancePattern 行 → 中文名+解释+statement+「已为你调整学习计划」徽章；DOM 泄漏检查通过（evidenceLogIds 不出现）（截图 case3）
+- [x] `npm run build` 通过；`dotnet test` 143 单测 + 6 集成全绿
+- 不足另开：T-020（.env 代理指向 8080 误导本地联调）、T-021（NU1903 Microsoft.OpenApi 高危漏洞）；非阻断观察：skip 测评用户计划卡文案语气待迭代
+
+---
+
+## 2026-07-28 — T-017：Agent 协作演示数据集《林晓的七天》
+
+### 需求
+- 此前演示看不到 Agent 的作用。要求：编一个故事做多轮操作演示 Agent 价值；**不改代码、不改数据**（定时任务触发时机可自行调整）；保留剧本、测试数据、Agent 对话与最终评价为独立数据集；以 time chart 呈现整个剧本；原 report/ 报告保留。
+
+### 决策与实现
+- 数据集 `demo/agent-story/`：`story.md` 剧本（虚拟用户林晓，7 天行为弧线：正常期 → 回避期 → Agent 介入）、`data/persona.json` 全部输入测试数据、`scripts/`（llm-proxy.py 记录代理 / run-story.py 驱动 / build-timeline.py 时间轴生成）、`output/`（69 事件 timeline.json、25 条 LLM 对话原文 jsonl+md、关键端点快照、关键表只读 dump、pg_dump、evaluation.md 终评）、`timeline.html` 交互式查看器（自包含单文件：故事日分组导航 + 角色过滤/搜索 + 缩略泳道总览 + 完整 LLM 对话气泡渲染 + 剧情节点↔对话双向跳转 + 键盘翻页）。
+- 零侵入演示方式：独立库 `nextword_demo` + 环境变量切 LLM 到 qwen-plus 并经 `:5299` 记录代理转发留痕；用户侧数据全部经公开 API 真实提交、真实 LLM 评分；数据库仅 SELECT 观测；日级筛查用公开手动端点 `POST /api/insights/bottleneck/jobs`（与每日自动筛查同一代码路径）。
+- 回避信号真实构造：前 6 条造句每句 1-2 个复杂连接词、后 6 条全简单句，由规则引擎零 LLM 捕获。
+
+### 验收（实测结果）
+- [x] 测评 2 块收敛定 B2（表达分 58/56，识别 0 分不干扰）；画像 4 Finding 全 Verified、报告 schemaVersion 2；Planner 首计划（新用户覆盖率兜底，接触词 2/10 全超带）
+- [x] Day 7 筛查 triggered=avoidance → Insight 独立定性 **VocabularyInsufficient**（未给信号盖章，5 条证据 id 全部真实属本人）→ 性质变化触发重规划：画像重生成 6 条（含场景维度）+ Plan 原地重建（LearningPlans 仍 1 行），Plan2 sourceFindingIds=[9] 精确消费 Verified 场景 Finding——兜底→Verified 驱动的演进完整呈现
+- [x] 任务链 EvaluationReport→Planner→BottleneckInsight→planner:replan 全部 Completed；LLM 25 次调用（画像/洞察各 1 次，幂等无浪费）、22.8k tokens
+- [x] timeline.html Playwright 无头渲染校验：94 节点 0 JS 错误；角色过滤、搜索、事件↔对话双向跳转（P1/P2/P3 三次 Agent 对话归属全部正确）实测通过
+- 偏差如实记录于 evaluation.md：洞察性质≠剧本预期（VocabularyInsufficient vs AvoidancePattern，反而展示定性权在 Agent）；背词作答 isCorrect=False 为驱动脚本以词形作答所致（recognition 按释义判对），不影响 Agent 链路
+
+---
+
 ## 2026-07-28 — T-016：选项 RadioGroup 非受控致跨题重选失效修复
 
 ### 需求
@@ -14,7 +56,7 @@
 ### 验收（开发自测）
 - [x] 复现脚本 `Frontend/e2e/repro-t016.mjs`（真实 API + 前端）：连续两题点同一下标选项，「下一个」均正常解禁——通过
 - [x] `npm run build` 通过
-- [ ] 周密复验（status → testing）
+- [x] 周密复验（2026-07-28）：复现脚本实测两题（friend/ambiguous）均点下标 0、「下一个」均正常解禁；`npm run build` 通过。status → done
 
 ---
 

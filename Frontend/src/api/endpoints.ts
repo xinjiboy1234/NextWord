@@ -42,4 +42,7 @@ export const endpoints = {
   challengeRecent: '/api/challenge/recent',
   levelDashboard: '/api/level/dashboard',
   levelHistory: '/api/level/history',
+  plannerCurrent: '/api/planner/current',
+  scenarios: '/api/scenarios',
+  insightBottleneckLatest: '/api/insights/bottleneck/latest',
 } as const

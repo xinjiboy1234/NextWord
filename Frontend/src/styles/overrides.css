@@ -103,6 +103,34 @@
 }
 .welcome-strip p { color: var(--muted); font-size: var(--text-sm); margin-top: var(--space-1); }
 
+/* T-018/T-019：首页信息卡（今日学习计划 / 学习洞察） */
+.dashboard-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+.dashboard-info-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+.dashboard-info-card-head h3 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-base);
+  font-weight: 540;
+  letter-spacing: -0.01em;
+}
+.dashboard-info-card-head h3 svg { color: var(--muted); }
+.dashboard-info-title { font-size: var(--text-sm); font-weight: 540; }
+.dashboard-info-meta { font-size: var(--text-sm); color: var(--muted); line-height: 1.5; }
+.dashboard-info-time { font-size: var(--text-xs); color: var(--meta); }
+.dashboard-info-empty { font-size: var(--text-sm); color: var(--muted); line-height: 1.5; }
+
 .upgrade-banner {
   display: flex;
   align-items: center;

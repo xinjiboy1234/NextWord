@@ -175,7 +175,7 @@ Worker 异常不拖垮宿主（`BackgroundServiceExceptionBehavior=Ignore`）。
 - **InsightAgent**（`BottleneckInsightService`，ILLMProvider 第 8 个方法 `GenerateBottleneckInsightAsync`）：取近 20 条 SentenceLogs **原文** + 当前生效 Plan 主攻方向细读，产出 `BottleneckInsights` 落库——瓶颈性质 7 分类（词汇量不足 / 会词但组织不成句 / 语法错误多 / 语法正确但表达单调 / 回避模式 / 中式搭配 / 安全词策略）+ 一句中文结论 + SentenceLog 证据引用（沿用画像证据纪律：编造/越权 id 持久化前机械过滤）；同日幂等（已有当日洞察直接返回，零 LLM）。
 - **性质变化判定**：与上一条洞察比对（Plan 主攻方向由最近一次洞察驱动，两者等价）——首次发现或性质不同 = 已变 → 事件驱动重规划：重生成画像（`WeaknessProfileService.GenerateAsync(assessmentId: null)`，幂等维度按日）→ 入队 force Planner；性质相同 → 仅记录（`ReplanTriggered=false`）。
 - **每周兜底**（`WeeklyReplanWorker`，24h 检查）：所有完成初测的存量用户按 ISO 周入队 force Planner（幂等键 `planner:weekly:{userId}:{yyyy}-W{ww}`）——补齐 T-006「无测评用户不获新 Plan」缺口。
-- **端点**：`POST /api/insights/bottleneck/jobs`（手动跑筛查，触发则入队，幂等按日）、`GET /api/insights/bottleneck/latest`（最新洞察，供验收调试；用户可见展示是后续迭代的非目标）。
+- **端点**：`POST /api/insights/bottleneck/jobs`（手动跑筛查，触发则入队，幂等按日）、`GET /api/insights/bottleneck/latest`（最新洞察；自 I6 T-019 起供前端「学习洞察」卡用户可见展示）。
 - Mock 洞察由信号与真实分数确定性推导性质，结论带 [Mock] 前缀。
 
 ### 5.17 词毕业四阶段生命周期（I4 T-014）
@@ -187,6 +187,12 @@ Worker 异常不拖垮宿主（`BackgroundServiceExceptionBehavior=Ignore`）。
 - **Planner 编排**：产出候选池（prompted_use 未确认、带内、utility 非 low）优先编入每日造句目标（见 §5.15）；确认过或已毕业的词不再重复编排。
 - **背词考察模式**：`/api/words/daily` 按阶段返回 `stage`/`quizMode`（认识=看词知义答释义，回忆及以后=看义想词答拼写）；`/api/learning/submit` 按 `mode` 判定正确性，响应带阶段与下次考察模式；前端 WordCard 随模式切换题面（看义想词模式隐藏单词、提交后揭示）并显示阶段徽标。
 - **存量映射**：幂等补丁 SQL 回填——SM-2 已成熟（RepeatCount≥2）→ recalled，掌握度按阶段派生；Development 删库重建下新关系默认 recognized。
+
+### 5.18 Agent 价值用户可见（I6 T-018/T-019）
+
+- **今日学习计划卡**（Dashboard）：消费 `GET /api/planner/current`——主攻场景中文名（经 `GET /api/scenarios` 映射）、第 x/7 天、今日带内词/接触词数、造句目标词、来源徽章（`sourceFindingIds` 非空=「个性化·依据你的弱点画像」，空=「探索期·积累数据后更精准」）；无计划显示测评引导文案。
+- **学习洞察卡**（Dashboard）：消费 `GET /api/insights/bottleneck/latest`——瓶颈性质中文名+人话解释（前端 `NATURE_META` 7 类映射）、Agent 结论、时间、「已为你调整学习计划」徽章（ReplanTriggered）；不暴露证据 id 等内部字段；无洞察显示「状态良好」文案。
+- 两卡均为前端纯增量（`hooks/useLearningPlan.ts` / `useBottleneckInsight.ts`），请求失败/加载中静默不渲染。
 
 ## 6. API 全量清单
 
@@ -264,7 +270,7 @@ Users、UserLlmSettings、Words、WordScenarios、WordDifficultyAnnotations、Di
 
 | 路径 | 页面 | 功能 |
 |---|---|---|
-| `/dashboard` | Dashboard | 5 个模块卡片（新词/拼写/造句/阅读/复习）+ 今日任务量 Badge |
+| `/dashboard` | Dashboard | 今日学习计划卡 + 学习洞察卡（I6）+ 5 个模块卡片（新词/拼写/造句/阅读/复习）+ 今日任务量 Badge |
 | `/learn` | WordCard | 按生命周期阶段切换考察模式（看词知义/看义想词）+ 阶段标识，SM-2 调度，Remembered/Forgot 自评只影响排程 |
 | `/spelling` | SpellingMode | 听写拼写 + 逐字母错误高亮 |
 | `/sentence` | SentenceStudio | 造句评分 / 自由表达 双 Tab |
