@@ -118,18 +118,22 @@ public sealed class SentenceService(
         string targetWord,
         string userSentence,
         string scene,
-        string userLevel,
+        string? userLevel,
         CancellationToken cancellationToken)
     {
         var llm = await llmFactory.GetForUserAsync(userId, cancellationToken);
         var explanationLanguage = ExplanationLanguageHelper.Resolve(
             null,
             sentenceRatingOptions.Value.ExplanationLanguage);
+        // T-027：评分尺子 = 用户当前水平带（UserProgress 投影，ScoreMapping 单一来源），
+        // 不再信任客户端传入的 userLevel（仅作无进度回退）
+        var scores = await scoreProfile.GetScoresAsync(userId, cancellationToken);
+        var ratingBand = RatingBandResolver.Resolve(scores, userLevel);
         var rating = await llm.RateSentenceAsync(new SentenceRatingRequest(
             userSentence.Trim(),
             targetWord.Trim(),
             string.IsNullOrWhiteSpace(scene) ? "life" : scene.Trim(),
-            string.IsNullOrWhiteSpace(userLevel) ? "A2" : userLevel.Trim(),
+            ratingBand,
             new LlmRequestOptions("grading-stable", "sentence_rating"),
             explanationLanguage), cancellationToken);
 

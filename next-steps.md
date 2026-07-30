@@ -31,7 +31,7 @@
 - [ ] staging 环境实际执行 backfill drill 并填记录表（原 T-005）
 - [x] 评估报告 LLM 结构化叙事（当前模板 + toolPrefetch）→ 已并入 T-005 完成：报告切换为 WeaknessProfile 已验证 Finding 列表
 - [ ] Annotation lookup singleflight
-- [ ] SentenceStudio 评分入参改传难度 bucket（原审计 follow-up）
+- [x] ~~SentenceStudio 评分入参改传难度 bucket（原审计 follow-up）~~ → 已并入 T-027 完成：评分带改由服务端从 UserProgress 投影解析（ScoreMapping 单一来源），客户端传带仅作无进度回退
 - [ ] 测试补齐：集成/E2E 覆盖率、负载测试、人工评测抽样（原 T-060/061/063/064）
 - [ ] E2E 纳入 CI（原 T-062）
 - [ ] OpenTelemetry 可观测性（原 T-065）

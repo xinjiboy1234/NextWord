@@ -86,6 +86,22 @@ public sealed class LlmMockProvider(IModelProfileResolver modelProfileResolver) 
                 : "Clear expression with usable sentence structure.");
         }
 
+        // T-027 挑战度口径：句长/连接词数明显低于水平带期望的「安全简单句」，
+        // 即使完全正确也压词汇维（≤3）、总评封顶 B；与水平带相称的简单句不受影响
+        var band = Enum.TryParse<CefrLevel>(request.UserLevel, ignoreCase: true, out var parsedBand) ? parsedBand : CefrLevel.A2;
+        if (IsBelowBandExpectation(sentence, band))
+        {
+            vocabulary = Math.Min(vocabulary, 3);
+            if (grade == "A")
+            {
+                grade = "B";
+            }
+
+            analysis.Add(useChinese
+                ? "句子相对你当前水平偏简单，尝试加入从句、连接词或更精确的表达。"
+                : "This sentence is simpler than your current level; try adding clauses, connectors, or more precise wording.");
+        }
+
         var suggestion = usesTarget
             ? useChinese ? "补充一个细节，让句子更具体。" : "Add one detail to make the sentence more specific."
             : useChinese ? "在句子中明确体现目标词的含义。" : "Make the target meaning explicit in your sentence.";
@@ -100,6 +116,37 @@ public sealed class LlmMockProvider(IModelProfileResolver modelProfileResolver) 
             analysis,
             average >= 4 ? DifficultyLevel.Intermediate : DifficultyLevel.Basic,
             suggestion));
+    }
+
+    /// <summary>T-027 各水平带的最低挑战度期望（句长词数 / 连接词数），按 CefrLevel 序号索引；两项都未达到视为安全简单句。</summary>
+    private static readonly (int MinWords, int MinConnectors)[] BandExpectations =
+    [
+        (3, 0), // A1
+        (4, 0), // A2
+        (6, 1), // B1
+        (9, 2), // B2
+        (11, 2), // C1
+        (13, 3), // C2
+    ];
+
+    private static readonly HashSet<string> Connectors = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "and", "but", "so", "because", "although", "though", "however", "moreover", "furthermore",
+        "therefore", "when", "while", "if", "which", "since", "unless", "after", "before", "also"
+    };
+
+    private static bool IsBelowBandExpectation(string sentence, CefrLevel band)
+    {
+        var (minWords, minConnectors) = BandExpectations[(int)band - 1]; // CefrLevel 从 A1=1 起
+        var tokens = sentence.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (tokens.Length >= minWords)
+        {
+            return false;
+        }
+
+        var connectors = tokens.Count(token =>
+            Connectors.Contains(token.Trim('.', ',', '!', '?', ';', ':', '"', '\'', '(', ')')));
+        return connectors < minConnectors;
     }
 
     public Task<VocabExtractResponse> ExtractVocabAsync(VocabExtractRequest request, CancellationToken cancellationToken)

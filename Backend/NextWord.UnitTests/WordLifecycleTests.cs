@@ -165,7 +165,7 @@ public class WordLifecycleTests
         var lowGradeWord = await SeedWordWithStageAsync(db, user.Id, "lowgradeword", WordLifecycleStage.PromptedUse);
 
         // 达标（A 档）自由表达中自发使用 → 毕业留痕（词 + FreeExpressionLog Id）
-        var passing = new FreeExpressionService(db, new StubLlmFactory(new StaticRatingLlm(Grade("A"))), RatingOptions());
+        var passing = new FreeExpressionService(db, new StubLlmFactory(new StaticRatingLlm(Grade("A"))), RatingOptions(), CreateScoreProfile(db));
         var log = await passing.RateAsync(user.Id, $"I want to {graduateWord.Lemma} every single day.", "A2", CancellationToken.None);
         var graduated = await GetRelationshipAsync(db, user.Id, graduateWord.Id);
         Assert.Equal(WordLifecycleStage.SpontaneousUse, graduated.LifecycleStage);
@@ -179,7 +179,7 @@ public class WordLifecycleTests
         Assert.Null(absent.GraduatedFreeExpressionLogId);
 
         // 评分不达标（C 档）即使出现也不毕业
-        var failing = new FreeExpressionService(db, new StubLlmFactory(new StaticRatingLlm(Grade("C"))), RatingOptions());
+        var failing = new FreeExpressionService(db, new StubLlmFactory(new StaticRatingLlm(Grade("C"))), RatingOptions(), CreateScoreProfile(db));
         await failing.RateAsync(user.Id, $"The {lowGradeWord.Lemma} appears here.", "A2", CancellationToken.None);
         var lowGrade = await GetRelationshipAsync(db, user.Id, lowGradeWord.Id);
         Assert.Equal(WordLifecycleStage.PromptedUse, lowGrade.LifecycleStage);

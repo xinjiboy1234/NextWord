@@ -50,7 +50,8 @@ public static class SentenceEndpoints
                 request.TargetWord,
                 request.UserSentence,
                 request.Scene ?? "life",
-                request.UserLevel ?? "A2",
+                // T-027：评分带由服务端从 UserProgress 解析，客户端 userLevel 仅作无进度回退
+                request.UserLevel,
                 ct);
 
             // T-022：用户主动练习的造句评分小步回写 Writing 维（测评/挑战路径不经过此端点）

@@ -2,6 +2,24 @@
 
 按时间倒序记录需求、决策、实现与验收。
 
+## 2026-07-30 — I7 T-027：造句/自由表达评分纳入相对水平挑战度（程实）
+
+### 需求
+- 菜鸟仿真发现：简单但正确的句子频繁拿 A/四维满分（如 B2 目标词下「It's healthy. Moreover, it's super cheap.」），评分只看正确性、奖励安全简单句，与愿景「干预安全词策略」相悖，也喂坏平台期信号。顾言定两条规则：评分手里的尺子 = 用户水平带；挑战度纳入评分口径（安全简单句词汇维 ≤3、总评封顶 B；高超带尝试不因难度扣分；与水平相称的简单句不受罚——菜鸟公平性，prompted_use 确认链路依赖 A/B 档）。
+- 顺带收口 next-steps 既有 follow-up「SentenceStudio 评分入参改传难度 bucket」。
+
+### 决策
+- **评分带单一来源**：新增 `RatingBandResolver`（Domain）——UserProgress 投影的 CefrDisplay（ScoreMapping 单一来源，含分数推出）优先 → 调用方显式传入的带（测评/挑战路径）→ 默认带 A2（匿名/无进度）。`SentenceService` / `FreeExpressionService` 在评分前从 `IScoreProfileService` 解析，两个评分端点不再写死 `?? "A2"`、不再信任客户端传带（仅作无进度回退）；测评/挑战显式传带行为不变。
+- **Prompt**：造句评分模板（自由表达共用同一模板）追加中文挑战度规则，四维与 overall_grade 都说明白；`LlmResponseParser` 不变。
+- **Mock 口径**：各水平带设最低句长/连接词数期望（A1 3/0、A2 4/0、B1 6/1、B2 9/2、C1 11/2、C2 13/3），句长与连接词数都未达到即视为安全简单句——词汇维压到 ≤3、总评 A→B 封顶，并追加中文提示；A1/A2 期望连接词为 0，菜鸟简单句永不触罚。
+
+### 实现
+- 后端：`Services/RatingBandResolver.cs`（新增）；`ISentenceService` / `IFreeExpressionService`（userLevel 改可空 + 注释口径）；`SentenceService` / `FreeExpressionService`（评分前解析带，后者新增 `IScoreProfileService` 注入）；`SentenceEndpoints` / `FreeExpressionEndpoints`（去掉 `?? "A2"`，传原值）；`LlmPromptFactory.BuildSentenceRatingPrompt`（挑战度规则段）；`LlmMockProvider.RateSentenceAsync`（带期望表 + 压分启发式）。
+- 测试：`RatingChallengeTests.cs` 7 例——Mock：B2 安全简单句词汇维 ≤3 且不拿 A、A2 相称简单句仍 B 及以上、B2 带内挑战句不压分；真实 PG：造句评分带取 UserProgress（B2）、无进度回退调用方带（B1）与默认带（A2）、自由表达带取 UserProgress（C1）；prompt 含挑战度规则断言。`WordLifecycleTests` 两处 `FreeExpressionService` 构造补注入。
+
+### 验证
+- `dotnet test`：164 单元 + 6 集成全绿（基线 157+6，净增 7）；前端 `npm install && npm run build` 通过（前端无改动——客户端传带降级为回退入参）。
+
 ## 2026-07-30 — I7 T-023：首次测评定级校准——CEFR 分带重排（程实）
 
 ### 需求

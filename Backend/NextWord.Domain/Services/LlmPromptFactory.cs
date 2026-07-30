@@ -45,6 +45,14 @@ public static class LlmPromptFactory
         - If this is free expression, evaluate the whole passage.
         - Write error_analysis and suggestion in {{explanationLanguageName}}.
         - Keep ai_revision in natural English as the corrected learner sentence.
+
+        挑战度规则（T-027，评分尺子是 User Level 对应的水平带，四维评分与 overall_grade 都适用）：
+        - 句子复杂度与用词和该水平带相称且正确，才可给 A 或各维度满分。
+        - 明显低于水平带的「安全简单句」（如 B2 用户只写主谓宾短句、只用基础词），即使完全正确：
+          vocabulary_score 不超过 3，overall_grade 最高为 B，不给满分。
+        - 高于水平带的尝试即使有错，不因难度本身额外扣分（错误照常扣），并在 suggestion 中鼓励这种挑战。
+        - 水平较低的用户写出与其水平相称的简单句，仍可正常得 B 或 A——不要惩罚符合其水平的简单表达。
+        - ai_revision 照旧给出改写建议，可适当示范更贴合水平带的表达。
         """;
     }
 

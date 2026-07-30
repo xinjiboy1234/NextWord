@@ -12,19 +12,23 @@ namespace NextWord.Infrastructure.Services;
 public sealed class FreeExpressionService(
     ApplicationDbContext db,
     IUserLlmProviderFactory llmFactory,
-    IOptions<LlmSentenceRatingOptions> sentenceRatingOptions) : IFreeExpressionService
+    IOptions<LlmSentenceRatingOptions> sentenceRatingOptions,
+    IScoreProfileService scoreProfile) : IFreeExpressionService
 {
-    public async Task<FreeExpressionLog> RateAsync(Guid userId, string userText, string userLevel, CancellationToken cancellationToken)
+    public async Task<FreeExpressionLog> RateAsync(Guid userId, string userText, string? userLevel, CancellationToken cancellationToken)
     {
         var llm = await llmFactory.GetForUserAsync(userId, cancellationToken);
         var explanationLanguage = ExplanationLanguageHelper.Resolve(
             null,
             sentenceRatingOptions.Value.ExplanationLanguage);
+        // T-027：评分尺子 = 用户当前水平带（UserProgress 投影，ScoreMapping 单一来源），与造句评分同口径
+        var scores = await scoreProfile.GetScoresAsync(userId, cancellationToken);
+        var ratingBand = RatingBandResolver.Resolve(scores, userLevel);
         var rating = await llm.RateSentenceAsync(new SentenceRatingRequest(
             userText.Trim(),
             "free expression",
             "free-expression",
-            string.IsNullOrWhiteSpace(userLevel) ? "A2" : userLevel.Trim(),
+            ratingBand,
             new LlmRequestOptions("feedback-rich", "free_expression_feedback"),
             explanationLanguage), cancellationToken);
 

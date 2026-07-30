@@ -67,6 +67,7 @@ docker-compose.yml        postgres:16-alpine + redis:7-alpine + api（容器内 
 - 两个 Tab：指定词造句（`GET /api/sentences/prompts` + `POST /api/sentences/rate`）与自由表达（`POST /api/free-expression/rate`）。
 - 指定词出题（T-006）：登录用户走个性化——有当日 Plan 用 Plan 造句目标（带内、主攻场景优先，`fromPlan` 标记）；无 Plan/过期回退**带内约束**选词（目标词 CEFR 与水平带一致，带池不足向下一带补充，产出任务只用带内词）；匿名保持既有按难度出题。
 - LLM 同步评分：语法/自然度/词汇/相关度各 0–5 + A–D 等级 + 改写建议；反馈语言默认 zh-CN（`Llm:SentenceRating:ExplanationLanguage`）。
+- **挑战度口径（T-027）**：评分尺子 = 用户当前水平带——服务端从 UserProgress 投影解析（CefrDisplay，ScoreMapping 单一来源；无进度回退调用方传入带，再退默认 A2），不再信任客户端传带。Prompt 与 Mock 口径同步：复杂度/用词与水平带相称且正确才可拿 A/满分；明显低于水平带的「安全简单句」即使完全正确也词汇维 ≤3、总评封顶 B；高于水平带的尝试不因难度额外扣分；与水平带相称的简单句（如 A2 用户的简单句）不受影响，仍可拿 B/A（公平性，prompted_use 确认链路依赖 A/B 档）。Mock 启发式：各带设最低句长/连接词数期望，两项都未达到即压分。
 - **生命周期证据（T-014）**：指定词造句评分后按目标词使用情况推进/回退——句中含目标词（词边界命中）且 A/B 档 → 确认 prompted use（待自发）；含目标词但 D 档或词汇维 ≤2 → 退回回忆阶段重进 SM-2 调度；指定目标词的产出永远不算自发。自由表达（非指定目标词）评分达标（A/B）时，文中自发出现的 prompted_use 候选池词毕业（spontaneous_use）并留痕 `GraduatedFreeExpressionLogId`。
 - **Score 小步回写（T-022）**：两个评分端点落库后经 `PracticeScoreWritebackService` 回写 Writing 维——observed = `MapSentenceToScore(四维均分)`（自由表达 `AiScore` 同口径），delta = clamp(round((observed − current) × 0.1), −2, +2)，delta=0 也落幂等记录（`sentence-score:{logId}` / `freeexpr-score:{logId}`）；响应带 `writingScoreBefore/After`，前端结果区显示「写作 64→65（+1）」徽标。测评与挑战复用 `SentenceService.RateAsync` 但不经过该端点，绝不叠加 delta。原 `SentenceLlmScoringWorker`（无入队点的死链路）已删除。
 

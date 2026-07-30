@@ -30,7 +30,8 @@ public static class FreeExpressionEndpoints
                 return Results.Unauthorized();
             }
 
-            var log = await expressions.RateAsync(user.Id, request.UserText, request.UserLevel ?? "A2", ct);
+            // T-027：评分带由服务端从 UserProgress 解析，客户端 userLevel 仅作无进度回退
+            var log = await expressions.RateAsync(user.Id, request.UserText, request.UserLevel, ct);
             // T-022：用户主动练习的自由表达评分小步回写 Writing 维
             var writing = await scoreWriteback.ApplyFreeExpressionAsync(user.Id, log, ct);
             return Results.Ok(FreeExpressionLogDto.FromEntity(log, writing));
