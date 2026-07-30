@@ -183,14 +183,13 @@ public sealed class SentenceService(
             return;
         }
 
-        // 词边界命中（复用 T-007 安全词检测的分词口径），避免子串误判
-        var tokens = BottleneckScreeningService.Tokenize(log.UserSentence);
+        // 统一命中口径（T-040 TargetWordMatcher：单词词边界、多词短语连续词序列），避免子串误判与短语永不命中
         var now = DateTimeOffset.UtcNow;
-        if (WordLifecycleService.IsPromptedUseCorrect(tokens, lemma, log.OverallGrade))
+        if (WordLifecycleService.IsPromptedUseCorrect(log.UserSentence, lemma, log.OverallGrade))
         {
             WordLifecycleService.ConfirmPromptedUse(relationship, now);
         }
-        else if (WordLifecycleService.IsPromptedUseMisuse(tokens, lemma, log.OverallGrade, log.VocabularyScore))
+        else if (WordLifecycleService.IsPromptedUseMisuse(log.UserSentence, lemma, log.OverallGrade, log.VocabularyScore))
         {
             WordLifecycleService.RegressToRecall(relationship, now);
         }

@@ -1,0 +1,5 @@
+  Lemma  | LifecycleStage |    PromptedUseConfirmedAt     | MasteryScore 
+---------+----------------+-------------------------------+--------------
+ give up | PromptedUse    | 2026-08-06 10:13:15.203397+00 |           50
+(1 row)
+

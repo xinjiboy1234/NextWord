@@ -84,13 +84,13 @@ public static class WordLifecycleService
         string.Equals(overallGrade?.Trim(), "A", StringComparison.OrdinalIgnoreCase)
         || string.Equals(overallGrade?.Trim(), "B", StringComparison.OrdinalIgnoreCase);
 
-    /// <summary>提示造句正确使用：句中含目标词（词边界命中）且句子达标。</summary>
-    public static bool IsPromptedUseCorrect(IReadOnlySet<string> tokens, string lemma, string? overallGrade) =>
-        tokens.Contains(lemma.Trim().ToLowerInvariant()) && IsPassingGrade(overallGrade);
+    /// <summary>提示造句正确使用：句中含目标词（统一命中口径，单词词边界/短语连续词序列，T-040）且句子达标。</summary>
+    public static bool IsPromptedUseCorrect(string sentence, string lemma, string? overallGrade) =>
+        TargetWordMatcher.IsHit(lemma, sentence) && IsPassingGrade(overallGrade);
 
     /// <summary>提示造句使用错误（回退信号）：句中含目标词但用错——D 档或词汇维低分；不含目标词算回避（安全词信号另管），不算使用错误。</summary>
-    public static bool IsPromptedUseMisuse(IReadOnlySet<string> tokens, string lemma, string? overallGrade, int vocabularyScore) =>
-        tokens.Contains(lemma.Trim().ToLowerInvariant())
+    public static bool IsPromptedUseMisuse(string sentence, string lemma, string? overallGrade, int vocabularyScore) =>
+        TargetWordMatcher.IsHit(lemma, sentence)
         && (string.Equals(overallGrade?.Trim(), "D", StringComparison.OrdinalIgnoreCase) || vocabularyScore <= 2);
 
     /// <summary>提示造句正确使用确认（造句使用 → 待自发；confirmed 后 Planner 不再重复编排该词）。</summary>

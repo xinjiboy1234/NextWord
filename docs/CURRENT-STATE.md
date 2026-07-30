@@ -68,7 +68,7 @@ docker-compose.yml        postgres:16-alpine + redis:7-alpine + api（容器内 
 - 指定词出题（T-006）：登录用户走个性化——有当日 Plan 用 Plan 造句目标（带内、主攻场景优先，`fromPlan` 标记）；无 Plan/过期回退**带内约束**选词（目标词 CEFR 与水平带一致，带池不足向下一带补充，产出任务只用带内词）；匿名保持既有按难度出题。
 - LLM 同步评分：语法/自然度/词汇/相关度各 0–5 + A–D 等级 + 改写建议；反馈语言默认 zh-CN（`Llm:SentenceRating:ExplanationLanguage`）。
 - **挑战度口径（T-027）**：评分尺子 = 用户当前水平带——服务端从 UserProgress 投影解析（CefrDisplay，ScoreMapping 单一来源；无进度回退调用方传入带，再退默认 A2），不再信任客户端传带。Prompt 与 Mock 口径同步：复杂度/用词与水平带相称且正确才可拿 A/满分；明显低于水平带的「安全简单句」即使完全正确也词汇维 ≤3、总评封顶 B；高于水平带的尝试不因难度额外扣分；与水平带相称的简单句（如 A2 用户的简单句）不受影响，仍可拿 B/A（公平性，prompted_use 确认链路依赖 A/B 档）。Mock 启发式：各带设最低句长/连接词数期望，两项都未达到即压分。
-- **生命周期证据（T-014）**：指定词造句评分后按目标词使用情况推进/回退——句中含目标词（词边界命中）且 A/B 档 → 确认 prompted use（待自发）；含目标词但 D 档或词汇维 ≤2 → 退回回忆阶段重进 SM-2 调度；指定目标词的产出永远不算自发。自由表达（非指定目标词）评分达标（A/B）时，文中自发出现的 prompted_use 候选池词毕业（spontaneous_use）并留痕 `GraduatedFreeExpressionLogId`。
+- **生命周期证据（T-014）**：指定词造句评分后按目标词使用情况推进/回退——句中含目标词（统一命中口径 T-040：单词词边界、多词短语连续词序列）且 A/B 档 → 确认 prompted use（待自发）；含目标词但 D 档或词汇维 ≤2 → 退回回忆阶段重进 SM-2 调度；指定目标词的产出永远不算自发。自由表达（非指定目标词）评分达标（A/B）时，文中自发出现的 prompted_use 候选池词毕业（spontaneous_use）并留痕 `GraduatedFreeExpressionLogId`。
 - **Score 小步回写（T-022）**：两个评分端点落库后经 `PracticeScoreWritebackService` 回写 Writing 维——observed = `MapSentenceToScore(四维均分)`（自由表达 `AiScore` 同口径），delta = clamp(round((observed − current) × 0.1), −2, +2)，delta=0 也落幂等记录（`sentence-score:{logId}` / `freeexpr-score:{logId}`）；响应带 `writingScoreBefore/After`，前端结果区显示「写作 64→65（+1）」徽标。测评与挑战复用 `SentenceService.RateAsync` 但不经过该端点，绝不叠加 delta。原 `SentenceLlmScoringWorker`（无入队点的死链路）已删除。
 
 ### 5.4 阅读（`/reading`、`/reading/:id`）
@@ -182,7 +182,8 @@ Worker 异常不拖垮宿主（`BackgroundServiceExceptionBehavior=Ignore`）。
 ### 5.17 词毕业四阶段生命周期（I4 T-014）
 
 - **状态机**（`WordLifecycleService` 纯规则，设计见 `docs/DESIGN-word-lifecycle.md`）：`recognized`（认识·看词知义）→ `recalled`（回忆·看义想词）→ `prompted_use`（造句使用·产出候选池）→ `spontaneous_use`（自发使用·毕业）。存 `UserWordRelationships.LifecycleStage`（枚举存字符串）+ `StageUpdatedAt`/`PromptedUseConfirmedAt`/`GraduatedFreeExpressionLogId`。
-- **推进**：认识→回忆 = SM-2 调度内看词知义连续正确达成熟阈值（`RepeatCount≥2`，复用 repetitions/interval 口径）；回忆→造句使用 = 回忆模式考察通过（看义正确拼出词）→ 进产出候选池；造句使用→待自发 = 提示造句中正确使用（词边界命中 + A/B 档，`PromptedUseConfirmedAt` 留痕）；待自发→毕业 = 自由表达中自发出现且当次评分达标（复用 T-007 分词口径做词级判定），留痕所在 `FreeExpressionLog` Id。
+- **推进**：认识→回忆 = SM-2 调度内看词知义连续正确达成熟阈值（`RepeatCount≥2`，复用 repetitions/interval 口径）；回忆→造句使用 = 回忆模式考察通过（看义正确拼出词）→ 进产出候选池；造句使用→待自发 = 提示造句中正确使用（目标词命中 + A/B 档，`PromptedUseConfirmedAt` 留痕）；待自发→毕业 = 自由表达中自发出现且当次评分达标（同一命中口径做词级判定），留痕所在 `FreeExpressionLog` Id。
+- **命中口径（T-040，`TargetWordMatcher` 纯函数，Domain）**：所有生命周期命中判定（造句确认、使用错误回退、自发毕业）统一走这一个工具，不再各自分词副本——单词走词边界匹配（不误伤子串）；多词短语按词序列连续匹配（大小写不敏感、容忍标点/多余空白分隔，"up, in arms,"、"up  in  arms" 均命中；词序必须一致，乱序/中间插词不命中；不做词形变换，原样小写词序列匹配）。修复前词边界分词只产单词 token，多词 lemma（up in arms 等）恒判未命中——prompted_use 永不确认、永不毕业。瓶颈筛查的安全词信号仍用自己的内容词口径（T-033 `BottleneckScreeningService`），与本口径分开。
 - **回退**：仅造句使用阶段——产出证据显示不会用（句中含目标词但 D 档或词汇维 ≤2）→ 退回回忆阶段重进 SM-2 调度（RepeatCount/Interval 归零）；认识/回忆阶段不回退（SM-2 管遗忘调度）。
 - **自评职责收窄**：Remembered/Forgot 只改 SM-2 排程参数（interval/repetitions）与接触词排程输入（EstimatedKnownRate/PersonalDifficulty EMA），**不再参与掌握度与 Score**——`MasteryScore` 由阶段派生（25/50/75/100，recognized/recalled 只算「认识」、prompted_use 算「会用」、spontaneous_use 才算「毕业」）；Score 写入点不变（测评/挑战/后台造句评分三处，均不经自评路径）。
 - **Planner 编排**：产出候选池（prompted_use 未确认、带内、utility 非 low）优先编入每日造句目标（见 §5.15）；确认过或已毕业的词不再重复编排。**T-034 二级补位**：prompted_use 池空时接 Recalled 池（最早进阶段的优先），两级都空才落当日带内词。

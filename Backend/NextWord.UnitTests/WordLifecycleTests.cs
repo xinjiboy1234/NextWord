@@ -190,6 +190,61 @@ public class WordLifecycleTests
         Assert.Empty(failingResult.GraduatedWords);
     }
 
+    // ── T-040 多词短语命中：可确认、可毕业（真实 PG + 评分桩）─────────
+
+    [Fact]
+    public async Task Prompted_sentence_with_phrase_target_confirms_and_out_of_order_does_not()
+    {
+        await using var db = await PostgresTestDatabase.CreateContextAsync();
+        var user = await SeedUserAsync(db, "lifecycle-phrase-sentence");
+
+        var phraseWord = await SeedWordWithStageAsync(db, user.Id, "up in arms", WordLifecycleStage.PromptedUse);
+        var variantWord = await SeedWordWithStageAsync(db, user.Id, "see eye to eye", WordLifecycleStage.PromptedUse);
+        var shuffledWord = await SeedWordWithStageAsync(db, user.Id, "piece of cake", WordLifecycleStage.PromptedUse);
+
+        // 短语逐字出现 + A 档 → 确认 prompted use（修复前 tokens.Contains 恒 false 永不确认）
+        var sentenceService = CreateSentenceService(db, Grade("A"));
+        await sentenceService.RateAsync(
+            user.Id, phraseWord.Id, phraseWord.Lemma, $"They are {phraseWord.Lemma} about the decision.", "work", "A2", CancellationToken.None);
+        var confirmed = await GetRelationshipAsync(db, user.Id, phraseWord.Id);
+        Assert.NotNull(confirmed.PromptedUseConfirmedAt);
+        Assert.Equal(75, confirmed.MasteryScore);
+
+        // 分隔变体（标点/多余空白）同样命中 → 确认
+        var variantSentence = variantWord.Lemma.Replace(" ", ",  ") + " on this";
+        await sentenceService.RateAsync(
+            user.Id, variantWord.Id, variantWord.Lemma, $"We finally {variantSentence}.", "life", "A2", CancellationToken.None);
+        var variantConfirmed = await GetRelationshipAsync(db, user.Id, variantWord.Id);
+        Assert.NotNull(variantConfirmed.PromptedUseConfirmedAt);
+
+        // 词序打乱（词都在但不连续同序）不算命中 → 不确认也不回退
+        var shuffled = string.Join(' ', shuffledWord.Lemma.Split(' ').Reverse());
+        await sentenceService.RateAsync(
+            user.Id, shuffledWord.Id, shuffledWord.Lemma, $"It was {shuffled} yesterday.", "life", "A2", CancellationToken.None);
+        var notConfirmed = await GetRelationshipAsync(db, user.Id, shuffledWord.Id);
+        Assert.Equal(WordLifecycleStage.PromptedUse, notConfirmed.LifecycleStage);
+        Assert.Null(notConfirmed.PromptedUseConfirmedAt);
+    }
+
+    [Fact]
+    public async Task Free_expression_with_phrase_graduates_spontaneous_use()
+    {
+        await using var db = await PostgresTestDatabase.CreateContextAsync();
+        var user = await SeedUserAsync(db, "lifecycle-phrase-free");
+
+        var phraseWord = await SeedWordWithStageAsync(db, user.Id, "up in arms", WordLifecycleStage.PromptedUse);
+
+        // 自由表达含短语（标点分隔变体）+ B 档 → 毕业 spontaneous_use 并留痕
+        var service = new FreeExpressionService(db, new StubLlmFactory(new StaticRatingLlm(Grade("B"))), RatingOptions(), CreateScoreProfile(db));
+        var result = await service.RateAsync(
+            user.Id, $"Everyone was {phraseWord.Lemma.Replace(" ", ", ")} about the new rule, but I stayed calm.", "A2", CancellationToken.None);
+        var graduated = await GetRelationshipAsync(db, user.Id, phraseWord.Id);
+        Assert.Equal(WordLifecycleStage.SpontaneousUse, graduated.LifecycleStage);
+        Assert.Equal(result.Log.Id, graduated.GraduatedFreeExpressionLogId);
+        Assert.Equal(100, graduated.MasteryScore);
+        Assert.Equal([phraseWord.Lemma], result.GraduatedWords);
+    }
+
     // ── Planner 候选池优先编排（真实 PG）────────────────────────────
 
     [Fact]

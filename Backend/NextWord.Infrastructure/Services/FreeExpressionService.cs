@@ -54,7 +54,7 @@ public sealed class FreeExpressionService(
     }
 
     /// <summary>
-    /// T-014（DESIGN-word-lifecycle §2）：复用 T-007 安全词检测的词边界分词口径做词级判定——
+    /// T-014（DESIGN-word-lifecycle §2）：统一命中口径（T-040 TargetWordMatcher：单词词边界、多词短语连续词序列）做词级判定——
     /// 当次评分达标（A/B）时，文中出现的 prompted_use 候选池词毕业（spontaneous_use），
     /// 留痕所在 FreeExpressionLog Id；评分不达标或词未出现不毕业。
     /// T-034：返回本次毕业的词 lemma 列表（无毕业返回空列表）。
@@ -75,12 +75,11 @@ public sealed class FreeExpressionService(
             return [];
         }
 
-        var tokens = BottleneckScreeningService.Tokenize(log.UserText);
         var now = DateTimeOffset.UtcNow;
         var graduated = new List<string>();
         foreach (var relationship in candidates)
         {
-            if (relationship.Word is not null && tokens.Contains(relationship.Word.Lemma))
+            if (relationship.Word is not null && TargetWordMatcher.IsHit(relationship.Word.Lemma, log.UserText))
             {
                 WordLifecycleService.Graduate(relationship, log.Id, now);
                 graduated.Add(relationship.Word.Lemma);

@@ -1,0 +1,5 @@
+      Lemma      | LifecycleStage | confirmed |     GraduatedFreeExpressionLogId     | MasteryScore 
+-----------------+----------------+-----------+--------------------------------------+--------------
+ look forward to | SpontaneousUse | t         | 50a885e0-b87d-4506-bd38-44a4769735aa |          100
+(1 row)
+

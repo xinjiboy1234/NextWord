@@ -2,6 +2,25 @@
 
 按时间倒序记录需求、决策、实现与验收。
 
+## 2026-07-30 — I7 T-040：多词短语命中口径——词序列连续匹配，短语可确认可毕业（程实）
+
+### 需求
+- 周密 T-034 仿真实证：词边界分词只产单词 token，多词 lemma（up in arms / see eye to eye 等）在任何句子里恒判「未命中」——13 个 PromptedUse 词中 10 个多词全部卡死（up in arms 造句两次拿 A 且短语逐字出现仍不确认），3 个单词词全部正常确认；确认与毕业两条路都走不通，T-034 配额+补位会持续把多词习语推进 PromptedUse 死胡同。
+
+### 决策
+- **统一命中工具落 Domain 纯函数**（`TargetWordMatcher`）：输入目标词（单词或多词短语）与文本，输出是否命中——单词保持既有词边界匹配（不误伤子串）；多词短语按词序列连续匹配，大小写不敏感、容忍标点/多余空白分隔（"up, in arms,"、"up  in  arms" 均命中），词序必须一致（"armed up in" 不命中）；不做词形变换，原样小写词序列匹配，保持简单。
+- 不搬 T-033 `BottleneckScreeningService` 的内容词/停用词口径——那套只服务安全词信号（子集匹配、顺序无关），生命周期链路要求逐字连续命中，两套口径分开。
+- `WordLifecycleService.IsPromptedUseCorrect/IsPromptedUseMisuse` 入参由 token 集合改为原句文本，命中判定收口到 Domain；瓶颈筛查内部 `Tokenize` 保留自用（连接词统计、安全词内容词），不动。
+
+### 实现
+- 新增 `NextWord.Domain/Services/TargetWordMatcher.cs`（`IsHit(target, text)` + `Tokenize`）。
+- 改造三处判定调用点，删除各自对 `BottleneckScreeningService.Tokenize` 的复用：`WordLifecycleService.IsPromptedUseCorrect/IsPromptedUseMisuse`（签名 tokens→sentence）、`SentenceService.ApplyLifecycleEvidenceAsync`（造句确认/回退）、`FreeExpressionService.GraduatedSpontaneousUseAsync`（自发毕业）。
+
+### 验证
+- `dotnet test`：182 单元 + 6 集成全绿（基线 175+6，净增 7）；前端无改动跳过 build。
+- 新增 `TargetWordMatcherTests` 5 例（纯函数）：单词词边界回归（armed 不含 arm）、分隔变体命中（标点/多余空白/大小写）、乱序与中间插词不命中、词边界仍生效（upbeat≠up）、不做词形变换、空目标不命中。
+- `WordLifecycleTests` 净增 2 例（真实 PG + 评分桩）：短语造句 A 档确认 + 分隔变体确认 + 乱序不确认；自由表达含短语 B 档毕业 spontaneous_use 留痕 + graduatedWords 响应。
+
 ## 2026-07-30 — I7 T-034：词生命周期提速——回忆考察配额 + Recalled 池补位 + 毕业时刻可见（程实）
 
 ### 需求

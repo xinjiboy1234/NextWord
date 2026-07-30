@@ -1,0 +1,6 @@
+   Lemma    | LifecycleStage | PromptedUseConfirmedAt | MasteryScore 
+------------+----------------+------------------------+--------------
+ arm        | PromptedUse    |                        |           50
+ up in arms | PromptedUse    |                        |           50
+(2 rows)
+

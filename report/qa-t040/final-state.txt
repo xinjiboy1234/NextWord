@@ -1,0 +1,8 @@
+   Lemma    | LifecycleStage | confirmed | MasteryScore |     GraduatedFreeExpressionLogId     
+------------+----------------+-----------+--------------+--------------------------------------
+ achieve    | PromptedUse    | t         |           50 | 
+ arm        | PromptedUse    | f         |           50 | 
+ give up    | SpontaneousUse | t         |          100 | 3da51244-6144-4c11-b572-4410de53091f
+ up in arms | PromptedUse    | f         |           50 | 
+(4 rows)
+

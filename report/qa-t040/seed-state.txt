@@ -1,0 +1,4 @@
+ Lemma | LifecycleStage | PromptedUseConfirmedAt | MasteryScore 
+-------+----------------+------------------------+--------------
+(0 rows)
+

@@ -1,0 +1,5 @@
+  Lemma  | LifecycleStage | MasteryScore | has_log 
+---------+----------------+--------------+---------
+ give up | SpontaneousUse |          100 | t
+(1 row)
+

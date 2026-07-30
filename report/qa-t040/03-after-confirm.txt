@@ -1,0 +1,5 @@
+      Lemma      | LifecycleStage |    PromptedUseConfirmedAt     | MasteryScore 
+-----------------+----------------+-------------------------------+--------------
+ look forward to | PromptedUse    | 2026-07-30 23:45:43.126032+00 |           75
+(1 row)
+
