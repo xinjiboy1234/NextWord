@@ -1,4 +1,5 @@
 using NextWord.Domain.Enums;
+using NextWord.Domain.Models;
 using NextWord.Domain.Services;
 
 namespace NextWord.UnitTests;
@@ -6,7 +7,7 @@ namespace NextWord.UnitTests;
 /// <summary>T-004：表达力综合分作主叙事，废弃最短板 min；识别映射仅作参考。</summary>
 public class AssessmentScoringServiceTests
 {
-    private readonly AssessmentScoringService _service = new();
+    private readonly AssessmentScoringService _service = new(new ScoreMappingOptions());
 
     [Theory]
     [InlineData(5, 5, 5, 5, 100.0)]
@@ -23,9 +24,21 @@ public class AssessmentScoringServiceTests
     [InlineData(15, CefrLevel.A1)]
     [InlineData(25, CefrLevel.A2)]
     [InlineData(40, CefrLevel.B1)]
-    [InlineData(60, CefrLevel.B2)]
+    [InlineData(60, CefrLevel.B1)]  // T-023：新分带 B1 上限 70
     [InlineData(90, CefrLevel.C1)]
     public void Expression_score_maps_to_cefr(double composite, CefrLevel expected)
+    {
+        Assert.Equal(expected, _service.MapExpressionScore(composite));
+    }
+
+    /// <summary>T-023：定级校准锚点——四维 3.2/5（综合 64）定 B1；均分 4.0/5（80）以上进 B2；B2 起点 70 边界 ±1。</summary>
+    [Theory]
+    [InlineData(64, CefrLevel.B1)]
+    [InlineData(80, CefrLevel.B2)]
+    [InlineData(69, CefrLevel.B1)]
+    [InlineData(70, CefrLevel.B2)]
+    [InlineData(100, CefrLevel.C1)] // 测评封顶 C1
+    public void Expression_score_maps_to_cefr_t023_calibration(double composite, CefrLevel expected)
     {
         Assert.Equal(expected, _service.MapExpressionScore(composite));
     }

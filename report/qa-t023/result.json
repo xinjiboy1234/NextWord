@@ -1,0 +1,102 @@
+{
+  "apiBase": "http://localhost:5198",
+  "results": [
+    {
+      "round": 1,
+      "email": "qa.t023.r1.1785428199@example.com",
+      "overallLevel": "B1",
+      "expressionScore": 44,
+      "vocabRef": 100,
+      "readingRef": 0,
+      "dimensions": {
+        "grammar": 2,
+        "natural": 1.7,
+        "vocabulary": 2.5,
+        "relevance": 3,
+        "topErrorTags": [
+          "主谓不一致：'room' 是单数，动词应为 'has' 而非 'have'；缺少助动词：'it not work' 应改为 'it doesn’t work'；逗号缺失：两个分句之间需用逗号连接。",
+          "动词 'show' 未使用过去式，应为 'showed'；'show around' 是及物动词短语，正确结构是 'show someone around somewhere'，原句中 'show around me' 语序错误，应改为 'showed me around'；缺少冠词，'the new school' 需加定冠词 'the'。",
+          "缺少冠词 'a'，'small apartment' 是可数名词单数，需加不定冠词；未使用目标词 'free expression'；句子与 'housing_chores' 场景无关，未涉及家务或表达自由",
+          "'The medium is a paper' 不符合英语习惯用法：'medium' 是可数名词，但此处泛指材料类型，不应加冠词 'a'；'paper' 作为物质名词通常不可数，不能说 'a paper'（除非指'一张纸'或'一篇论文'）；句子结构生硬，缺乏上下文逻辑连接。",
+          "动词'vacuum'在此处应作名词，需加冠词'the'；'use vacuum'缺少冠词和不定式结构；时态正确（yesterday），但动词搭配错误；正确结构应为'use the vacuum to + 动词原形'"
+        ],
+        "comments": [
+          "表达力综合分 44/100：语法 2.0、自然度 1.7、词汇 2.5、相关度 3.0（各维度满分 5）。",
+          "主定级 B1 由表达力综合分决定；词汇识别 100、阅读 0 仅作参考，不影响定级。"
+        ]
+      },
+      "cefrDisplay": "B1",
+      "planner": {
+        "active": true,
+        "startDate": "2026-07-30",
+        "dayIndex": 0,
+        "focusScenarios": [
+          "agree_disagree",
+          "daily_routine"
+        ],
+        "sourceFindingIds": [],
+        "articleIds": [
+          "6854f3fa-0ed2-4bb7-a040-d0b87e2c4c7c",
+          "6385f253-9f47-40a5-a562-5da7fb22fb34",
+          "3c6d64a2-2748-481f-a537-b3abb5f50adb"
+        ],
+        "todayWordCount": 8,
+        "todayExposureCount": 2,
+        "todaySentenceTargets": [
+          "chime in",
+          "on edge",
+          "sort of"
+        ]
+      }
+    },
+    {
+      "round": 2,
+      "email": "qa.t023.r2.1785428261@example.com",
+      "overallLevel": "B1",
+      "expressionScore": 63,
+      "vocabRef": 100,
+      "readingRef": 0,
+      "dimensions": {
+        "grammar": 3.1,
+        "natural": 2.7,
+        "vocabulary": 3.2,
+        "relevance": 3.9,
+        "topErrorTags": [
+          "句子语法正确，用词准确，符合A2水平；'bored'作为形容词描述主观感受，搭配'feel'自然恰当；场景（数学课）与情绪状态逻辑合理。",
+          "动词时态错误：'throw away' 是规则动词，过去式应为 'threw away'，但句子用了原形 'throw away'；时间状语 'yesterday' 明确表示过去，需用一般过去时。",
+          "缺少定冠词 'the'，英语中特指某个厕所时需加 'the'；句子末尾应使用问号，但标点使用正确；'toilet' 在英式英语中常用，美式英语中更常说 'restroom' 或 'bathroom'，但对 A2 学习者可接受。",
+          "动词时态错误：'cut off' 是瞬间动词，描述过去发生的中断事件，主句需用过去时，但从句 'when I talk' 使用了现在时，应改为过去进行时以体现背景动作；介词搭配不当：'talk with mom' 不够自然，英语中更常用 'talk to someone'，且 'mom' 前需加限定词（如 'my'）；缺少冠词/限定词：'mom' 是可数名词，前面必须加物主代词或冠词。",
+          "用法正确：'more or less' 在此处表示‘差不多；几乎’，修饰频率副词短语 'every day'，符合B1水平常用表达；句子语法完整，时态（一般现在时）恰当；无错误。"
+        ],
+        "comments": [
+          "表达力综合分 63/100：语法 3.1、自然度 2.7、词汇 3.2、相关度 3.9（各维度满分 5）。",
+          "主定级 B1 由表达力综合分决定；词汇识别 100、阅读 0 仅作参考，不影响定级。"
+        ]
+      },
+      "cefrDisplay": "B1",
+      "planner": {
+        "active": true,
+        "startDate": "2026-07-30",
+        "dayIndex": 0,
+        "focusScenarios": [
+          "agree_disagree",
+          "daily_routine"
+        ],
+        "sourceFindingIds": [],
+        "articleIds": [
+          "6854f3fa-0ed2-4bb7-a040-d0b87e2c4c7c",
+          "6385f253-9f47-40a5-a562-5da7fb22fb34",
+          "3c6d64a2-2748-481f-a537-b3abb5f50adb"
+        ],
+        "todayWordCount": 8,
+        "todayExposureCount": 2,
+        "todaySentenceTargets": [
+          "go along with",
+          "as soon as",
+          "on the other hand"
+        ]
+      }
+    }
+  ],
+  "failures": []
+}

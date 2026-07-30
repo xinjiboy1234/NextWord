@@ -38,10 +38,10 @@ public class ScoreProfileServiceTests
 
         Assert.True(result.Applied);
         Assert.Equal(53, result.Scores.Overall);
-        Assert.Equal("B2", result.Scores.CefrDisplay);
+        Assert.Equal("B1", result.Scores.CefrDisplay); // T-023：53 落新 B1 带（35–70）
 
         var progress = await db.UserProgress.SingleAsync(item => item.UserId == userId);
-        Assert.Equal(Domain.Enums.CefrLevel.B2, progress.OverallLevel);
+        Assert.Equal(Domain.Enums.CefrLevel.B1, progress.OverallLevel);
         Assert.Equal(1, await db.LearningEvents.CountAsync(item => item.IdempotencyKey == "test-absolute-1"));
     }
 

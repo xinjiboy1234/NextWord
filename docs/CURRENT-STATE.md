@@ -84,7 +84,7 @@ docker-compose.yml        postgres:16-alpine + redis:7-alpine + api（容器内 
 
 - **自适应分块**：以当前估计水平为起点（未测评用户 A2），每块 5 题（提示造句 ×2 + 情境表达 ×1 + 词义选择 ×1 + 阅读理解 ×1，产出占 60%），块表现 ≥60 升带、<40 降带（T-009 校准），满 2 块且稳定即收敛、最多 3 块（总题量 ≤15）。
 - **产出题全部走 LLM 真实评分**：复用造句工作室四维链路（`SentenceService.RateAsync`，情境表达走 `free expression` 目标），词数启发式已废弃；评分留痕 `SentenceLogs`。
-- **主定级 = 表达力综合分**（语法/自然度 0.3 + 词汇/相关度 0.2 加权，阈值与 ScoreMapping 分带对齐、封顶 C1）；识别题仅作参考展示，不参与定级——「最短板 min」已废弃。档案各维度分数以表达力综合分为初始先验写入 Score 内核。
+- **主定级 = 表达力综合分**（语法/自然度 0.3 + 词汇/相关度 0.2 加权，阈值直接派生自 ScoreMapping 分带、封顶 C1）；识别题仅作参考展示，不参与定级——「最短板 min」已废弃。档案各维度分数以表达力综合分为初始先验写入 Score 内核。
 - **词池纪律**：出题词只选水平带内且 `utility=high/medium`（顶端带词池过薄时向下一带补充，绝不超带）；情境场景取自 I1 taxonomy（优先词池已标注场景）。
 - **阅读题**：从库内文章按难度带就近选文，考点词取自正文中出现的库内词，正确答案位置随机（硬编码与 index-0 恒定已废除）。
 - 端点：`GET /api/assessment/{id}/next-block`（幂等，未提交的块重发原题）→ `POST /api/assessment/{id}/blocks/{n}/submit`（同步 LLM 评分，收敛时直接定级并入队 `EvaluationReport`）。
@@ -96,7 +96,7 @@ docker-compose.yml        postgres:16-alpine + redis:7-alpine + api（容器内 
 
 ### 5.7 Score 内核（v1）
 
-- **模型**：`UserProgress` 持有 Vocabulary/Reading/Writing 三个 0–100 分；总分 = 三者最小值（最短板，`ScoreMappingService.ComputeOverall`）；CEFR 分带在 `appsettings.json` 的 `ScoreMapping`。
+- **模型**：`UserProgress` 持有 Vocabulary/Reading/Writing 三个 0–100 分；总分 = 三者最小值（最短板，`ScoreMappingService.ComputeOverall`）；CEFR 分带在 `appsettings.json` 的 `ScoreMapping`（T-023 校准：A1 0–20 / A2 20–35 / B1 35–70 / B2 70–85 / C1 85–95 / C2 95–100，全局口径：测评定级、Profile CEFR 展示、计划水平带、挑战定档共用；`DifficultyBuckets` 不变）。
 - **写入**：`ScoreProfileService.ApplyUpdateAsync` 是唯一入口，支持 absolute/delta；`LearningEvents.IdempotencyKey` 幂等去重。写入点三处：测评完成（absolute 先验）、确认挑战通过（+UpgradeDelta）、日常造句/自由表达评分（T-022 小步 delta：observed = `MapSentenceToScore(四维均分)`，delta = clamp(round((observed − current) × 0.1), −2, +2)，幂等键 `sentence-score:{logId}` / `freeexpr-score:{logId}`；测评/挑战的 `SentenceService.RateAsync` 调用不触发该 delta）。
 - **快照**：`ProfileScoreSnapshotWorker` 每日写 `ProfileScoreSnapshots`，供 `GET /api/profile/scores/history?days=` 趋势图。
 - **难度三层**：intrinsic（LLM 标注，持久化于 `WordDifficultyAnnotation`）→ personal（`EstimatedKnownRate`/`PersonalDifficulty` EMA）→ effective（`EffectiveDifficultyCalculator`，含学术语域加成）。

@@ -12,9 +12,11 @@ public class ScoreMappingServiceTests
     [InlineData(19, "A1")]
     [InlineData(20, "A2")]
     [InlineData(35, "B1")]
-    [InlineData(50, "B2")]
-    [InlineData(70, "C1")]
-    [InlineData(85, "C2")]
+    [InlineData(50, "B1")]  // T-023：B1 带扩到 70
+    [InlineData(69, "B1")]
+    [InlineData(70, "B2")]  // T-023：B2 起点 70
+    [InlineData(85, "C1")]  // T-023：C1 起点 85
+    [InlineData(95, "C2")]
     [InlineData(100, "C2")]
     public void MapToCefr_uses_band_boundaries(int score, string expected)
     {

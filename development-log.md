@@ -2,6 +2,26 @@
 
 按时间倒序记录需求、决策、实现与验收。
 
+## 2026-07-30 — I7 T-023：首次测评定级校准——CEFR 分带重排（程实）
+
+### 需求
+- 菜鸟仿真（`report/sim-month/REPORT.md` 发现二）：四维均分 3.2/5 → 表达力综合分 64 → 旧分带（B2 50–70）定 B2 明显偏高，导致计划词、造句目标、推荐文章全部超水平。顾言定锚点：B2 =「能就日常场景组织清晰连贯的句子、偶有小错」，对应四维均分 4/5 以上；验收口径：综合 64 必须落 B1、80 以上进 B2。
+
+### 决策
+- **分带重排（全局口径，`ScoreMapping:CefrBands`）**：A1 0–20 / A2 20–35 不变（低端行为不动），B1 35–70（扩带承接原 B2 下半段），B2 70–85（起点 70 ≈ 均分 3.5/5，满足 64→B1、80→B2 且与 `DifficultyBuckets` Advanced 起点 70 自然对齐），C1 85–95，C2 95–100。单调全覆盖 0–100；`DifficultyBuckets` 不动；测评封顶 C1 既有规则不变。
+- **定级阈值去硬编码**：`AssessmentScoringService.MapExpressionScore` 原硬编码阈值 [19,34,49,69]（声称「与分带对齐」实则是分带的漂移副本），改为构造注入 `ScoreMappingOptions`、直接从 `CefrBands` 派生（score < band.Max 归带，跳过 C2 带封顶 C1），分带成为分数→CEFR 的单一来源。
+- **识别映射不动**：`MapVocabAccuracy` / `MapReadingAccuracy` 是识别正确率的独立参考口径（不参与主定级），阈值与表达力分带本就不同，保持原样。
+- LLM 评分 prompt 宽松问题（简单句拿满分）归 T-027 另案，本任务不动。
+
+### 实现
+- 配置：`appsettings.json` 与 `ScoreMappingOptions` 默认值同步改分带（Dev/Prod/Testing 三个环境文件均未覆盖 ScoreMapping，无需同步）。
+- 代码：`AssessmentScoringService`（主构造注入 options + `MapExpressionScore` 派生实现）；`DependencyInjection.cs`（注册改为工厂注入 IOptions）。
+- 硬编码排查结论：分数→CEFR 的唯一硬编码点就是 `MapExpressionScore`（已收口）；Profile 展示/legacy levels 走 `ScoreProfileService`→`ScoreMappingService`（配置驱动）；挑战 `AttemptedLevel` 源自 `progress.OverallLevel`（由 Score 内核按配置推出）；前端只有 CEFR 排序常量与文案，无分带阈值。
+- 测试调整（只改预期不改逻辑）：`ScoreMappingServiceTests`（分带边界 50→B1、70→B2、85→C1、95→C2）；`AssessmentScoringServiceTests`（60→B1，新增 T-023 锚点组：64→B1、80→B2、69→B1、70→B2、100→C1 封顶）；`ScoreProfileServiceTests`（总分 53：B2→B1）；`AdaptiveAssessmentServiceTests`（稳定用户 52 分定级 B2→B1，强者 100→C1、弱者降带与 2–3 块收敛在新分带下不变）。
+
+### 验证
+- `dotnet test`：157 单元 + 6 集成全绿（基线 150+6，净增 7）；`npm install && npm run build` 通过。
+
 ## 2026-07-30 — I7 T-022：日常造句/自由表达评分小步回写 Score 内核（程实）
 
 ### 需求

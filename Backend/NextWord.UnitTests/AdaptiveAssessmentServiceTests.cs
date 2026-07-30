@@ -151,7 +151,7 @@ public class AdaptiveAssessmentServiceTests
             await AnswersAsync(service, assessment.Id, 2, recognitionCorrect: true), CancellationToken.None);
         Assert.True(result2.Converged); // 2 块稳定即收敛，总量 10 题
         Assert.Equal(52, result2.Final!.ExpressionScore);
-        Assert.Equal(CefrLevel.B2, result2.Final.OverallLevel); // 阈值 [19,34,49,69]：52 → B2
+        Assert.Equal(CefrLevel.B1, result2.Final.OverallLevel); // T-023 新分带（B2 起点 70）：52 → B1
     }
 
     [Fact]
@@ -186,7 +186,7 @@ public class AdaptiveAssessmentServiceTests
         var users = new UserRepository(db);
         var scoreProfile = new ScoreProfileService(db, new ScoreMappingService(new ScoreMappingOptions()));
         var sentences = new SentenceService(db, new StubLlmFactory(llm), Options.Create(new LlmSentenceRatingOptions()), new LearningPlanService(db, scoreProfile), scoreProfile);
-        return new AssessmentService(db, new AssessmentScoringService(), sentences, users, scoreProfile, new StubEvaluationReports());
+        return new AssessmentService(db, new AssessmentScoringService(new ScoreMappingOptions()), sentences, users, scoreProfile, new StubEvaluationReports());
     }
 
     private static async Task<User> SeedPoolAsync(ApplicationDbContext db)

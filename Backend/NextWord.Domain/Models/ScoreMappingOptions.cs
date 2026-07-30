@@ -8,10 +8,10 @@ public sealed class ScoreMappingOptions
     [
         new() { Min = 0, Max = 20, Label = "A1" },
         new() { Min = 20, Max = 35, Label = "A2" },
-        new() { Min = 35, Max = 50, Label = "B1" },
-        new() { Min = 50, Max = 70, Label = "B2" },
-        new() { Min = 70, Max = 85, Label = "C1" },
-        new() { Min = 85, Max = 100, Label = "C2" }
+        new() { Min = 35, Max = 70, Label = "B1" },
+        new() { Min = 70, Max = 85, Label = "B2" },
+        new() { Min = 85, Max = 95, Label = "C1" },
+        new() { Min = 95, Max = 100, Label = "C2" }
     ];
 
     public List<ScoreBand> DifficultyBuckets { get; set; } =

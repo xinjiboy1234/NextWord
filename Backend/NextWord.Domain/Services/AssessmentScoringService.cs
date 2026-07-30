@@ -1,5 +1,6 @@
 using NextWord.Domain.Enums;
 using NextWord.Domain.Interfaces;
+using NextWord.Domain.Models;
 
 namespace NextWord.Domain.Services;
 
@@ -8,7 +9,7 @@ namespace NextWord.Domain.Services;
 /// 主定级由表达力综合分决定（产出题四维加权），识别分仅作参考展示，废弃最短板 min。
 /// MapXxxToScore 系列同时被挑战流（ChallengeService）沿用。
 /// </summary>
-public sealed class AssessmentScoringService : IAssessmentScoringService
+public sealed class AssessmentScoringService(ScoreMappingOptions options) : IAssessmentScoringService
 {
     /// <summary>产出题单题得分：四维加权（语法/自然度权重高于词汇/相关度），0–100。</summary>
     public double ScoreProductionDimensions(int grammar, int natural, int vocabulary, int relevance)
@@ -20,8 +21,27 @@ public sealed class AssessmentScoringService : IAssessmentScoringService
         return Math.Round(weighted / 5.0 * 100, 1);
     }
 
-    /// <summary>表达力综合分 → CEFR（主定级）。阈值与 ScoreMapping CefrBands 对齐，封顶 C1。</summary>
-    public CefrLevel MapExpressionScore(double compositeScore) => MapByThresholds(compositeScore, [19, 34, 49, 69]);
+    /// <summary>
+    /// 表达力综合分 → CEFR（主定级）。阈值派生自 ScoreMapping:CefrBands（单一来源，T-023 起不再硬编码），
+    /// 测评封顶 C1（C2 带不参与测评定级）。
+    /// </summary>
+    public CefrLevel MapExpressionScore(double compositeScore)
+    {
+        foreach (var band in options.CefrBands)
+        {
+            if (!Enum.TryParse<CefrLevel>(band.Label, out var level) || level > CefrLevel.C1)
+            {
+                continue;
+            }
+
+            if (compositeScore < band.Max)
+            {
+                return level;
+            }
+        }
+
+        return CefrLevel.C1;
+    }
 
     /// <summary>块表现决策：≥60 升带，&lt;40 降带，其余保持（T-009：65→60，低带中等偏上答案块均分约 61–65，65 摸不到）。</summary>
     public BandMove DecideBandMove(double blockExpressionScore) =>

@@ -81,7 +81,8 @@ public static class DependencyInjection
         services.AddScoped<IArticleVocabService, ArticleVocabService>();
         services.AddScoped<ICommentService, CommentService>();
         services.AddScoped<IReadingAgentService, ReadingAssistantAgent>();
-        services.AddSingleton<IAssessmentScoringService, AssessmentScoringService>();
+        services.AddSingleton<IAssessmentScoringService>(sp =>
+            new AssessmentScoringService(sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<ScoreMappingOptions>>().Value));
         services.AddSingleton<ILevelEngine, LevelUpgradeEngine>();
         services.AddScoped<IChallengePackGenerator, ChallengePackGenerator>();
         services.AddScoped<IAssessmentService, AssessmentService>();

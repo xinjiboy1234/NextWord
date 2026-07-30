@@ -146,7 +146,7 @@ public class PracticeScoreWritebackTests
     // ── 装配与播种 ───────────────────────────────────────────
 
     private static PracticeScoreWritebackService CreateWriteback(ApplicationDbContext db)
-        => new(CreateScoreProfile(db), new AssessmentScoringService());
+        => new(CreateScoreProfile(db), new AssessmentScoringService(new ScoreMappingOptions()));
 
     private static ScoreProfileService CreateScoreProfile(ApplicationDbContext db)
         => new(db, new ScoreMappingService(new ScoreMappingOptions()));
