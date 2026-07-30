@@ -1,0 +1,22 @@
+-- 每仿真日结束执行一次（整体回拨 1 天）；由 sim.py TIME_TRAVEL_STATEMENTS 自动执行
+UPDATE "UserWordRelationships" SET "NextReviewDue" = "NextReviewDue" - interval '1 day', "LastReviewDate" = "LastReviewDate" - interval '1 day', "StageUpdatedAt" = "StageUpdatedAt" - interval '1 day', "PromptedUseConfirmedAt" = "PromptedUseConfirmedAt" - interval '1 day', "PersonalUpdatedAt" = "PersonalUpdatedAt" - interval '1 day';
+UPDATE "WordLearningLogs" SET "Timestamp" = "Timestamp" - interval '1 day';
+UPDATE "SentenceLogs" SET "Timestamp" = "Timestamp" - interval '1 day';
+UPDATE "FreeExpressionLogs" SET "Timestamp" = "Timestamp" - interval '1 day';
+UPDATE "SpellingLogs" SET "Timestamp" = "Timestamp" - interval '1 day';
+UPDATE "ReadingLogs" SET "StartTime" = "StartTime" - interval '1 day', "EndTime" = "EndTime" - interval '1 day', "Timestamp" = "Timestamp" - interval '1 day';
+UPDATE "ArticleComments" SET "Timestamp" = "Timestamp" - interval '1 day';
+UPDATE "LearningPlans" SET "StartDate" = "StartDate" - 1, "CreatedAt" = "CreatedAt" - interval '1 day';
+UPDATE "Assessments" SET "StartAt" = "StartAt" - interval '1 day', "EndAt" = "EndAt" - interval '1 day';
+UPDATE "AssessmentRecords" SET "Timestamp" = "Timestamp" - interval '1 day';
+UPDATE "ChallengeRecords" SET "Timestamp" = "Timestamp" - interval '1 day';
+UPDATE "ChallengeSessions" SET "CreatedAt" = "CreatedAt" - interval '1 day', "ExpiresAt" = "ExpiresAt" - interval '1 day';
+UPDATE "LevelHistories" SET "Timestamp" = "Timestamp" - interval '1 day';
+UPDATE "BottleneckInsights" SET "CreatedAt" = "CreatedAt" - interval '1 day';
+UPDATE "WeaknessProfiles" SET "CreatedAt" = "CreatedAt" - interval '1 day';
+UPDATE "EvaluationReports" SET "CreatedAt" = "CreatedAt" - interval '1 day';
+UPDATE "LearningEvents" SET "OccurredAt" = "OccurredAt" - interval '1 day';
+UPDATE "UserProgress" SET "LastStudyDate" = "LastStudyDate" - 1, "LevelStartDate" = "LevelStartDate" - 1, "ScoresUpdatedAt" = "ScoresUpdatedAt" - interval '1 day';
+UPDATE "Users" SET "CreatedAt" = "CreatedAt" - interval '1 day';
+UPDATE "UserFeedbacks" SET "CreatedAt" = "CreatedAt" - interval '1 day';
+UPDATE "UserWordExcludes" SET "CreatedAt" = "CreatedAt" - interval '1 day';

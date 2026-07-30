@@ -19,6 +19,23 @@
 
 ### 验证
 - `dotnet test`：164 单元 + 6 集成全绿（基线 157+6，净增 7）；前端 `npm install && npm run build` 通过（前端无改动——客户端传带降级为回退入参）。
+## 2026-07-30 — I7 T-033：瓶颈洞察信号 v2——相对基线 + 零起步信号（程实）
+
+### 需求
+- 菜鸟月仿真（`report/sim-month/REPORT.md` 发现四）：3 次筛查 0 触发，最需要洞察的起步期用户永远得不到洞察——回避模式绝对基线 0.3 菜鸟数学不可达、平台期 stdDev≤0.5 对菜鸟真实波动（0.8–1.5）太紧、安全词窗口被 7 天计划周期 + 24h 宽限压缩到样本不足。按顾言定稿的 `docs/DESIGN-insight-signals-v2.md` 实现。
+
+### 决策
+- **信号从「绝对阈值」改为「和自己比」**：回避模式废弃 `AvoidanceMinBaseRate` 绝对基线，前半段率 >0 即有基线；从未用过复杂连接的用户不判回避，交新增零起步信号覆盖。
+- **零起步信号只触发不定性**：`BottleneckSignal.ColdStart`（wire 名 `cold_start`，字符串存储/传输，旧数据不受影响）映射到哪类性质由 InsightAgent 细读原文判断，7 类性质枚举与 prompt 不硬编码、不动。
+- **安全词窗口按篇数不按天数**：最近 5 篇自由产出跨计划周期累计（原 T-012「窗口自 `Plan.CreatedAt` 起算」口径废止，防误判职责由保留的 24h 宽限期独立承担）；目标词仍取当前生效 Plan。多词短语匹配修口径：拆词去停用词取内容词、全部同现（词边界）才算用过，避免整串匹配永不命中与功能词恒命中两个极端。
+
+### 实现
+- `BottleneckScreeningService`：平台期 `PlateauWindow` 10→12、`PlateauMaxStdDev` 0.5→1.0；回避模式改 `firstRate > 0 && secondRate ≤ firstRate × 0.5`；新增 `IsColdStart`（近 10 次连接恒 0 + 后半段平均句长 ≤ 前半段 ×1.1 + 跨度 ≤30 天，句长 = 词数 `WordCount` 与 `Tokenize` 同口径不去重）；安全词 `SafeWordMinFreeSamples` 3→5、查询改为最近 5 篇跨计划累计、新增 `StopWords` 表与 `TargetContentWords`（全功能词短语退化为原拆词防空集恒真）。
+- 枚举：`BottleneckSignal.ColdStart = 4` + `BottleneckSignalNames` wire 名/解析；`InsightEndpoints`/`ProfileScoreSnapshotWorker`/`BottleneckInsightWorker` 均透传信号，无需改动。
+- 测试（`BottleneckInsightTests`，13→20 例）：平台期窗口 12 与 stdDev 边界（0.82 触发/1.5 不触发，回文序列保证斜率 0）；回避相对基线（率 1/6 低于旧 0.3 仍触发、从未使用不判回避）；零起步三边界（恒 0+句长不增触发、句长增长不触发、跨度超 30 天不触发）+ wire 名回读；安全词新窗口（5 篇触发/4 篇不足/跨计划周期累计触发）与短语匹配三边界（只中功能词触发、内容词同现不触发、只中其一触发）；原 T-012「Plan 创建前产出不计入」用例按新口径反转（计入且触发，已注明），宽限期用例保留。
+
+### 验证
+- `dotnet test`：164 单元 + 6 集成全绿（基线 157+6，净增 7）；前端无改动（`NATURE_META` 7 类性质映射不涉及信号）。
 
 ## 2026-07-30 — I7 T-023：首次测评定级校准——CEFR 分带重排（程实）
 

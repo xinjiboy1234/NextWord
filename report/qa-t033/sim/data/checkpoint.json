@@ -1,0 +1,34 @@
+{
+  "nextDay": 30,
+  "assessmentDone": true,
+  "userId": "f0802500-b2f9-4c1f-ad15-53e1214bce1d",
+  "assessment": {
+    "assessmentId": "3d3a8026-b83d-4e53-8ee5-f14dbc604221",
+    "final": {
+      "overallLevel": "B2",
+      "expressionScore": 72,
+      "vocabularyReferenceScore": 100,
+      "readingReferenceScore": 100,
+      "vocabularyReferenceLevel": "C1",
+      "readingReferenceLevel": "C1",
+      "dimensions": {
+        "grammar": 3.7,
+        "natural": 3.4,
+        "vocabulary": 3.6,
+        "relevance": 3.9,
+        "topErrorTags": [
+          "句子语法正确，'often'位置恰当（主语后、实义动词前），符合A2级别对频度副词的基本用法；上下文逻辑清晰，对比使用'often'与'sometimes'自然得体。",
+          "句子语法正确，'go on holiday' 是英式英语中表示‘去度假’的自然、常用搭配，完全符合A2水平；无拼写、时态或结构错误。",
+          "未使用目标词‘free expression’；句子虽语法正确、自然，但偏离任务要求；情感表达较基础，缺乏对‘自由表达’概念的体现",
+          "'I totally get it why...' 语法上不够自然；标准用法是 'I totally get it' 单独成句，或用破折号/逗号分隔后接解释；'it is very hard for me too' 表达正确但略显生硬，母语者更倾向用 'I find... hard' 结构，更自然且符合B1表达习惯。",
+          "动词时态错误：'is help' 应为过去式 'helped'；缺少物主代词：'homework' 前应加 'my'；句子结构不完整，主谓不一致。"
+        ],
+        "comments": [
+          "表达力综合分 72/100：语法 3.7、自然度 3.4、词汇 3.6、相关度 3.9（各维度满分 5）。",
+          "主定级 B2 由表达力综合分决定；词汇识别 100、阅读 100 仅作参考，不影响定级。"
+        ]
+      },
+      "evaluationReportId": 1
+    }
+  }
+}

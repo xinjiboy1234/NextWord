@@ -19,15 +19,17 @@ public enum BottleneckNature
     SafeWordStrategy = 7
 }
 
-/// <summary>指标筛查信号（T-007 §2.1）：规则只判「要不要细看」，不做结论。</summary>
+/// <summary>指标筛查信号（T-007 §2.1，T-033 v2）：规则只判「要不要细看」，不做结论。</summary>
 public enum BottleneckSignal
 {
-    /// <summary>平台期：近 10 次产出四维均分无显著提升且持续活跃。</summary>
+    /// <summary>平台期：近 12 次产出四维均分无显著提升且持续活跃。</summary>
     Plateau = 1,
-    /// <summary>回避模式：从句/复杂连接使用率持续走低。</summary>
+    /// <summary>回避模式：从句/复杂连接使用率相对自身基线持续走低。</summary>
     Avoidance = 2,
-    /// <summary>安全词策略：Plan 造句目标词在自由产出中出现率为 0。</summary>
-    SafeWord = 3
+    /// <summary>安全词策略：Plan 造句目标词在最近 5 篇自由产出中出现率为 0。</summary>
+    SafeWord = 3,
+    /// <summary>零起步（T-033）：产出一直停在简单句（复杂连接恒 0 且句长无增长）；不定性，性质交 InsightAgent 细读。</summary>
+    ColdStart = 4
 }
 
 /// <summary>信号的线上表示（任务 payload / 持久化，小写蛇形）。</summary>
@@ -38,6 +40,7 @@ public static class BottleneckSignalNames
         BottleneckSignal.Plateau => "plateau",
         BottleneckSignal.Avoidance => "avoidance",
         BottleneckSignal.SafeWord => "safe_word",
+        BottleneckSignal.ColdStart => "cold_start",
         _ => throw new ArgumentOutOfRangeException(nameof(signal), signal, null)
     };
 
@@ -48,6 +51,7 @@ public static class BottleneckSignalNames
             case "plateau": signal = BottleneckSignal.Plateau; return true;
             case "avoidance": signal = BottleneckSignal.Avoidance; return true;
             case "safe_word": signal = BottleneckSignal.SafeWord; return true;
+            case "cold_start": signal = BottleneckSignal.ColdStart; return true;
             default: signal = default; return false;
         }
     }

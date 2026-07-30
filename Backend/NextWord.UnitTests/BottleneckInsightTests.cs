@@ -13,8 +13,8 @@ using NextWord.Infrastructure.Services;
 namespace NextWord.UnitTests;
 
 /// <summary>
-/// T-007 瓶颈性质洞察 + 重规划触发（真实 PG）：
-/// 指标筛查三类信号触发/不误触发；InsightAgent 持久化带证据引用（编造 id 机械过滤）；
+/// T-007 瓶颈性质洞察 + 重规划触发（真实 PG）；T-033 信号口径 v2（DESIGN-insight-signals-v2）：
+/// 指标筛查四类信号（平台期/回避/零起步/安全词）触发/不误触发；InsightAgent 持久化带证据引用（编造 id 机械过滤）；
 /// 性质变化 → 重规划（画像重生成 + force Planner 入队），性质未变 → 只记录；
 /// 未触发零 LLM 调用（计数桩）；每周兜底为活跃存量用户入队 force Planner（同周幂等）；
 /// force 重规划同日原地重建 Plan。
@@ -31,23 +31,45 @@ public class BottleneckInsightTests
         await using var db = await PostgresTestDatabase.CreateContextAsync();
         var screening = new BottleneckScreeningService(db);
 
-        // 平台期：10 次产出四维均分恒 3.0、10 天内 → 触发
+        // 平台期：12 次产出四维均分恒 3.0、12 天内 → 触发（T-033：窗口 10→12）
         var flatUser = await SeedUserAsync(db, "screen-plateau");
-        await SeedSentenceLogsAsync(db, flatUser.Id, 10, index => 3, index => $"I like word{index} very much.");
+        await SeedSentenceLogsAsync(db, flatUser.Id, 12, index => 3, index => $"I like word{index} very much.");
         var signals = await screening.ScreenAsync(flatUser.Id, CancellationToken.None);
         Assert.Contains(BottleneckSignal.Plateau, signals);
 
-        // 稳步提升：均分 1→3 斜率远超阈值 → 不触发
+        // 稳步提升：均分 1→4 斜率远超阈值 → 不触发
         var improvingUser = await SeedUserAsync(db, "screen-improving");
-        await SeedSentenceLogsAsync(db, improvingUser.Id, 10, index => 1 + index / 3, index => $"I like word{index} very much.");
+        await SeedSentenceLogsAsync(db, improvingUser.Id, 12, index => 1 + index / 3, index => $"I like word{index} very much.");
         var improvingSignals = await screening.ScreenAsync(improvingUser.Id, CancellationToken.None);
         Assert.DoesNotContain(BottleneckSignal.Plateau, improvingSignals);
 
-        // 样本不足（<10 次）→ 不触发
+        // 样本不足（<12 次）→ 不触发
         var fewUser = await SeedUserAsync(db, "screen-few");
         await SeedSentenceLogsAsync(db, fewUser.Id, 5, _ => 3, index => $"Short {index}.");
         var fewSignals = await screening.ScreenAsync(fewUser.Id, CancellationToken.None);
         Assert.DoesNotContain(BottleneckSignal.Plateau, fewSignals);
+    }
+
+    [Fact]
+    public async Task Plateau_relaxed_stddev_boundary()
+    {
+        await using var db = await PostgresTestDatabase.CreateContextAsync();
+        var screening = new BottleneckScreeningService(db);
+
+        // T-033 放宽（stdDev 0.5→1.0）边界（DESIGN-insight-signals-v2 §4.5，回文序列保证斜率=0）：
+        // stdDev≈0.82 的平坦序列触发——菜鸟真实波动区间内；
+        var calmScores = new[] { 2, 3, 4, 4, 3, 2, 2, 3, 4, 4, 3, 2 };
+        var calmUser = await SeedUserAsync(db, "screen-plateau-calm");
+        await SeedSentenceLogsAsync(db, calmUser.Id, 12, index => calmScores[index], index => $"Calm sentence {index} here.");
+        var calmSignals = await screening.ScreenAsync(calmUser.Id, CancellationToken.None);
+        Assert.Contains(BottleneckSignal.Plateau, calmSignals);
+
+        // stdDev=1.5 的大起大落序列不触发——放宽不是放水
+        var wildScores = new[] { 1, 4, 4, 1, 1, 4, 4, 1, 1, 4, 4, 1 };
+        var wildUser = await SeedUserAsync(db, "screen-plateau-wild");
+        await SeedSentenceLogsAsync(db, wildUser.Id, 12, index => wildScores[index], index => $"Wild sentence {index} here.");
+        var wildSignals = await screening.ScreenAsync(wildUser.Id, CancellationToken.None);
+        Assert.DoesNotContain(BottleneckSignal.Plateau, wildSignals);
     }
 
     [Fact]
@@ -69,6 +91,20 @@ public class BottleneckInsightTests
         var signals = await screening.ScreenAsync(avoidUser.Id, CancellationToken.None);
         Assert.Contains(BottleneckSignal.Avoidance, signals);
 
+        // T-033 相对基线：前半段率 > 0 即有基线，不设绝对下限——
+        // 前 6 句只有 1 句用过 1 个连接词（率 1/6 ≈ 0.167，低于旧口径 0.3 基线），后 6 句恒 0 → 新口径仍触发
+        var lowBaseUser = await SeedUserAsync(db, "screen-avoid-lowbase");
+        await SeedSentenceLogsAsync(
+            db,
+            lowBaseUser.Id,
+            12,
+            index => 2 + (index % 3),
+            index => index == 0
+                ? "I stayed home because it rained."
+                : "I went home early today.");
+        var lowBaseSignals = await screening.ScreenAsync(lowBaseUser.Id, CancellationToken.None);
+        Assert.Contains(BottleneckSignal.Avoidance, lowBaseSignals);
+
         // 稳定使用复杂连接 → 不触发
         var stableUser = await SeedUserAsync(db, "screen-stable");
         await SeedSentenceLogsAsync(
@@ -79,6 +115,72 @@ public class BottleneckInsightTests
             _ => "I stayed home because it was raining while my friend waited outside.");
         var stableSignals = await screening.ScreenAsync(stableUser.Id, CancellationToken.None);
         Assert.DoesNotContain(BottleneckSignal.Avoidance, stableSignals);
+
+        // 从未用过复杂连接 → 不判回避（前半段率 0 无基线，交零起步信号覆盖）
+        var neverUser = await SeedUserAsync(db, "screen-avoid-never");
+        await SeedSentenceLogsAsync(
+            db,
+            neverUser.Id,
+            12,
+            index => 2 + (index % 3),
+            index => $"I wrote a longer simple sentence number {index} to keep growing.");
+        var neverSignals = await screening.ScreenAsync(neverUser.Id, CancellationToken.None);
+        Assert.DoesNotContain(BottleneckSignal.Avoidance, neverSignals);
+    }
+
+    // ── T-033 零起步信号（DESIGN-insight-signals-v2 §2.3/§4.3）──
+
+    [Fact]
+    public async Task Cold_start_triggers_for_zero_connectives_and_flat_sentence_length()
+    {
+        await using var db = await PostgresTestDatabase.CreateContextAsync();
+        var screening = new BottleneckScreeningService(db);
+
+        // 近 10 次产出：复杂连接恒 0 + 句长恒定（4 词）+ 10 天内 → 触发
+        var user = await SeedUserAsync(db, "screen-coldstart");
+        await SeedSentenceLogsAsync(db, user.Id, 10, _ => 2, _ => "I like my cat.");
+        var signals = await screening.ScreenAsync(user.Id, CancellationToken.None);
+        Assert.Contains(BottleneckSignal.ColdStart, signals);
+    }
+
+    [Fact]
+    public async Task Cold_start_not_triggered_when_sentence_length_grows()
+    {
+        await using var db = await PostgresTestDatabase.CreateContextAsync();
+        var screening = new BottleneckScreeningService(db);
+
+        // 连接恒 0 但句长有增长：后半段 9 词 > 前半段 4 词 × 1.1 → 不触发
+        var user = await SeedUserAsync(db, "screen-coldstart-grow");
+        await SeedSentenceLogsAsync(
+            db,
+            user.Id,
+            10,
+            _ => 2,
+            index => index < 5 ? "I like my cat." : "I like my cat and my dog very much.");
+        var signals = await screening.ScreenAsync(user.Id, CancellationToken.None);
+        Assert.DoesNotContain(BottleneckSignal.ColdStart, signals);
+    }
+
+    [Fact]
+    public async Task Cold_start_not_triggered_when_window_spans_over_30_days()
+    {
+        await using var db = await PostgresTestDatabase.CreateContextAsync();
+        var screening = new BottleneckScreeningService(db);
+
+        // 连接恒 0、句长不增，但 10 次产出每 5 天一篇、跨度 45 天 > 30 → 不持续活跃，不触发
+        var user = await SeedUserAsync(db, "screen-coldstart-sparse");
+        await SeedSentenceLogsAsync(db, user.Id, 10, _ => 2, _ => "I like my cat.", daysApart: 5);
+        var signals = await screening.ScreenAsync(user.Id, CancellationToken.None);
+        Assert.DoesNotContain(BottleneckSignal.ColdStart, signals);
+    }
+
+    [Fact]
+    public void Cold_start_signal_wire_name_round_trips()
+    {
+        // 持久化/payload 走字符串 wire 名：新信号可序列化回读，旧数据不受影响
+        Assert.Equal("cold_start", BottleneckSignal.ColdStart.ToWireName());
+        Assert.True(BottleneckSignalNames.TryParse("cold_start", out var parsed));
+        Assert.Equal(BottleneckSignal.ColdStart, parsed);
     }
 
     [Fact]
@@ -87,49 +189,111 @@ public class BottleneckInsightTests
         await using var db = await PostgresTestDatabase.CreateContextAsync();
         var screening = new BottleneckScreeningService(db);
 
-        // 安全词策略：生效 Plan 造句目标 targetalpha/targetbeta，3 篇自由产出都绕开 → 触发
+        // 安全词策略：生效 Plan 造句目标 targetalpha/targetbeta，最近 5 篇自由产出都绕开 → 触发（T-033：窗口 3→5 篇）
         var safeUser = await SeedUserAsync(db, "screen-safeword");
         await SeedActivePlanAsync(db, safeUser.Id, ["targetalpha", "targetbeta"]);
-        await SeedFreeExpressionsAsync(db, safeUser.Id, ["I enjoy my daily routine.", "We talked about movies.", "She cooks dinner every night."]);
+        await SeedFreeExpressionsAsync(db, safeUser.Id,
+            ["I enjoy my daily routine.", "We talked about movies.", "She cooks dinner every night.", "He walks to work.", "They play chess on weekends."]);
         var signals = await screening.ScreenAsync(safeUser.Id, CancellationToken.None);
         Assert.Contains(BottleneckSignal.SafeWord, signals);
 
         // 有一篇用了目标词 → 不触发
         var usingUser = await SeedUserAsync(db, "screen-using");
         await SeedActivePlanAsync(db, usingUser.Id, ["targetgamma"]);
-        await SeedFreeExpressionsAsync(db, usingUser.Id, ["I enjoy my daily routine.", "The targetgamma idea works well.", "She cooks dinner every night."]);
+        await SeedFreeExpressionsAsync(db, usingUser.Id,
+            ["I enjoy my daily routine.", "The targetgamma idea works well.", "She cooks dinner every night.", "He walks to work.", "They play chess on weekends."]);
         var usingSignals = await screening.ScreenAsync(usingUser.Id, CancellationToken.None);
         Assert.DoesNotContain(BottleneckSignal.SafeWord, usingSignals);
 
-        // 自由产出样本不足（<3 篇）→ 无从判定，不触发
+        // 自由产出样本不足（<5 篇，T-033 新窗口下限）→ 无从判定，不触发
         var thinUser = await SeedUserAsync(db, "screen-thin");
         await SeedActivePlanAsync(db, thinUser.Id, ["targetdelta"]);
-        await SeedFreeExpressionsAsync(db, thinUser.Id, ["Only one free text."]);
+        await SeedFreeExpressionsAsync(db, thinUser.Id,
+            ["Only one free text.", "Another short text.", "A third one here.", "And a fourth."]);
         var thinSignals = await screening.ScreenAsync(thinUser.Id, CancellationToken.None);
         Assert.DoesNotContain(BottleneckSignal.SafeWord, thinSignals);
     }
 
-    // ── T-012 安全词误触发修复：窗口从 Plan.CreatedAt 起算 + 24h 宽限期 ──
-
     [Fact]
-    public async Task Safe_word_ignores_free_production_before_plan_creation()
+    public async Task Safe_word_window_counts_recent_free_production_across_plan_cycles()
     {
         await using var db = await PostgresTestDatabase.CreateContextAsync();
         var screening = new BottleneckScreeningService(db);
 
-        // 复现 T-012：全部自由产出都早于 Plan 创建（写的是旧目标词时代的内容，不含新目标词）——
-        // 旧口径按「生效日 00:00」起算会把它们计入 → 误判出现率为 0；修复后窗口从 CreatedAt 起算 → 样本不足不触发
+        // T-033 新窗口（DESIGN-insight-signals-v2 §2.4/§4.4）：最近 5 篇自由产出、跨计划周期累计——
+        // 3 篇早于当前 Plan 创建、2 篇晚于（旧口径自 Plan.CreatedAt 起算只有 2 篇 < 下限不触发），
+        // 5 篇都不含目标词 → 新口径触发，不再被 7 天计划周期卡死
+        var user = await SeedUserAsync(db, "t033-crossplan");
+        var planCreatedAt = DateTimeOffset.UtcNow.AddHours(-30);
+        await SeedActivePlanAsync(db, user.Id, ["targetcross"], createdAt: planCreatedAt);
+        await SeedFreeExpressionsAsync(
+            db,
+            user.Id,
+            ["I enjoy my daily routine.", "We talked about movies.", "She cooks dinner every night.", "He walks to work.", "They play chess on weekends."],
+            timestamps:
+            [
+                planCreatedAt.AddHours(-26), planCreatedAt.AddHours(-14), planCreatedAt.AddHours(-2),
+                planCreatedAt.AddHours(10), planCreatedAt.AddHours(22)
+            ]);
+
+        var signals = await screening.ScreenAsync(user.Id, CancellationToken.None);
+        Assert.Contains(BottleneckSignal.SafeWord, signals);
+    }
+
+    [Fact]
+    public async Task Safe_word_phrase_target_matches_content_words_not_stopwords()
+    {
+        await using var db = await PostgresTestDatabase.CreateContextAsync();
+        var screening = new BottleneckScreeningService(db);
+
+        // T-033 短语匹配口径（§2.4）："see eye to eye" 拆词去停用词 → 内容词 {see, eye}，全部同现才算用过。
+        // 极端一：只含功能词 "to"（每篇都有）不算用过 → 触发
+        var stopwordUser = await SeedUserAsync(db, "t033-phrase-stopword");
+        await SeedActivePlanAsync(db, stopwordUser.Id, ["see eye to eye"]);
+        await SeedFreeExpressionsAsync(db, stopwordUser.Id,
+            ["I want to go to the park.", "She likes to read at night.", "We plan to travel to Japan.", "He tries to call to apologize.", "They hope to win the game."]);
+        var stopwordSignals = await screening.ScreenAsync(stopwordUser.Id, CancellationToken.None);
+        Assert.Contains(BottleneckSignal.SafeWord, stopwordSignals);
+
+        // 极端二：整串不必原样出现，内容词同现即算用过 → 不触发
+        var usedUser = await SeedUserAsync(db, "t033-phrase-used");
+        await SeedActivePlanAsync(db, usedUser.Id, ["see eye to eye"]);
+        await SeedFreeExpressionsAsync(db, usedUser.Id,
+            ["I want to go to the park.", "We finally see eye to eye on this plan.", "She likes to read at night.", "He walks to work.", "They play chess on weekends."]);
+        var usedSignals = await screening.ScreenAsync(usedUser.Id, CancellationToken.None);
+        Assert.DoesNotContain(BottleneckSignal.SafeWord, usedSignals);
+
+        // 边界：内容词只中其一（有 see 无 eye）→ 不算用过 → 触发
+        var partialUser = await SeedUserAsync(db, "t033-phrase-partial");
+        await SeedActivePlanAsync(db, partialUser.Id, ["see eye to eye"]);
+        await SeedFreeExpressionsAsync(db, partialUser.Id,
+            ["I want to go to the park.", "I see a bird in the tree.", "She likes to read at night.", "He walks to work.", "They play chess on weekends."]);
+        var partialSignals = await screening.ScreenAsync(partialUser.Id, CancellationToken.None);
+        Assert.Contains(BottleneckSignal.SafeWord, partialSignals);
+    }
+
+    // ── T-012 宽限期保留 + T-033 窗口口径变更（按篇数不按天数，跨计划周期累计）──
+
+    [Fact]
+    public async Task Safe_word_counts_free_production_before_plan_creation_under_new_window()
+    {
+        await using var db = await PostgresTestDatabase.CreateContextAsync();
+        var screening = new BottleneckScreeningService(db);
+
+        // T-033 口径变更（原 T-012 用例反转）：窗口改为最近 5 篇自由产出，不再从 Plan.CreatedAt 起算——
+        // 5 篇近期产出虽都早于 Plan 创建也计入样本，不含目标词 → 触发；
+        // 新 Plan 的防误判由保留的 24h 宽限期承担（见下条用例）
         var user = await SeedUserAsync(db, "t012-preplan");
         var planCreatedAt = DateTimeOffset.UtcNow.AddHours(-30);
         await SeedActivePlanAsync(db, user.Id, ["targetnew"], createdAt: planCreatedAt);
         await SeedFreeExpressionsAsync(
             db,
             user.Id,
-            ["I enjoy my daily routine.", "We talked about movies.", "She cooks dinner every night.", "He walks to work."],
+            ["I enjoy my daily routine.", "We talked about movies.", "She cooks dinner every night.", "He walks to work.", "They play chess on weekends."],
             timestamp: planCreatedAt.AddHours(-2));
 
         var signals = await screening.ScreenAsync(user.Id, CancellationToken.None);
-        Assert.DoesNotContain(BottleneckSignal.SafeWord, signals);
+        Assert.Contains(BottleneckSignal.SafeWord, signals);
     }
 
     [Fact]
@@ -138,10 +302,11 @@ public class BottleneckInsightTests
         await using var db = await PostgresTestDatabase.CreateContextAsync();
         var screening = new BottleneckScreeningService(db);
 
-        // 新 Plan 创建未满 24h：即使窗口内 ≥3 篇产出都不含目标词，也不做安全词判定（宽限期）
+        // 新 Plan 创建未满 24h：即使最近 5 篇产出都不含目标词，也不做安全词判定（宽限期保留，T-012）
         var user = await SeedUserAsync(db, "t012-grace");
         await SeedActivePlanAsync(db, user.Id, ["targetfresh"], createdAt: DateTimeOffset.UtcNow.AddHours(-2));
-        await SeedFreeExpressionsAsync(db, user.Id, ["I enjoy my daily routine.", "We talked about movies.", "She cooks dinner every night."]);
+        await SeedFreeExpressionsAsync(db, user.Id,
+            ["I enjoy my daily routine.", "We talked about movies.", "She cooks dinner every night.", "He walks to work.", "They play chess on weekends."]);
 
         var signals = await screening.ScreenAsync(user.Id, CancellationToken.None);
         Assert.DoesNotContain(BottleneckSignal.SafeWord, signals);
@@ -153,14 +318,14 @@ public class BottleneckInsightTests
         await using var db = await PostgresTestDatabase.CreateContextAsync();
         var screening = new BottleneckScreeningService(db);
 
-        // 宽限期后：Plan 创建后的 ≥3 篇产出确实都不含目标词 → 仍正确触发
+        // 宽限期后：最近 5 篇产出确实都不含目标词 → 仍正确触发（T-033：样本下限 3→5 篇）
         var user = await SeedUserAsync(db, "t012-after-grace");
         var planCreatedAt = DateTimeOffset.UtcNow.AddHours(-30);
         await SeedActivePlanAsync(db, user.Id, ["targetlate"], createdAt: planCreatedAt);
         await SeedFreeExpressionsAsync(
             db,
             user.Id,
-            ["I enjoy my daily routine.", "We talked about movies.", "She cooks dinner every night."],
+            ["I enjoy my daily routine.", "We talked about movies.", "She cooks dinner every night.", "He walks to work.", "They play chess on weekends."],
             timestamp: planCreatedAt.AddHours(5));
 
         var signals = await screening.ScreenAsync(user.Id, CancellationToken.None);
@@ -394,9 +559,9 @@ public class BottleneckInsightTests
         return user;
     }
 
-    /// <summary>按时间正序播种造句留痕（每天一条，index 递增 = 时间递增）。</summary>
+    /// <summary>按时间正序播种造句留痕（默认每天一条，index 递增 = 时间递增；daysApart 可调间隔模拟稀疏活跃）。</summary>
     private static async Task<List<SentenceLog>> SeedSentenceLogsAsync(
-        ApplicationDbContext db, Guid userId, int count, Func<int, int> score, Func<int, string> text)
+        ApplicationDbContext db, Guid userId, int count, Func<int, int> score, Func<int, string> text, double daysApart = 1)
     {
         var logs = Enumerable.Range(0, count)
             .Select(index => new SentenceLog
@@ -409,7 +574,7 @@ public class BottleneckInsightTests
                 NaturalScore = score(index),
                 VocabularyScore = score(index),
                 RelevanceScore = score(index),
-                Timestamp = DateTimeOffset.UtcNow.AddDays(index - count)
+                Timestamp = DateTimeOffset.UtcNow.AddDays((index - count) * daysApart)
             })
             .ToList();
         db.SentenceLogs.AddRange(logs);
@@ -438,14 +603,16 @@ public class BottleneckInsightTests
         await db.SaveChangesAsync();
     }
 
-    private static async Task SeedFreeExpressionsAsync(ApplicationDbContext db, Guid userId, string[] texts, DateTimeOffset? timestamp = null)
+    /// <summary>播种自由产出。timestamps 显式给定逐篇时间（与 texts 等长）；否则以 timestamp 为末篇、逐篇往前推 1 小时。</summary>
+    private static async Task SeedFreeExpressionsAsync(
+        ApplicationDbContext db, Guid userId, string[] texts, DateTimeOffset? timestamp = null, IReadOnlyList<DateTimeOffset>? timestamps = null)
     {
         db.FreeExpressionLogs.AddRange(texts.Select((text, index) => new FreeExpressionLog
         {
             UserId = userId,
             UserText = text,
             AiScore = 60,
-            Timestamp = (timestamp ?? DateTimeOffset.UtcNow).AddHours(-index)
+            Timestamp = timestamps?[index] ?? (timestamp ?? DateTimeOffset.UtcNow).AddHours(-index)
         }));
         await db.SaveChangesAsync();
     }
