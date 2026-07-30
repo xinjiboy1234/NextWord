@@ -68,7 +68,7 @@ docker-compose.yml        postgres:16-alpine + redis:7-alpine + api（容器内 
 - 指定词出题（T-006）：登录用户走个性化——有当日 Plan 用 Plan 造句目标（带内、主攻场景优先，`fromPlan` 标记）；无 Plan/过期回退**带内约束**选词（目标词 CEFR 与水平带一致，带池不足向下一带补充，产出任务只用带内词）；匿名保持既有按难度出题。
 - LLM 同步评分：语法/自然度/词汇/相关度各 0–5 + A–D 等级 + 改写建议；反馈语言默认 zh-CN（`Llm:SentenceRating:ExplanationLanguage`）。
 - **生命周期证据（T-014）**：指定词造句评分后按目标词使用情况推进/回退——句中含目标词（词边界命中）且 A/B 档 → 确认 prompted use（待自发）；含目标词但 D 档或词汇维 ≤2 → 退回回忆阶段重进 SM-2 调度；指定目标词的产出永远不算自发。自由表达（非指定目标词）评分达标（A/B）时，文中自发出现的 prompted_use 候选池词毕业（spontaneous_use）并留痕 `GraduatedFreeExpressionLogId`。
-- 后台 `SentenceLlmScoringWorker` 会把造句成绩写入 Score 内核（写作维度）。
+- ~~后台 `SentenceLlmScoringWorker` 会把造句成绩写入 Score 内核（写作维度）~~ **已断头（2026-07-30 仿真勘正）**：该 Worker 全库无入队点，日常造句/自由表达评分不进 Score；Score 写入点实际只剩测评完成与确认挑战通过。修复任务 T-022。
 
 ### 5.4 阅读（`/reading`、`/reading/:id`）
 
@@ -97,7 +97,7 @@ docker-compose.yml        postgres:16-alpine + redis:7-alpine + api（容器内 
 ### 5.7 Score 内核（v1）
 
 - **模型**：`UserProgress` 持有 Vocabulary/Reading/Writing 三个 0–100 分；总分 = 三者最小值（最短板，`ScoreMappingService.ComputeOverall`）；CEFR 分带在 `appsettings.json` 的 `ScoreMapping`。
-- **写入**：`ScoreProfileService.ApplyUpdateAsync` 是唯一入口，支持 absolute/delta；`LearningEvents.IdempotencyKey` 幂等去重。写入点：测评完成、确认挑战通过、后台造句评分。
+- **写入**：`ScoreProfileService.ApplyUpdateAsync` 是唯一入口，支持 absolute/delta；`LearningEvents.IdempotencyKey` 幂等去重。实际写入点仅两处：测评完成、确认挑战通过。（文档原列第三处「后台造句评分」已断头：`SentenceLlmScoringWorker` 全库无入队点，日常造句/自由表达评分不写 Score——2026-07-30 菜鸟月仿真实测 91 条造句零写入，修复见 T-022。）
 - **快照**：`ProfileScoreSnapshotWorker` 每日写 `ProfileScoreSnapshots`，供 `GET /api/profile/scores/history?days=` 趋势图。
 - **难度三层**：intrinsic（LLM 标注，持久化于 `WordDifficultyAnnotation`）→ personal（`EstimatedKnownRate`/`PersonalDifficulty` EMA）→ effective（`EffectiveDifficultyCalculator`，含学术语域加成）。
 - **学习工具注册表**：`GET/POST /api/tools` 暴露 7 个工具（get_profile_scores、search_web(DuckDuckGo)、lookup_word_context、get_daily_words、get_evaluation_latest、get_challenge_history、get_recent_learning）。供 Agent 场景使用。

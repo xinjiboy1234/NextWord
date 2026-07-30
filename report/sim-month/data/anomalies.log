@@ -1,0 +1,34 @@
+{"ts": "2026-07-30T21:55:14", "kind": "assessment-level", "detail": "冒烟观察（人工记录）：菜鸟人设（四维均分 3.2/5：语法3.2 自然2.8 词汇3.2 相关3.8）测评表达力 64 → 主定级 B2，明显偏高；词汇参考 100(C1)/阅读参考 50(B1) 不参与定级。定级阈值或 LLM 评分偏松，值得产品关注。"}
+{"ts": "2026-07-30T21:55:14", "kind": "plan-content", "detail": "冒烟观察（人工记录）：定 B2 后首份计划主攻 agree_disagree/daily_routine，造句目标为 see eye to eye / blow off steam / weigh in / stance / take issue with 等 B2 短语——对初中水平菜鸟过难，人设与内容难度错配源于定级偏高。"}
+{"ts": "2026-07-30T21:55:52", "kind": "grading", "detail": "菜鸟句拿 A: 'In a nutshell, this phone is cheaper and faster than my old one.' target=in a nutshell"}
+{"ts": "2026-07-30T21:56:05", "kind": "grading", "detail": "菜鸟句拿 A: 'It was raining. Nevertheless, we went out to buy food.' target=nevertheless"}
+{"ts": "2026-07-30T21:56:05", "kind": "grading", "detail": "菜鸟句四维满分: 'It was raining. Nevertheless, we went out to buy food.'"}
+{"ts": "2026-07-30T21:56:08", "kind": "grading", "detail": "菜鸟句拿 A: 'Let’s hold off on booking till Friday.' target=hold off"}
+{"ts": "2026-07-30T21:56:08", "kind": "grading", "detail": "菜鸟句四维满分: 'Let’s hold off on booking till Friday.'"}
+{"ts": "2026-07-30T21:56:13", "kind": "grading", "detail": "菜鸟句拿 A: 'She studied hard every day; thus, she passed the exam.' target=thus"}
+{"ts": "2026-07-30T21:56:54", "kind": "grading", "detail": "菜鸟句拿 A: 'My phone battery died — on top of that, I lost my charger.' target=on top of that"}
+{"ts": "2026-07-30T21:56:54", "kind": "grading", "detail": "菜鸟句四维满分: 'My phone battery died — on top of that, I lost my charger.'"}
+{"ts": "2026-07-30T21:57:00", "kind": "grading", "detail": "菜鸟句拿 A: 'It’s cheaper in the long run to buy good shoes than cheap ones.' target=in the long run"}
+{"ts": "2026-07-30T21:57:00", "kind": "grading", "detail": "菜鸟句四维满分: 'It’s cheaper in the long run to buy good shoes than cheap ones.'"}
+{"ts": "2026-07-30T21:57:57", "kind": "grading", "detail": "菜鸟句拿 A: 'It’s healthy. Moreover, it’s super cheap.' target=moreover"}
+{"ts": "2026-07-30T21:58:01", "kind": "grading", "detail": "菜鸟句拿 A: 'The plan is risky. Furthermore, it’s expensive.' target=furthermore"}
+{"ts": "2026-07-30T21:58:27", "kind": "grading", "detail": "菜鸟句拿 A: 'Needless to say, safety comes first when we cross the road.' target=needless to say"}
+{"ts": "2026-07-30T21:58:31", "kind": "grading", "detail": "菜鸟句拿 A: 'On the whole, it was a good day.' target=on the whole"}
+{"ts": "2026-07-30T21:58:31", "kind": "grading", "detail": "菜鸟句四维满分: 'On the whole, it was a good day.'"}
+{"ts": "2026-07-30T22:01:20", "kind": "grading", "detail": "菜鸟句拿 A: 'Brushing teeth every morning is a good habit for me.' target=habit"}
+{"ts": "2026-07-30T22:02:25", "kind": "grading", "detail": "菜鸟句拿 A: 'The new feature saves time for the whole team.' target=feature"}
+{"ts": "2026-07-30T22:04:28", "kind": "grading", "detail": "菜鸟句拿 A: 'She plans to go freelance after her contract ends next month.' target=go freelance"}
+{"ts": "2026-07-30T22:04:28", "kind": "grading", "detail": "菜鸟句四维满分: 'She plans to go freelance after her contract ends next month.'"}
+{"ts": "2026-07-30T22:05:19", "kind": "grading", "detail": "菜鸟句拿 A: 'That job is only temporary, but it’s good experience.' target=temporary"}
+{"ts": "2026-07-30T22:05:19", "kind": "grading", "detail": "菜鸟句四维满分: 'That job is only temporary, but it’s good experience.'"}
+{"ts": "2026-07-30T22:08:02", "kind": "grading", "detail": "菜鸟句拿 A: 'Can I exchange this for a bigger size?' target=exchange"}
+{"ts": "2026-07-30T22:08:02", "kind": "grading", "detail": "菜鸟句四维满分: 'Can I exchange this for a bigger size?'"}
+{"ts": "2026-07-30T22:08:06", "kind": "grading", "detail": "菜鸟句拿 A: 'Please tap your card on the reader to pay.' target=tap"}
+{"ts": "2026-07-30T22:08:06", "kind": "grading", "detail": "菜鸟句四维满分: 'Please tap your card on the reader to pay.'"}
+{"ts": "2026-07-30T22:08:10", "kind": "grading", "detail": "菜鸟句拿 A: 'I like savory snacks more than sweet snacks.' target=savory"}
+{"ts": "2026-07-30T22:08:10", "kind": "grading", "detail": "菜鸟句四维满分: 'I like savory snacks more than sweet snacks.'"}
+{"ts": "2026-07-30T22:08:34", "kind": "grading", "detail": "菜鸟句拿 A: 'This hostel is clean and affordable.' target=affordable"}
+{"ts": "2026-07-30T22:09:05", "kind": "grading", "detail": "菜鸟句拿 A: 'This blanket has a soft texture.' target=texture"}
+{"ts": "2026-07-30T22:09:05", "kind": "grading", "detail": "菜鸟句四维满分: 'This blanket has a soft texture.'"}
+{"ts": "2026-07-30T22:09:17", "kind": "grading", "detail": "菜鸟句拿 A: 'I wipe the counter with a damp cloth.' target=damp"}
+{"ts": "2026-07-30T22:09:17", "kind": "grading", "detail": "菜鸟句四维满分: 'I wipe the counter with a damp cloth.'"}
