@@ -12,6 +12,7 @@ import { Badge } from '../components/ui/Badge'
 import { useDashboardStats, type ModuleBadge } from '../hooks/useDashboardStats'
 import { useLearningPlan } from '../hooks/useLearningPlan'
 import { useBottleneckInsight } from '../hooks/useBottleneckInsight'
+import { useGraduations } from '../hooks/useGraduations'
 import type { ProgressSummary } from '../types/models'
 import type { DashboardView } from '../navigation/views'
 
@@ -32,6 +33,7 @@ export function Dashboard({ progress, onNavigate }: DashboardProps) {
   const stats = useDashboardStats(progress)
   const plan = useLearningPlan()
   const insight = useBottleneckInsight()
+  const graduations = useGraduations()
 
   // T-018/T-019：加载中与请求失败（静默降级）都不展示对应卡片
   const showPlanCard = plan.status === 'active' || plan.status === 'none'
@@ -115,6 +117,12 @@ export function Dashboard({ progress, onNavigate }: DashboardProps) {
               ) : (
                 <p className="dashboard-info-empty">
                   完成初始测评后，AI 将为你生成个性化学习计划。
+                </p>
+              )}
+              {/* T-034：本周毕业计数（无毕业不显示） */}
+              {graduations.weeklyCount > 0 && (
+                <p className="dashboard-info-meta" style={{ marginTop: 'var(--space-2)' }}>
+                  🎓 本周毕业 {graduations.weeklyCount} 个词
                 </p>
               )}
             </section>

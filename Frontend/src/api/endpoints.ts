@@ -12,6 +12,7 @@ export const endpoints = {
   llmPresets: '/api/profile/llm/presets',
   words: '/api/words',
   dailyWords: '/api/words/daily',
+  wordsGraduated: '/api/words/graduated',
   learningSubmit: '/api/learning/submit',
   progress: '/api/progress',
   llmRateDifficulty: '/api/llm/rate-difficulty',

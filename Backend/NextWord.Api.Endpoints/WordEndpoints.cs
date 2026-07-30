@@ -1,6 +1,8 @@
+using Microsoft.EntityFrameworkCore;
 using NextWord.Domain.Entities;
 using NextWord.Domain.Enums;
 using NextWord.Domain.Interfaces;
+using NextWord.Infrastructure.Data;
 
 namespace NextWord.Api.Endpoints;
 
@@ -21,6 +23,25 @@ public static class WordEndpoints
             }
 
             return Results.Ok(result.Select(WordDto.FromEntity));
+        });
+
+        // T-034：当前用户已毕业（spontaneous_use）词列表——Dashboard 本周毕业计数与词库「已毕业」标记共用
+        group.MapGet("/graduated", async (HttpContext http, IUserRepository users, ApplicationDbContext db, CancellationToken ct) =>
+        {
+            var user = await UserResolver.ResolveAsync(http, null, users, ct);
+            if (user is null)
+            {
+                return Results.Unauthorized();
+            }
+
+            var graduated = await db.UserWordRelationships.AsNoTracking()
+                .Include(item => item.Word)
+                .Where(item => item.UserId == user.Id && item.LifecycleStage == WordLifecycleStage.SpontaneousUse)
+                .OrderByDescending(item => item.StageUpdatedAt)
+                .ToListAsync(ct);
+            return Results.Ok(graduated
+                .Select(item => new GraduatedWordDto(item.WordId, item.Word?.Lemma ?? string.Empty, item.StageUpdatedAt))
+                .ToList());
         });
 
         group.MapGet("/daily", async (HttpContext http, int? count, IUserRepository users, IDailyWordSelectionService dailyWords, CancellationToken ct) =>
@@ -82,6 +103,9 @@ public sealed record CreateWordRequest(
     IReadOnlyList<string> Meanings,
     IReadOnlyList<string> ExampleSentences,
     bool IsCore = true);
+
+/// <summary>T-034：已毕业词（spontaneous_use）。GraduatedAt 取阶段流转时间（毕业当刻）。</summary>
+public sealed record GraduatedWordDto(Guid WordId, string Lemma, DateTimeOffset? GraduatedAt);
 
 public sealed record WordDto(
     Guid Id,

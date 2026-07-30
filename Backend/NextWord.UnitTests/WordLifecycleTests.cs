@@ -165,25 +165,29 @@ public class WordLifecycleTests
         var lowGradeWord = await SeedWordWithStageAsync(db, user.Id, "lowgradeword", WordLifecycleStage.PromptedUse);
 
         // 达标（A 档）自由表达中自发使用 → 毕业留痕（词 + FreeExpressionLog Id）
+        // T-034：评分结果带本次毕业词列表（graduatedWords 响应口径）
         var passing = new FreeExpressionService(db, new StubLlmFactory(new StaticRatingLlm(Grade("A"))), RatingOptions(), CreateScoreProfile(db));
-        var log = await passing.RateAsync(user.Id, $"I want to {graduateWord.Lemma} every single day.", "A2", CancellationToken.None);
+        var passingResult = await passing.RateAsync(user.Id, $"I want to {graduateWord.Lemma} every single day.", "A2", CancellationToken.None);
+        var log = passingResult.Log;
         var graduated = await GetRelationshipAsync(db, user.Id, graduateWord.Id);
         Assert.Equal(WordLifecycleStage.SpontaneousUse, graduated.LifecycleStage);
         Assert.Equal(log.Id, graduated.GraduatedFreeExpressionLogId);
         Assert.Equal(100, graduated.MasteryScore);
         Assert.NotNull(graduated.StageUpdatedAt);
+        Assert.Equal([graduateWord.Lemma], passingResult.GraduatedWords);
 
         // 未出现的词不毕业
         var absent = await GetRelationshipAsync(db, user.Id, absentWord.Id);
         Assert.Equal(WordLifecycleStage.PromptedUse, absent.LifecycleStage);
         Assert.Null(absent.GraduatedFreeExpressionLogId);
 
-        // 评分不达标（C 档）即使出现也不毕业
+        // 评分不达标（C 档）即使出现也不毕业，graduatedWords 为空
         var failing = new FreeExpressionService(db, new StubLlmFactory(new StaticRatingLlm(Grade("C"))), RatingOptions(), CreateScoreProfile(db));
-        await failing.RateAsync(user.Id, $"The {lowGradeWord.Lemma} appears here.", "A2", CancellationToken.None);
+        var failingResult = await failing.RateAsync(user.Id, $"The {lowGradeWord.Lemma} appears here.", "A2", CancellationToken.None);
         var lowGrade = await GetRelationshipAsync(db, user.Id, lowGradeWord.Id);
         Assert.Equal(WordLifecycleStage.PromptedUse, lowGrade.LifecycleStage);
         Assert.Null(lowGrade.GraduatedFreeExpressionLogId);
+        Assert.Empty(failingResult.GraduatedWords);
     }
 
     // ── Planner 候选池优先编排（真实 PG）────────────────────────────
@@ -258,6 +262,134 @@ public class WordLifecycleTests
         });
     }
 
+    // ── T-034 回忆考察配额（DESIGN-lifecycle-acceleration §2.1，真实 PG）──────
+
+    [Fact]
+    public async Task Daily_words_reserve_recall_exam_quota_for_mature_words()
+    {
+        await using var db = await PostgresTestDatabase.CreateContextAsync();
+        var user = await SeedUserWithBandAsync(db, "accel-quota");
+        await SeedWordPoolAsync(db, "accelquota");
+
+        // 10 个成熟待回忆考察词（recalled 阶段；默认 EstimatedKnownRate=0.5 不进薄弱复习位）
+        var mature = new List<Word>();
+        for (var i = 0; i < 10; i++)
+        {
+            mature.Add(await SeedWordWithStageAsync(db, user.Id, $"mature{i}word", WordLifecycleStage.Recalled));
+        }
+
+        var daily = new DailyWordSelectionService(db, CreateScoreProfile(db), CreatePlanService(db));
+        var items = await daily.GetDailyAsync(user.Id, 10, CancellationToken.None);
+
+        Assert.Equal(10, items.Count);
+        var recallItems = items.Where(item => item.QuizMode == "recall").ToList();
+        // 回忆考察位 ≥40% 名额，全部取自成熟词池
+        Assert.True(recallItems.Count >= 4, $"回忆考察位应 ≥40%，实际 {recallItems.Count}/10");
+        Assert.All(recallItems, item => Assert.Equal("recalled", item.Stage));
+        Assert.All(recallItems, item => Assert.Contains(item.Id, mature.Select(word => word.Id)));
+        // 其余名额新词补位（认识模式）
+        var fillItems = items.Where(item => item.QuizMode != "recall").ToList();
+        Assert.NotEmpty(fillItems);
+        Assert.All(fillItems, item => Assert.Equal("recognition", item.QuizMode));
+    }
+
+    [Fact]
+    public async Task Daily_words_fill_new_words_when_mature_pool_insufficient()
+    {
+        await using var db = await PostgresTestDatabase.CreateContextAsync();
+        var user = await SeedUserWithBandAsync(db, "accel-fill");
+        await SeedWordPoolAsync(db, "accelfill");
+
+        // 成熟池不足配额：2 个 recalled + 1 个认识且 RepeatCount 达成熟阈值的残留词
+        await SeedWordWithStageAsync(db, user.Id, "shortpoola", WordLifecycleStage.Recalled);
+        await SeedWordWithStageAsync(db, user.Id, "shortpoolb", WordLifecycleStage.Recalled);
+        var straggler = await SeedWordWithStageAsync(db, user.Id, "straggler", WordLifecycleStage.Recognized);
+        var stragglerRel = await GetRelationshipAsync(db, user.Id, straggler.Id);
+        stragglerRel.RepeatCount = WordLifecycleService.MatureRepeatCount;
+        await db.SaveChangesAsync();
+
+        var daily = new DailyWordSelectionService(db, CreateScoreProfile(db), CreatePlanService(db));
+        var items = await daily.GetDailyAsync(user.Id, 10, CancellationToken.None);
+
+        // 不足不报错：成熟词全进队列，其余新词补满
+        Assert.Equal(10, items.Count);
+        Assert.Equal(2, items.Count(item => item.QuizMode == "recall"));
+        // 认识阶段残留成熟词占考察位：认识模式考察（答对即升回忆，状态机不动）
+        var stragglerItem = items.FirstOrDefault(item => item.Id == straggler.Id);
+        Assert.NotNull(stragglerItem);
+        Assert.Equal("recognized", stragglerItem.Stage);
+        Assert.Equal("recognition", stragglerItem.QuizMode);
+    }
+
+    [Fact]
+    public async Task Daily_words_from_plan_keep_recall_exam_quota()
+    {
+        await using var db = await PostgresTestDatabase.CreateContextAsync();
+        var user = await SeedUserWithBandAsync(db, "accel-plan");
+        await SeedWordPoolAsync(db, "accelplan");
+        await SeedFocusProfileAsync(db, user.Id);
+
+        // 6 个成熟 recalled 词（有当日 Plan 时回忆考察位同样保底）
+        for (var i = 0; i < 6; i++)
+        {
+            await SeedWordWithStageAsync(db, user.Id, $"planpool{i}word", WordLifecycleStage.Recalled);
+        }
+
+        var planService = CreatePlanService(db);
+        await planService.GenerateAsync(user.Id, CancellationToken.None);
+        var daily = new DailyWordSelectionService(db, CreateScoreProfile(db), planService);
+        var items = await daily.GetDailyAsync(user.Id, 10, CancellationToken.None);
+
+        Assert.Equal(10, items.Count);
+        var recallItems = items.Where(item => item.QuizMode == "recall").ToList();
+        Assert.True(recallItems.Count >= 4, $"Plan 队列回忆考察位应 ≥40%，实际 {recallItems.Count}/10");
+        Assert.All(recallItems, item => Assert.False(item.FromPlan));
+        // Plan 词仍占其余名额（Plan 定词、配额定考察模式）
+        Assert.Contains(items, item => item.FromPlan);
+    }
+
+    // ── T-034 造句目标二级补位（DESIGN-lifecycle-acceleration §2.2，真实 PG）──
+
+    [Fact]
+    public async Task Planner_backfills_sentence_targets_from_recalled_pool()
+    {
+        await using var db = await PostgresTestDatabase.CreateContextAsync();
+        var user = await SeedUserWithBandAsync(db, "accel-targets");
+        await SeedWordPoolAsync(db, "acceltargets");
+        await SeedFocusProfileAsync(db, user.Id);
+
+        // prompted_use 池空；Recalled 池：带内 2 个（最早进阶段的优先），超带与 utility low 不进池
+        var oldest = await SeedWordWithStageAsync(db, user.Id, "recalledoldest", WordLifecycleStage.Recalled, CefrLevel.A2);
+        var newer = await SeedWordWithStageAsync(db, user.Id, "recallednewer", WordLifecycleStage.Recalled, CefrLevel.A2);
+        var overBand = await SeedWordWithStageAsync(db, user.Id, "recalledoverband", WordLifecycleStage.Recalled, CefrLevel.C1);
+        var lowUtility = await SeedWordWithStageAsync(db, user.Id, "recalledlowutil", WordLifecycleStage.Recalled, CefrLevel.A2);
+        var now = DateTimeOffset.UtcNow;
+        (await GetRelationshipAsync(db, user.Id, oldest.Id)).StageUpdatedAt = now.AddDays(-5);
+        (await GetRelationshipAsync(db, user.Id, newer.Id)).StageUpdatedAt = now.AddDays(-1);
+        var lowUtilityWord = await db.Words.FirstAsync(word => word.Id == lowUtility.Id);
+        lowUtilityWord.Utility = WordUtility.Low;
+        await db.SaveChangesAsync();
+
+        var planService = CreatePlanService(db);
+        var plan = await planService.GenerateAsync(user.Id, CancellationToken.None);
+        var content = JsonSerializer.Deserialize<LearningPlanContent>(plan.ContentJson, JsonOptions)!;
+
+        // Recalled 池二级补位：StageUpdatedAt 最早优先，剩余名额才落当日带内词
+        var day0Targets = content.Days[0].SentenceTargets;
+        Assert.Equal(3, day0Targets.Count);
+        Assert.Equal(oldest.Lemma, day0Targets[0]);
+        Assert.Equal(newer.Lemma, day0Targets[1]);
+        var day0Lemmas = await db.Words.AsNoTracking()
+            .Where(word => content.Days[0].WordIds.Contains(word.Id))
+            .Select(word => word.Lemma)
+            .ToListAsync();
+        Assert.Contains(day0Targets[2], day0Lemmas);
+
+        var allTargets = content.Days.SelectMany(day => day.SentenceTargets).ToList();
+        Assert.DoesNotContain(overBand.Lemma, allTargets);
+        Assert.DoesNotContain(lowUtility.Lemma, allTargets);
+    }
+
     // ── 数据播种 ─────────────────────────────────────────────
 
     private static async Task<User> SeedUserAsync(ApplicationDbContext db, string name)
@@ -315,6 +447,24 @@ public class WordLifecycleTests
             db.Words.Add(word);
         }
 
+        await db.SaveChangesAsync();
+    }
+
+    /// <summary>T-034：主攻场景画像（Verified dining_out weakness），保证 Plan 词队列取到播种的带内词。</summary>
+    private static async Task SeedFocusProfileAsync(ApplicationDbContext db, Guid userId)
+    {
+        var profile = new WeaknessProfile { UserId = userId, ModelProfileId = "test" };
+        profile.Findings.Add(new ProfileFinding
+        {
+            Dimension = FindingDimension.Scenario,
+            DimensionKey = "dining_out",
+            Polarity = FindingPolarity.Weakness,
+            Statement = "点餐场景词掌握弱。",
+            EvidenceJson = "[]",
+            Confidence = FindingConfidence.Low,
+            Verification = FindingVerification.Verified
+        });
+        db.WeaknessProfiles.Add(profile);
         await db.SaveChangesAsync();
     }
 

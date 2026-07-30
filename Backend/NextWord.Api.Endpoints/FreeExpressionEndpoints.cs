@@ -31,10 +31,10 @@ public static class FreeExpressionEndpoints
             }
 
             // T-027：评分带由服务端从 UserProgress 解析，客户端 userLevel 仅作无进度回退
-            var log = await expressions.RateAsync(user.Id, request.UserText, request.UserLevel, ct);
+            var result = await expressions.RateAsync(user.Id, request.UserText, request.UserLevel, ct);
             // T-022：用户主动练习的自由表达评分小步回写 Writing 维
-            var writing = await scoreWriteback.ApplyFreeExpressionAsync(user.Id, log, ct);
-            return Results.Ok(FreeExpressionLogDto.FromEntity(log, writing));
+            var writing = await scoreWriteback.ApplyFreeExpressionAsync(user.Id, result.Log, ct);
+            return Results.Ok(FreeExpressionLogDto.FromEntity(result.Log, writing, result.GraduatedWords));
         });
     }
 }
@@ -52,9 +52,12 @@ public sealed record FreeExpressionLogDto(
     DifficultyLevel DifficultyLevel,
     DateTimeOffset Timestamp,
     int? WritingScoreBefore,
-    int? WritingScoreAfter)
+    int? WritingScoreAfter,
+    /// <summary>T-034：本次自由表达触发毕业（spontaneous_use）的词 lemma 列表，无毕业为空。</summary>
+    IReadOnlyList<string>? GraduatedWords = null)
 {
-    public static FreeExpressionLogDto FromEntity(FreeExpressionLog log, WritingScoreChange? writing = null)
+    public static FreeExpressionLogDto FromEntity(
+        FreeExpressionLog log, WritingScoreChange? writing = null, IReadOnlyList<string>? graduatedWords = null)
     {
         return new FreeExpressionLogDto(
             log.Id,
@@ -67,6 +70,7 @@ public sealed record FreeExpressionLogDto(
             log.DifficultyLevel,
             log.Timestamp,
             writing?.Before,
-            writing?.After);
+            writing?.After,
+            graduatedWords ?? []);
     }
 }

@@ -52,7 +52,7 @@ docker-compose.yml        postgres:16-alpine + redis:7-alpine + api（容器内 
 
 ### 5.1 每日选词与新词记忆（`/learn`）
 
-- `GET /api/words/daily?count=`：**优先执行当日 LearningPlan 词队列**（T-006，见 §5.15：带内词 + ≤20% 超带接触词，`fromPlan`/`isExposure` 标记）；无 Plan、Plan 过期（>7 天）或当日队列为空 → 回退既有逻辑——按用户 Vocabulary 分取 `[score, score+12]` 难度带单词 + `EstimatedKnownRate<0.4` 弱词，各占约一半（`DailyWordSelectionService`）。**T-014：返回词带生命周期阶段 `stage` 与考察模式 `quizMode`**（认识=recognition 看词知义，回忆及以后=recall 看义想词，新词默认认识模式）。
+- `GET /api/words/daily?count=`：**优先执行当日 LearningPlan 词队列**（T-006，见 §5.15：带内词 + ≤20% 超带接触词，`fromPlan`/`isExposure` 标记）；无 Plan、Plan 过期（>7 天）或当日队列为空 → 回退既有逻辑——按用户 Vocabulary 分取 `[score, score+12]` 难度带单词 + `EstimatedKnownRate<0.4` 弱词，各占约一半（`DailyWordSelectionService`）。**T-014：返回词带生命周期阶段 `stage` 与考察模式 `quizMode`**（认识=recognition 看词知义，回忆及以后=recall 看义想词，新词默认认识模式）。**T-034：两条路径都保证 ≥40% 名额给「已成熟待推进」老词的回忆考察位**（`RecallExamQuotaRatio` 常量；池 = recalled 阶段 + 认识且 `RepeatCount≥2` 的残留词，`StageUpdatedAt` 最早优先，考察模式按阶段派生），不足时新词补位。
 - `POST /api/learning/submit`：提交作答（`mode`=recognition/recall，回忆模式需正确拼出词本身）→ SM-2 排程更新 + `EstimatedKnownRate`/`PersonalDifficulty`（EMA）+ 连胜天数 + **生命周期阶段推进（T-014，见 §5.17）**。**自评（Remembered/Forgot）只改 SM-2 排程参数，不再按自评加减掌握度**——`MasteryScore` 由阶段派生（25/50/75/100）。
 - SM-2 变体（`Sm2Service`）：EF 下限 1.3，间隔上限 3650 天；只管认识/回忆两阶段调度。
 - `POST /api/words` 新增单词时调用 LLM `RateDifficultyAsync` 自动定级（DifficultyLevel + CefrLevel + 0–100 IntrinsicScore 标注）。
@@ -164,7 +164,7 @@ Worker 异常不拖垮宿主（`BackgroundServiceExceptionBehavior=Ignore`）。
 ### 5.15 LearningPlan + PlannerWorker（I3 T-006）
 
 - **计划结构**：`LearningPlans` 表（`(UserId, StartDate)` 唯一 → 同日幂等；枚举-free，内容明细存 `ContentJson`）：7 日计划 = 主攻场景（1–2 个子场景）+ 每日词队列（带内词 + ≤20% 超带接触词）+ 阅读推荐（3 篇）+ 每日造句目标（3 词）+ 生成依据 Finding id 列表；设计见 `docs/DESIGN-planner-worker.md`。
-- **生成（`LearningPlanService`）**：主攻场景只取自最新画像的 **Verified 场景 weakness Finding**（存疑不进规划），画像不足按场景词覆盖率最低者兜底；水平带用 **CEFR**（`CefrDisplay`，与测评词池口径一致——词库词多数无 IntrinsicScore 标注，intrinsic 带会落空），带池过薄向下一带补充、绝不超带；接触词 = CEFR 严格高于水平带的词，每天 ≤2 个（10 × 20%），只进背词识别队列；**每日造句目标优先取 T-014 产出候选池**（prompted_use 阶段且未确认的词，带内、utility 非 low，按进池时间 7 天顺次消耗），剩余名额取当日带内词。
+- **生成（`LearningPlanService`）**：主攻场景只取自最新画像的 **Verified 场景 weakness Finding**（存疑不进规划），画像不足按场景词覆盖率最低者兜底；水平带用 **CEFR**（`CefrDisplay`，与测评词池口径一致——词库词多数无 IntrinsicScore 标注，intrinsic 带会落空），带池过薄向下一带补充、绝不超带；接触词 = CEFR 严格高于水平带的词，每天 ≤2 个（10 × 20%），只进背词识别队列；**每日造句目标优先取 T-014 产出候选池**（prompted_use 阶段且未确认的词，带内、utility 非 low，按进池时间 7 天顺次消耗），**T-034 二级补位 Recalled 池**（recalled 且带内、utility 非 low，`StageUpdatedAt` 最早优先），两级都空才取当日带内词。
 - **触发（`PlannerWorker`，BackgroundJob 新任务类型）**：测评完成 → 评估报告任务处理时入队（幂等键 `planner:{userId}:{yyyyMMdd}`，同日重复触发复用同一 job 且不重复生成）；`POST /api/planner/jobs` 可手动触发当前用户当日任务；`GET /api/planner/current` 查当日有效 Plan。
 - **内容来源切换**：每日选词 / 阅读推荐 / 造句出题均优先执行当日 Plan（`GetActiveAsync`：StartDate 起 7 天内有效），无 Plan、过期（>7 天）或生成失败 → 回退既有逻辑（用户永远有内容可学）。前端以「来自今日计划」徽标标示（WordDisplay / SentenceCard / 短文库推荐区）。
 - **重规划（T-007）**：`GenerateAsync(force: true)` 同日已有 Plan 时原地重建内容（`(UserId, StartDate)` 唯一不破，`CreatedAt` 刷新）；由瓶颈性质变化（`planner:replan:{userId}:{yyyyMMdd}`）或每周兜底（`planner:weekly:{userId}:{ISO 周}`）触发。
@@ -185,8 +185,9 @@ Worker 异常不拖垮宿主（`BackgroundServiceExceptionBehavior=Ignore`）。
 - **推进**：认识→回忆 = SM-2 调度内看词知义连续正确达成熟阈值（`RepeatCount≥2`，复用 repetitions/interval 口径）；回忆→造句使用 = 回忆模式考察通过（看义正确拼出词）→ 进产出候选池；造句使用→待自发 = 提示造句中正确使用（词边界命中 + A/B 档，`PromptedUseConfirmedAt` 留痕）；待自发→毕业 = 自由表达中自发出现且当次评分达标（复用 T-007 分词口径做词级判定），留痕所在 `FreeExpressionLog` Id。
 - **回退**：仅造句使用阶段——产出证据显示不会用（句中含目标词但 D 档或词汇维 ≤2）→ 退回回忆阶段重进 SM-2 调度（RepeatCount/Interval 归零）；认识/回忆阶段不回退（SM-2 管遗忘调度）。
 - **自评职责收窄**：Remembered/Forgot 只改 SM-2 排程参数（interval/repetitions）与接触词排程输入（EstimatedKnownRate/PersonalDifficulty EMA），**不再参与掌握度与 Score**——`MasteryScore` 由阶段派生（25/50/75/100，recognized/recalled 只算「认识」、prompted_use 算「会用」、spontaneous_use 才算「毕业」）；Score 写入点不变（测评/挑战/后台造句评分三处，均不经自评路径）。
-- **Planner 编排**：产出候选池（prompted_use 未确认、带内、utility 非 low）优先编入每日造句目标（见 §5.15）；确认过或已毕业的词不再重复编排。
-- **背词考察模式**：`/api/words/daily` 按阶段返回 `stage`/`quizMode`（认识=看词知义答释义，回忆及以后=看义想词答拼写）；`/api/learning/submit` 按 `mode` 判定正确性，响应带阶段与下次考察模式；前端 WordCard 随模式切换题面（看义想词模式隐藏单词、提交后揭示）并显示阶段徽标。
+- **Planner 编排**：产出候选池（prompted_use 未确认、带内、utility 非 low）优先编入每日造句目标（见 §5.15）；确认过或已毕业的词不再重复编排。**T-034 二级补位**：prompted_use 池空时接 Recalled 池（最早进阶段的优先），两级都空才落当日带内词。
+- **背词考察模式**：`/api/words/daily` 按阶段返回 `stage`/`quizMode`（认识=看词知义答释义，回忆及以后=看义想词答拼写）；`/api/learning/submit` 按 `mode` 判定正确性，响应带阶段与下次考察模式；前端 WordCard 随模式切换题面（看义想词模式隐藏单词、提交后揭示）并显示阶段徽标。**T-034 回忆考察位**：每日词队列 ≥40% 名额给成熟待推进老词（见 §5.1），解决「老词成熟后很少再被抽到」的曝光瓶颈。
+- **毕业时刻可见（T-034）**：自由表达评分响应带 `graduatedWords`（本次毕业词 lemma 列表），前端自由表达结果区弹毕业提示；`GET /api/words/graduated` 返回当前用户已毕业词列表（含毕业时间），Dashboard 计划卡下方显示本周毕业计数（无则不显示），词库（`/word-bank`）行内加「已毕业」标记。
 - **存量映射**：幂等补丁 SQL 回填——SM-2 已成熟（RepeatCount≥2）→ recalled，掌握度按阶段派生；Development 删库重建下新关系默认 recognized。
 
 ### 5.18 Agent 价值用户可见（I6 T-018/T-019）
@@ -207,6 +208,7 @@ Worker 异常不拖垮宿主（`BackgroundServiceExceptionBehavior=Ignore`）。
 **单词与学习**
 - `GET /api/words`、`GET /api/words/{id}`、`POST /api/words`（LLM 自动定级）
 - `GET /api/words/daily?count=`
+- `GET /api/words/graduated`（T-034：当前用户已毕业词列表，含毕业时间）
 - `POST /api/learning/submit`
 - `GET /api/progress`
 - `POST /api/llm/rate-difficulty`

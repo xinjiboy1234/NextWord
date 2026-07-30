@@ -14,6 +14,13 @@ export interface Word {
   isCore: boolean
 }
 
+/** T-034：已毕业词（spontaneous_use），graduatedAt 为毕业当刻（阶段流转时间） */
+export interface GraduatedWord {
+  wordId: string
+  lemma: string
+  graduatedAt: string | null
+}
+
 export interface LearningResult {
   isCorrect: boolean
   meanings: string[]

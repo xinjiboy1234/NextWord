@@ -301,6 +301,8 @@
 .wb-table tbody tr.selected { background: var(--accent-active); }
 .wb-lemma { font-weight: 540; }
 .wb-phonetic { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--muted); }
+/* T-034：词库「已毕业」标记 */
+.wb-graduated-badge { margin-left: var(--space-2); }
 
 /* Article reader */
 .reader-page {

@@ -63,6 +63,13 @@ export function FreeExpression({ userLevel = 'A2' }: FreeExpressionProps) {
       </div>
 
       <aside className="stack stack-md">
+        {/* T-034：毕业时刻提示（本次自由表达中自发使用的词毕业） */}
+        {rating && (rating.graduatedWords?.length ?? 0) > 0 && (
+          <div className="alert alert-success">
+            🎉 {rating.graduatedWords!.map((word) => `『${word}』`).join('')}
+            毕业了——你已经在自发使用{rating.graduatedWords!.length > 1 ? '它们' : '它'}
+          </div>
+        )}
         {rating && (
           <div className="side-panel" style={{ textAlign: 'center' }}>
             <p className="mono-label" style={{ textTransform: 'none' }}>综合分</p>

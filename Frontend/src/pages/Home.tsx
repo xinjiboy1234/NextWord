@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api/client'
 import { endpoints } from '../api/endpoints'
 import { Badge } from '../components/ui/Badge'
+import { useGraduations } from '../hooks/useGraduations'
 import type { Word } from '../types/models'
 
 interface HomeProps {
@@ -15,6 +16,8 @@ export function Home({ onStart }: HomeProps) {
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  // T-034：已毕业（spontaneous_use）词标记
+  const graduations = useGraduations()
 
   async function load() {
     setLoading(true)
@@ -89,7 +92,12 @@ export function Home({ onStart }: HomeProps) {
                   className={selectedId === word.id ? 'selected' : undefined}
                   onClick={() => setSelectedId(word.id)}
                 >
-                  <td className="wb-lemma">{word.lemma}</td>
+                  <td className="wb-lemma">
+                    {word.lemma}
+                    {graduations.graduatedWordIds.has(word.id) && (
+                      <Badge variant="success" className="wb-graduated-badge">已毕业</Badge>
+                    )}
+                  </td>
                   <td className="wb-phonetic">{word.phonetics}</td>
                   <td>{word.meanings.join('；')}</td>
                   <td><Badge variant="muted">{word.cefrLevel}</Badge></td>

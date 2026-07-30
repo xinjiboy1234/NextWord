@@ -1,0 +1,34 @@
+{
+  "nextDay": 30,
+  "assessmentDone": true,
+  "userId": "8e62e7d3-4413-421e-8b15-3d3ff33f3a1e",
+  "assessment": {
+    "assessmentId": "3b65e3ed-3024-4fc5-a70e-f3b886873655",
+    "final": {
+      "overallLevel": "B2",
+      "expressionScore": 75,
+      "vocabularyReferenceScore": 33,
+      "readingReferenceScore": 67,
+      "vocabularyReferenceLevel": "B1",
+      "readingReferenceLevel": "B2",
+      "dimensions": {
+        "grammar": 3.9,
+        "natural": 3.7,
+        "vocabulary": 3.2,
+        "relevance": 4.1,
+        "topErrorTags": [
+          "句子语法正确，语序自然；'first thing in the morning' 使用准确，符合A2水平对时间短语的掌握要求；并列结构清晰，动词时态一致（一般现在时），适合日常习惯表达。",
+          "动词'help'主语是第三人称单数'teacher'，需加-s变为'helps'；原句漏掉助动词'does'或直接用一般现在时第三人称形式",
+          "动词不定式漏掉 'to'（want to buy）",
+          "冠词缺失（the red one，而非 red color；在购物场景中通常指具体商品，不说 'red color'）",
+          "句子间缺乏连接，略显零散"
+        ],
+        "comments": [
+          "表达力综合分 75/100：语法 3.9、自然度 3.7、词汇 3.2、相关度 4.1（各维度满分 5）。",
+          "主定级 B2 由表达力综合分决定；词汇识别 33、阅读 67 仅作参考，不影响定级。"
+        ]
+      },
+      "evaluationReportId": 1
+    }
+  }
+}

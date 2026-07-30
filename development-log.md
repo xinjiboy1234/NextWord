@@ -2,6 +2,27 @@
 
 按时间倒序记录需求、决策、实现与验收。
 
+## 2026-07-30 — I7 T-034：词生命周期提速——回忆考察配额 + Recalled 池补位 + 毕业时刻可见（程实）
+
+### 需求
+- 菜鸟月仿真（`report/sim-month/REPORT.md` 发现五）：一个月 185 词仅 Recalled 10、PromptedUse 1、毕业 0——每日词队列以新词为主，老词成熟后很少再被抽到；Planner 造句目标候选池空时直接落回当日新词，老词永远轮不到产出机会；毕业用户无感知。按 `docs/DESIGN-lifecycle-acceleration.md`（顾言定稿）实现：每日词 ≥40% 回忆考察位、造句目标二级补位 Recalled 池、毕业时刻可见；验收锚点 14 天毕业首词、30 天仿真毕业 ≥3（仿真归 QA）。
+
+### 决策
+- **「已成熟待回忆考察」池的口径修正（设计字面 → 可运行口径）**：设计括号写「recognized 且 RepeatCount≥2，recall 模式」，但在 T-014 状态机里认识词在 SM-2 成熟那次认识考察即升 recalled，且 recall 模式考察认识阶段词不推进阶段（状态机一行不改是硬约束）——成熟待推进老词实际落在 **recalled 阶段**（考察模式天然 recall，答对升 prompted_use）。落池口径：`recalled` 阶段 ∪ 认识且 `RepeatCount≥2` 的残留词（答错但自评 Remembered 的边界；其推进考察为认识模式，答对即升 recalled），考察模式统一按阶段派生。§4.1 的「recall 模式占比 ≥40%」按池主体（recalled 词）达成。
+- **回忆考察位（`DailyWordSelectionService.RecallExamQuotaRatio = 0.4` 常量）**：Plan 队列与难度带回退队列都应用——池词先占 `ceil(count×0.4)` 名额（`StageUpdatedAt` 最早优先、去重已在薄弱复习位的词），Plan 词/带内新词补满（Plan 定词、配额定考察模式）；接触词 ≤20% 规则不受影响。
+- **造句目标二级补位**：`prompted_use` 未确认池（既有）→ Recalled 池（带内、utility 非 low、`StageUpdatedAt` 最早优先）→ 当日带内词（兜底）；两池拼接后 7 天顺次消耗。
+- **毕业可见**：`IFreeExpressionService.RateAsync` 返回 `FreeExpressionRatingResult(Log, GraduatedWords)`，端点 DTO 带 `graduatedWords`；新增 `GET /api/words/graduated`（当前用户 spontaneous_use 词 + 毕业时间），前端一处接口三处展示（结果区提示 / Dashboard 本周计数 / 词库标记），失败静默降级。
+- 毕业标准与四阶段状态机未改一行；无实体变更，无需迁移。
+
+### 实现
+- 后端：`DailyWordSelectionService`（配额常量 + `GetRecallExamPoolAsync`/`IsMaturePending`/`ToReviewItem`，Plan 与回退两路径接入）；`LearningPlanService`（`GetLifecyclePoolAsync` 二级补位，`FilterInBandLemmas` 收口带内过滤）；`FreeExpressionService`（毕业判定返回词列表）；`IFreeExpressionService`（结果记录）；`FreeExpressionEndpoints`（DTO 带 `graduatedWords`）；`WordEndpoints`（`/graduated` 端点 + `GraduatedWordDto`）。
+- 前端：`hooks/useGraduations.ts`（新增，周计数 + Id 集合）；`FreeExpression.tsx`（结果区「🎉『xxx』毕业了」提示）；`Dashboard.tsx`（计划卡下方本周毕业计数，无则不显示）；`Home.tsx`（词库行内「已毕业」徽标 + `overrides.css` 一样式）；`endpoints.ts` / `types`（graduatedWords、GraduatedWord）。
+- 测试（`WordLifecycleTests` 净增 4 例，真实 PG）：回退队列 10 成熟词 recall 考察位 ≥40%、成熟池不足新词补位不报错（含认识阶段残留词认识模式考察）、Plan 队列同样保底 ≥40%、Planner 二级补位（Recalled 池最早优先、超带与 utility low 不进池、兜底落带内词）；毕业测试补 `graduatedWords` 断言（达标带词、不达标为空）。
+
+### 验证
+- `dotnet test`：168 单元 + 6 集成全绿（基线 164+6，净增 4，T-014 生命周期测试零回归）；前端 `npm install && npm run build` 通过。
+- 30 天仿真验收（设计 §4.4）归周密另跑。
+
 ## 2026-07-30 — I7 T-027：造句/自由表达评分纳入相对水平挑战度（程实）
 
 ### 需求

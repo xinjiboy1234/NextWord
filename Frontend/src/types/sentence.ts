@@ -46,6 +46,8 @@ export interface FreeExpressionRating {
   /** T-022：本次评分引起的 Writing 分前后值（无回写时为空） */
   writingScoreBefore?: number | null
   writingScoreAfter?: number | null
+  /** T-034：本次自由表达触发毕业（自发使用）的词，无毕业为空 */
+  graduatedWords?: string[]
 }
 
 export interface SpellingResult {

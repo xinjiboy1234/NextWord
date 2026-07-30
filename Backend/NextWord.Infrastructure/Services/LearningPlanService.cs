@@ -159,7 +159,8 @@ public sealed class LearningPlanService(
     /// <summary>
     /// 每日词队列（设计方案 §2）：主攻场景 + core 桶选词，带内（CefrLevel == 用户水平带，
     /// 带池过薄向下一带补充，绝不超带；utility 非 low）为主，每天掺 ≤20% 超带接触词；
-    /// 造句目标优先取 T-014 产出候选池（prompted_use 未确认词），剩余名额取当日带内词（主攻场景优先）。
+    /// 造句目标优先取 T-014 产出候选池（prompted_use 未确认词），T-034 二级补位 Recalled 池
+    /// （recalled 且带内、utility 非 low，StageUpdatedAt 最早优先），两级都空才落当日带内词（主攻场景优先）。
     /// </summary>
     private async Task<List<LearningPlanDay>> BuildDaysAsync(
         Guid userId, IReadOnlyList<string> focusScenarios, CefrLevel userCefr, CancellationToken cancellationToken)
@@ -209,14 +210,17 @@ public sealed class LearningPlanService(
         var inBandPerDay = DailyWordCount - exposurePerDay;
 
         // T-014 产出候选池：prompted_use 未确认词优先编入造句目标，7 天顺次消耗
+        // T-034 二级补位：prompted_use 池耗尽后接 Recalled 池（最早进阶段的优先），两级都空才落当日带内词
         var candidatePool = await GetPromptedUsePoolAsync(userId, userCefr, cancellationToken);
+        var recalledPool = await GetLifecyclePoolAsync(userId, WordLifecycleStage.Recalled, userCefr, cancellationToken);
+        var priorityTargets = candidatePool.Concat(recalledPool).ToList();
 
         var days = new List<LearningPlanDay>();
         for (var day = 0; day < PlanDays; day++)
         {
             var dayWords = orderedInBand.Skip(day * inBandPerDay).Take(inBandPerDay).ToList();
             var dayExposure = exposure.Skip(day * exposurePerDay).Take(exposurePerDay).ToList();
-            var targets = candidatePool.Skip(day * DailySentenceTargets).Take(DailySentenceTargets).ToList();
+            var targets = priorityTargets.Skip(day * DailySentenceTargets).Take(DailySentenceTargets).ToList();
             if (targets.Count < DailySentenceTargets)
             {
                 targets.AddRange(dayWords
@@ -243,13 +247,26 @@ public sealed class LearningPlanService(
                 && item.LifecycleStage == WordLifecycleStage.PromptedUse
                 && item.PromptedUseConfirmedAt == null)
             .ToListAsync(cancellationToken);
-        return relationships
+        return FilterInBandLemmas(relationships, userCefr);
+    }
+
+    /// <summary>T-034 生命周期阶段词池（Recalled 二级补位用）：带内口径与产出候选池一致（CefrLevel ≤ 用户带、utility 非 low），StageUpdatedAt 最早优先。</summary>
+    private async Task<List<string>> GetLifecyclePoolAsync(Guid userId, WordLifecycleStage stage, CefrLevel userCefr, CancellationToken cancellationToken)
+    {
+        var relationships = await db.UserWordRelationships.AsNoTracking()
+            .Include(item => item.Word)
+            .Where(item => item.UserId == userId && item.LifecycleStage == stage)
+            .ToListAsync(cancellationToken);
+        return FilterInBandLemmas(relationships, userCefr);
+    }
+
+    private static List<string> FilterInBandLemmas(List<UserWordRelationship> relationships, CefrLevel userCefr) =>
+        relationships
             .Where(item => item.Word is not null && item.Word.CefrLevel <= userCefr && item.Word.Utility != WordUtility.Low)
             .OrderBy(item => item.StageUpdatedAt)
             .Select(item => item.Word!.Lemma)
             .Distinct()
             .ToList();
-    }
 
     /// <summary>阅读推荐：主攻场景 TopicTag/场景名匹配优先，难度（CEFR）就近，取前 3 篇。</summary>
     private async Task<List<Guid>> ResolveArticlesAsync(
