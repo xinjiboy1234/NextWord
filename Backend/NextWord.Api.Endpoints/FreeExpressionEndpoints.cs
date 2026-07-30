@@ -1,6 +1,7 @@
 using NextWord.Domain.Entities;
 using NextWord.Domain.Enums;
 using NextWord.Domain.Interfaces;
+using NextWord.Infrastructure.Services;
 
 namespace NextWord.Api.Endpoints;
 
@@ -15,6 +16,7 @@ public static class FreeExpressionEndpoints
             RateFreeExpressionRequest request,
             IUserRepository users,
             IFreeExpressionService expressions,
+            PracticeScoreWritebackService scoreWriteback,
             CancellationToken ct) =>
         {
             if (string.IsNullOrWhiteSpace(request.UserText))
@@ -29,7 +31,9 @@ public static class FreeExpressionEndpoints
             }
 
             var log = await expressions.RateAsync(user.Id, request.UserText, request.UserLevel ?? "A2", ct);
-            return Results.Ok(FreeExpressionLogDto.FromEntity(log));
+            // T-022：用户主动练习的自由表达评分小步回写 Writing 维
+            var writing = await scoreWriteback.ApplyFreeExpressionAsync(user.Id, log, ct);
+            return Results.Ok(FreeExpressionLogDto.FromEntity(log, writing));
         });
     }
 }
@@ -45,9 +49,11 @@ public sealed record FreeExpressionLogDto(
     IReadOnlyList<string> ErrorSentences,
     IReadOnlyList<string> Suggestions,
     DifficultyLevel DifficultyLevel,
-    DateTimeOffset Timestamp)
+    DateTimeOffset Timestamp,
+    int? WritingScoreBefore,
+    int? WritingScoreAfter)
 {
-    public static FreeExpressionLogDto FromEntity(FreeExpressionLog log)
+    public static FreeExpressionLogDto FromEntity(FreeExpressionLog log, WritingScoreChange? writing = null)
     {
         return new FreeExpressionLogDto(
             log.Id,
@@ -58,6 +64,8 @@ public sealed record FreeExpressionLogDto(
             log.ErrorSentences,
             log.Suggestions,
             log.DifficultyLevel,
-            log.Timestamp);
+            log.Timestamp,
+            writing?.Before,
+            writing?.After);
     }
 }

@@ -28,6 +28,9 @@ export interface SentenceRating {
   difficultyLevel: DifficultyLevel
   suggestion: string
   timestamp: string
+  /** T-022：本次评分引起的 Writing 分前后值（无回写时为空） */
+  writingScoreBefore?: number | null
+  writingScoreAfter?: number | null
 }
 
 export interface FreeExpressionRating {
@@ -40,6 +43,9 @@ export interface FreeExpressionRating {
   suggestions: string[]
   difficultyLevel: DifficultyLevel
   timestamp: string
+  /** T-022：本次评分引起的 Writing 分前后值（无回写时为空） */
+  writingScoreBefore?: number | null
+  writingScoreAfter?: number | null
 }
 
 export interface SpellingResult {

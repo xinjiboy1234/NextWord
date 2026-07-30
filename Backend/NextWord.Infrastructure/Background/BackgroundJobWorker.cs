@@ -42,11 +42,6 @@ public sealed class BackgroundJobWorker(IServiceScopeFactory scopeFactory, ILogg
                         {
                             await evaluation.ProcessJobAsync(job, stoppingToken);
                         }
-                        else if (job.JobType == "SentenceLlmScoring")
-                        {
-                            var sentenceWorker = scope.ServiceProvider.GetRequiredService<SentenceLlmScoringWorker>();
-                            await sentenceWorker.ProcessAsync(job, stoppingToken);
-                        }
                         else if (job.JobType == "ReAnnotation")
                         {
                             var reannotation = scope.ServiceProvider.GetRequiredService<ReAnnotationWorker>();

@@ -1,6 +1,7 @@
 using NextWord.Domain.Entities;
 using NextWord.Domain.Enums;
 using NextWord.Domain.Interfaces;
+using NextWord.Infrastructure.Services;
 
 namespace NextWord.Api.Endpoints;
 
@@ -29,6 +30,7 @@ public static class SentenceEndpoints
             RateSentenceRequest request,
             IUserRepository users,
             ISentenceService sentences,
+            PracticeScoreWritebackService scoreWriteback,
             CancellationToken ct) =>
         {
             if (string.IsNullOrWhiteSpace(request.UserSentence) || string.IsNullOrWhiteSpace(request.TargetWord))
@@ -51,7 +53,9 @@ public static class SentenceEndpoints
                 request.UserLevel ?? "A2",
                 ct);
 
-            return Results.Ok(SentenceLogDto.FromEntity(log));
+            // T-022：用户主动练习的造句评分小步回写 Writing 维（测评/挑战路径不经过此端点）
+            var writing = await scoreWriteback.ApplySentenceAsync(user.Id, log, ct);
+            return Results.Ok(SentenceLogDto.FromEntity(log, writing));
         });
     }
 }
@@ -103,9 +107,11 @@ public sealed record SentenceLogDto(
     IReadOnlyList<string> ErrorTags,
     DifficultyLevel DifficultyLevel,
     string Suggestion,
-    DateTimeOffset Timestamp)
+    DateTimeOffset Timestamp,
+    int? WritingScoreBefore,
+    int? WritingScoreAfter)
 {
-    public static SentenceLogDto FromEntity(SentenceLog log)
+    public static SentenceLogDto FromEntity(SentenceLog log, WritingScoreChange? writing = null)
     {
         return new SentenceLogDto(
             log.Id,
@@ -122,6 +128,8 @@ public sealed record SentenceLogDto(
             log.ErrorTags,
             log.DifficultyLevel,
             log.Suggestion,
-            log.Timestamp);
+            log.Timestamp,
+            writing?.Before,
+            writing?.After);
     }
 }

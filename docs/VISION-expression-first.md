@@ -48,7 +48,7 @@
 |---|---|---|
 | Score 内核（三维 0–100、幂等写入、日快照） | `ScoreProfileService` / `ProfileScoreSnapshotWorker` | 规划器的目标函数与状态筛查的时间序列数据 |
 | SM-2 + 个人词汇状态 | `Sm2Service` / `UserWordRelationship` | 输入层（背词）的成熟机制 |
-| 造句工作室全链路（四维 LLM 评分 → 后台写入 Score） | `SentenceService` / `SentenceLlmScoringWorker` | **愿景在局部的完整实现**，全系统该长的样子 |
+| 造句工作室全链路（四维 LLM 评分 → 回写 Score） | `SentenceService` / `PracticeScoreWritebackService` | **愿景在局部的完整实现**，全系统该长的样子 |
 | 工具注册表（7 个工具） | `/api/tools` | Agent function-calling 的现成接口 |
 | 后台任务队列 | `BackgroundJobWorker` | 夜间规划 Agent 的天然宿主 |
 | BYOK（用户自带 LLM key） | `UserLlmSettings` | 规划 Agent 的成本由用户自担，商业模式成立 |
@@ -92,7 +92,7 @@
 
 ### 4.4 Score 画像更新路径断裂
 
-`ApplyUpdateAsync` 全库仅三个写入点：测评完成、确认挑战通过、造句评分后台任务（`AssessmentService.cs:140`、`ChallengeService.cs:111`、`SentenceLlmScoringWorker.cs:45`）。日常背单词和阅读行为**不产生** Vocabulary/Reading 分——两次测评之间，三维分数里两维是死的，"画像持续更新"名不副实。
+`ApplyUpdateAsync` 写入点：测评完成、确认挑战通过、造句/自由表达练习回写（`AssessmentService.cs`、`ChallengeService.cs`、`PracticeScoreWritebackService.cs`，T-022 起练习评分小步回写 Writing 维）。日常背单词和阅读行为**不产生** Vocabulary/Reading 分——三维分数里仍有两维缺少日常数据源。
 
 ### 4.5 内容地基缺失（P0）
 
@@ -184,7 +184,7 @@
 | 测评造句用词数启发式 | 同上 `:333-346` |
 | 阅读题为硬编码、正确答案恒为 index 0 | 同上 `:282-297` |
 | 固定阈值表定级、最短板 min | `Backend/NextWord.Domain/Services/AssessmentScoringService.cs:12-28, 62-74` |
-| Score 仅三个写入点 | `AssessmentService.cs:140` / `ChallengeService.cs:111` / `SentenceLlmScoringWorker.cs:45` |
+| Score 写入点（含 T-022 练习回写） | `AssessmentService.cs` / `ChallengeService.cs` / `PracticeScoreWritebackService.cs` |
 | Word 无场景字段 | `Backend/NextWord.Domain/Entities/Word.cs` |
 | 种子库 6 词 | `Backend/NextWord.Infrastructure/Data/SeedData.cs:46-54` |
 | 评估报告 LLM 叙事未做 | `next-steps.md`「Score 内核 v1 / 待收尾」 |

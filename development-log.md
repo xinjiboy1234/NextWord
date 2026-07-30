@@ -2,6 +2,26 @@
 
 按时间倒序记录需求、决策、实现与验收。
 
+## 2026-07-30 — I7 T-022：日常造句/自由表达评分小步回写 Score 内核（程实）
+
+### 需求
+- 仿真实测发现日常造句/自由表达评分完全不写 Score（一个月 91 条造句 + 12 篇自由表达零写入，三维分 30 天不变）；`SentenceLlmScoringWorker` 全库无入队点是死链路。要求评分后小步 delta 写 Writing 维（幂等现成）并在评分反馈展示分数变化，顺带清理死代码。
+
+### 决策
+- **回写挂在端点层**：新增 `PracticeScoreWritebackService`，仅由 `POST /api/sentences/rate` 与 `POST /api/free-expression/rate` 在评分落库后调用；测评（AssessmentService）与挑战（ChallengeService）复用 `SentenceService.RateAsync` 但不经过端点，天然隔离、绝不叠加 delta（测评完成时已写 absolute 先验）。
+- **口径**：observed = `MapSentenceToScore(四维均分)`（自由表达 `AiScore` = 四维总分 × 5，数值同口径）；delta = clamp(round((observed − current) × 0.1, AwayFromZero), −2, +2)；delta = 0 也照常走 `ApplyUpdateAsync` 落幂等记录，防重放。
+- **幂等键**：`sentence-score:{sentenceLogId}` / `freeexpr-score:{logId}`（Guid 天然唯一，重试/重放不重复加分）。
+- **响应带出**：两个评分 DTO 增加可空 `writingScoreBefore/After`；前端新增 `WritingScoreBadge`，仅在有变化时显示「写作 64→65（+1）」（涨 success、降 warn）。
+- `SentenceLlmScoringWorker` 死代码删除（类、DI 注册、`BackgroundJobWorker` 分支），全库 grep 零引用。
+
+### 实现
+- 后端：`Services/PracticeScoreWritebackService.cs`（新增）；`SentenceEndpoints.cs` / `FreeExpressionEndpoints.cs`（注入回写 + DTO 两字段）；`DependencyInjection.cs`（换注册）；`BackgroundJobWorker.cs`（删分支）。
+- 前端：`components/WritingScoreBadge.tsx`（新增）；`types/sentence.ts`（两类型加可空字段）；`SentenceCard.tsx` / `FreeExpression.tsx`（结果区挂徽标）。
+- 测试：`PracticeScoreWritebackTests.cs` 7 例（真实 PG）——高/低观测分 clamp ±2、小差距 +1、同幂等键重放不重复加、delta=0 幂等记录照落、自由表达回写、测评路径 RateAsync 零 sentence-score/freeexpr-score 事件。
+
+### 验证
+- `dotnet test`：150 单元 + 6 集成全绿（基线 143+6，净增 7）；`npm install && npm run build` 通过。
+
 ## 2026-07-30 — 顾言：菜鸟用户一个月体验仿真（产出 I7 需求 T-022~T-031）
 
 ### 需求与方法

@@ -3,6 +3,7 @@ import { api } from '../api/client'
 import { endpoints } from '../api/endpoints'
 import { AiRevision } from '../components/AiRevision'
 import { ErrorAnalysis } from '../components/ErrorAnalysis'
+import { WritingScoreBadge } from '../components/WritingScoreBadge'
 import type { FreeExpressionRating } from '../types/sentence'
 
 interface FreeExpressionProps {
@@ -67,7 +68,10 @@ export function FreeExpression({ userLevel = 'A2' }: FreeExpressionProps) {
             <p className="mono-label" style={{ textTransform: 'none' }}>综合分</p>
             <div className="score-value" style={{ marginTop: 'var(--space-2)' }}>{rating.aiScore}</div>
             <p style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>/ 100</p>
-            <span className="badge badge-success" style={{ marginTop: 'var(--space-3)' }}>{rating.overallGrade}</span>
+            <div style={{ marginTop: 'var(--space-3)', display: 'flex', gap: 'var(--space-2)', justifyContent: 'center' }}>
+              <span className="badge badge-success">{rating.overallGrade}</span>
+              <WritingScoreBadge before={rating.writingScoreBefore} after={rating.writingScoreAfter} />
+            </div>
           </div>
         )}
         <AiRevision value={rating?.aiRevision} />

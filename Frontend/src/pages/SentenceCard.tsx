@@ -6,6 +6,7 @@ import { ErrorAnalysis } from '../components/ErrorAnalysis'
 import { SceneSelector } from '../components/SceneSelector'
 import { ScoreCard } from '../components/ScoreCard'
 import { StepNavigator } from '../components/StepNavigator'
+import { WritingScoreBadge } from '../components/WritingScoreBadge'
 import { useScoreDisplay } from '../hooks/useScoreDisplay'
 import { useSentenceSession } from '../hooks/useSentenceSession'
 
@@ -115,6 +116,9 @@ export function SentenceCard({ userLevel = 'A2' }: SentenceCardProps) {
             <p style={{ marginTop: 'var(--space-2)', fontFamily: 'var(--font-display)', fontSize: 'var(--text-xl)', fontWeight: 700 }}>
               {score.label}
             </p>
+            <div style={{ marginTop: 'var(--space-2)' }}>
+              <WritingScoreBadge before={session.rating.writingScoreBefore} after={session.rating.writingScoreAfter} />
+            </div>
           </div>
         )}
         <ScoreCard rating={session.rating} />

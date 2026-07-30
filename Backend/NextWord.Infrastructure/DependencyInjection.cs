@@ -68,7 +68,7 @@ public static class DependencyInjection
         services.AddScoped<BottleneckInsightWorker>();
         services.AddScoped<ReAnnotationWorker>();
         services.AddScoped<ScenarioAnnotationWorker>();
-        services.AddScoped<SentenceLlmScoringWorker>();
+        services.AddScoped<PracticeScoreWritebackService>();
         services.AddScoped<IReadingLookupService, ReadingLookupService>();
         services.AddScoped<IDailyWordSelectionService, DailyWordSelectionService>();
         services.AddScoped<IUserFeedbackService, UserFeedbackService>();
