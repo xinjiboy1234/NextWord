@@ -8,9 +8,11 @@ using NextWord.Infrastructure.Data;
 namespace NextWord.Infrastructure.Services;
 
 /// <summary>
-/// Profiler Agent（T-005）：聚合库内真实数据（造句留痕 / 测评 FinalLevel / 场景词统计 / 阅读行为）
+/// Profiler Agent（T-005）：聚合库内真实数据（造句留痕 / 自由表达留痕 / 测评 FinalLevel / 场景词统计 / 阅读行为）
 /// → 调 LLM 产出 Finding 草稿。草稿的真实性由 Verifier 核查，Profiler 本身不做断言。
 /// T-010：草稿先经 <see cref="Deduplicate"/> 语义去重（同维度至多一条、证据不跨条复用），再交 Verifier。
+/// T-032：聚合 FreeExpressionLogs（最近 30 条，与 SentenceLogs 同权作为产出证据）——
+/// 探索周主推的自由表达任务产生的证据必须对画像可见（QA 验收阻断 1 修复）。
 /// </summary>
 public sealed class WeaknessProfiler(
     ApplicationDbContext db,
@@ -32,6 +34,16 @@ public sealed class WeaknessProfiler(
                 log.ErrorTags))
             .ToList();
 
+        // T-032：自由表达留痕同权聚合（探索周表达任务攒的证据）
+        var freeLogs = await db.FreeExpressionLogs.AsNoTracking()
+            .Where(log => log.UserId == userId)
+            .OrderByDescending(log => log.Timestamp)
+            .Take(30)
+            .ToListAsync(cancellationToken);
+        var freeEvidence = freeLogs
+            .Select(log => new FreeExpressionLogEvidence(log.Id, log.AiScore, log.OverallGrade))
+            .ToList();
+
         var final = await LoadFinalResultAsync(db, userId, assessmentId, cancellationToken);
         var scenarioStats = await LoadScenarioStatsAsync(userId, cancellationToken);
         var reading = await WeaknessProfileStats.ComputeReadingStatAsync(db, userId, cancellationToken);
@@ -41,6 +53,7 @@ public sealed class WeaknessProfiler(
             final?.Dimensions,
             final?.ExpressionScore,
             logEvidence,
+            freeEvidence,
             scenarioStats,
             reading,
             new LlmRequestOptions("weakness-profile", "weakness_profile"));

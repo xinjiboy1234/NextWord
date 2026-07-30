@@ -15,6 +15,8 @@ namespace NextWord.Infrastructure.Background;
 /// 每日为活跃用户写入 ProfileScoreSnapshot，供历史趋势与报告依据。
 /// T-007：快照后跑瓶颈指标筛查（纯规则、零 LLM），触发信号的用户入队 BottleneckInsight 任务
 /// （幂等键 insight:{userId}:{yyyyMMdd}，同日至多一次细读）。
+/// T-032：日检顺带跑画像冷启动触发判定（纯服务）——满 7 天或产出证据 ≥10 条且从未冷启动重生成
+/// → WeaknessProfileService.GenerateAsync(coldStart: true)（放宽档 + 标记位，每用户仅一次）+ 强制 Planner 入队。
 /// </summary>
 public sealed class ProfileScoreSnapshotWorker(
     IServiceScopeFactory scopeFactory,
@@ -105,6 +107,36 @@ public sealed class ProfileScoreSnapshotWorker(
         if (triggered > 0)
         {
             logger.LogInformation("Bottleneck screening triggered insight jobs for {Count} users.", triggered);
+        }
+
+        // T-032 画像冷启动重生成（每用户仅一次）：满 7 天或产出证据 ≥10 条 → 放宽档重生成画像 + 强制重规划。
+        // 面向全部用户（含跳过首测的用户），不限于上方已完成首测的快照用户集。
+        var coldStart = scope.ServiceProvider.GetRequiredService<IColdStartExplorationService>();
+        var weaknessProfiles = scope.ServiceProvider.GetRequiredService<IWeaknessProfileService>();
+        var allUserIds = await db.Users.AsNoTracking()
+            .Select(user => user.Id)
+            .ToListAsync(cancellationToken);
+        var coldStartTriggered = 0;
+        foreach (var userId in allUserIds)
+        {
+            var evaluation = await coldStart.EvaluateTriggerAsync(userId, cancellationToken);
+            if (!evaluation.ShouldTrigger)
+            {
+                continue;
+            }
+
+            await weaknessProfiles.GenerateAsync(userId, null, cancellationToken, coldStart: true);
+            await backgroundJobs.EnqueueAsync(
+                PlannerWorker.JobType,
+                JsonSerializer.Serialize(new { userId, force = true }, JsonOptions),
+                $"planner:coldstart:{userId}:{today:yyyyMMdd}",
+                cancellationToken);
+            coldStartTriggered += 1;
+        }
+
+        if (coldStartTriggered > 0)
+        {
+            logger.LogInformation("Cold-start profile regeneration triggered for {Count} users.", coldStartTriggered);
         }
 
         return created;

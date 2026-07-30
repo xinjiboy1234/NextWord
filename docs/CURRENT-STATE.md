@@ -155,19 +155,21 @@ Worker 异常不拖垮宿主（`BackgroundServiceExceptionBehavior=Ignore`）。
 
 - **画像结构**：`WeaknessProfiles`（一次测评一份，`(UserId, AssessmentId)` 唯一）+ `ProfileFindings`（Finding 五要素：维度 scenario/skill/reading、强弱 strength/weakness/neutral、结论文案、证据引用 EvidenceJson、置信度 high/medium/low）；设计见 `docs/DESIGN-weakness-profile.md`。
 - **触发链路**：测评收敛 → `EvaluationReportService.EnqueueForUserAsync`（InitialAssessment）→ `BackgroundJobWorker` → `ProcessJobAsync` 内 `WeaknessProfileService.GenerateAsync`（同一测评幂等，仅测评触发，成本 = 每用户每测评 1 次 LLM 调用）。
-- **Profiler Agent**（`WeaknessProfiler`）：聚合库内真实数据（最近 30 条 SentenceLogs、测评 FinalLevel 四维均值、场景词覆盖/正确率、阅读查词统计）→ `ILLMProvider.GenerateWeaknessProfileAsync`（第 7 个 LLM 方法）产出 Finding 草稿；场景/阅读统计由 `WeaknessProfileStats` 单一来源计算（两位小数），供引用值与重算值机械比对。
-- **Verifier Agent**（`FindingVerifier`，不调 LLM）：逐条机械核查——证据引用真实存在且属于本人（sentence_log 按 UserId 过滤）、引用数值与库内重算值一致（sentence_log 四维分 / assessment_dimension / word_stats / reading_stats）、证据条数支撑置信度（high≥3 / medium≥2 / low≥1）；任一不通过标 `Questioned` 并留原因，不展示、不进规划输入（T-006 只消费 Verified）。
+- **Profiler Agent**（`WeaknessProfiler`）：聚合库内真实数据（最近 30 条 SentenceLogs、最近 30 条 FreeExpressionLogs（T-032 起，与造句留痕同权作为产出证据——探索周表达任务的证据对画像可见）、测评 FinalLevel 四维均值、场景词覆盖/正确率、阅读查词统计）→ `ILLMProvider.GenerateWeaknessProfileAsync`（第 7 个 LLM 方法）产出 Finding 草稿；场景/阅读统计由 `WeaknessProfileStats` 单一来源计算（两位小数），供引用值与重算值机械比对。
+- **Verifier Agent**（`FindingVerifier`，不调 LLM）：逐条机械核查——证据引用真实存在且属于本人（sentence_log / free_expression_log（T-032 新增，Metric=aiScore）按 UserId 过滤）、引用数值与库内重算值一致（sentence_log 四维分 / free_expression_log AiScore / assessment_dimension / word_stats / reading_stats）、证据条数支撑置信度（high≥3 / medium≥2 / low≥1）；任一不通过标 `Questioned` 并留原因，不展示、不进规划输入（T-006 只消费 Verified）。
 - **展示**：报告 `ContentJson` schemaVersion 2 = 已验证 Finding 列表（strengths/weaknesses 由 Finding 派生兼容旧前端）；画像失败或全部存疑时回退 schemaVersion 1 模板。前端 LevelPanel 优先渲染 findings（维度/置信度徽标 + 结论）。
 - **解析容错**：qwen 会把枚举白名单原样照抄（`"skill|grammar"`），`LlmResponseParser` 按 `|` 逐 token 取第一个可识别值；提示词模板已改为具体占位值。
 - **画像去重（T-010，随 T-006 修复）**：Profiler 提示词要求「每维度至多一条 Finding、不跨 Finding 复用同一证据」；草稿交 Verifier 前经 `WeaknessProfiler.Deduplicate` 后处理——同维度（Dimension+DimensionKey）保留证据更强者（条数多优先、并列取置信度高），同一证据引用被多条复用时只留在置信度最高者、被剥夺后无证据的整条丢弃。Verifier 职责不变。
+- **冷启动放宽档（T-032，设计见 `docs/DESIGN-cold-start-profile.md`）**：`ColdStartExplorationService` 纯服务判定——注册满 7 天或产出证据（SentenceLogs + FreeExpressionLogs）≥10 条且从未冷启动重生成 → 挂 `ProfileScoreSnapshotWorker` 日检（面向全部用户，含跳过首测者）触发 `WeaknessProfileService.GenerateAsync(assessmentId: null, coldStart: true)` + 入队 force Planner（幂等键 `planner:coldstart:{userId}:{yyyyMMdd}`）。放宽档只放宽样本量纪律：证据真实、数值一致但条数不足的 Finding 置信下调 low 标 Verified、`VerificationNote` 注「初步判断」（可进规划，前端低置信带「初步」徽标）；伪造/越权/数值不符的机械核查不放宽。画像落 `ModelProfileId = "weakness-profile-coldstart"` 标记位——「每用户仅一次」判据，与瓶颈触发（T-007）的重生成（`"weakness-profile"`）区分，无 schema 变更。第二份画像起（默认档）恢复既有样本量纪律（不足即 Questioned）。
 
 ### 5.15 LearningPlan + PlannerWorker（I3 T-006）
 
 - **计划结构**：`LearningPlans` 表（`(UserId, StartDate)` 唯一 → 同日幂等；枚举-free，内容明细存 `ContentJson`）：7 日计划 = 主攻场景（1–2 个子场景）+ 每日词队列（带内词 + ≤20% 超带接触词）+ 阅读推荐（3 篇）+ 每日造句目标（3 词）+ 生成依据 Finding id 列表；设计见 `docs/DESIGN-planner-worker.md`。
-- **生成（`LearningPlanService`）**：主攻场景只取自最新画像的 **Verified 场景 weakness Finding**（存疑不进规划），画像不足按场景词覆盖率最低者兜底；水平带用 **CEFR**（`CefrDisplay`，与测评词池口径一致——词库词多数无 IntrinsicScore 标注，intrinsic 带会落空），带池过薄向下一带补充、绝不超带；接触词 = CEFR 严格高于水平带的词，每天 ≤2 个（10 × 20%），只进背词识别队列；**每日造句目标优先取 T-014 产出候选池**（prompted_use 阶段且未确认的词，带内、utility 非 low，按进池时间 7 天顺次消耗），**T-034 二级补位 Recalled 池**（recalled 且带内、utility 非 low，`StageUpdatedAt` 最早优先），两级都空才取当日带内词。
+- **生成（`LearningPlanService`）**：主攻场景只取自最新画像的 **Verified 场景 weakness Finding**（存疑不进规划），画像不足按场景词覆盖率最低者兜底；`sourceFindingIds` 来源标记诚实反映计划消费的 Verified Finding——场景维 weakness（主攻场景依据）+ 技能维 weakness（T-032 修复：技能画像也让计划对消费者即「个性化」，顾言口径 = 基于任何 Verified Finding），存疑条目始终不计；水平带用 **CEFR**（`CefrDisplay`，与测评词池口径一致——词库词多数无 IntrinsicScore 标注，intrinsic 带会落空），带池过薄向下一带补充、绝不超带；接触词 = CEFR 严格高于水平带的词，每天 ≤2 个（10 × 20%），只进背词识别队列；**每日造句目标优先取 T-014 产出候选池**（prompted_use 阶段且未确认的词，带内、utility 非 low，按进池时间 7 天顺次消耗），**T-034 二级补位 Recalled 池**（recalled 且带内、utility 非 low，`StageUpdatedAt` 最早优先），两级都空才取当日带内词。
 - **触发（`PlannerWorker`，BackgroundJob 新任务类型）**：测评完成 → 评估报告任务处理时入队（幂等键 `planner:{userId}:{yyyyMMdd}`，同日重复触发复用同一 job 且不重复生成）；`POST /api/planner/jobs` 可手动触发当前用户当日任务；`GET /api/planner/current` 查当日有效 Plan。
 - **内容来源切换**：每日选词 / 阅读推荐 / 造句出题均优先执行当日 Plan（`GetActiveAsync`：StartDate 起 7 天内有效），无 Plan、过期（>7 天）或生成失败 → 回退既有逻辑（用户永远有内容可学）。前端以「来自今日计划」徽标标示（WordDisplay / SentenceCard / 短文库推荐区）。
 - **重规划（T-007）**：`GenerateAsync(force: true)` 同日已有 Plan 时原地重建内容（`(UserId, StartDate)` 唯一不破，`CreatedAt` 刷新）；由瓶颈性质变化（`planner:replan:{userId}:{yyyyMMdd}`）或每周兜底（`planner:weekly:{userId}:{ISO 周}`）触发。
+- **探索周任务编排（T-032）**：注册起 7 天为探索周，`ColdStartExplorationService` 每日按 taxonomy 轮转选 1 个子场景（优先词池已标注场景，无标注回退全 taxonomy）出 1 道轻量情境表达题（1–2 句即可），经 `GET /api/planner/current` 响应附带的 `exploration` 字段下发（第 x/7 天、证据条数、还差 N 条、今日任务场景与题目）；表达走既有 free-expression 评分链路（评分与 T-022 回写不动），目的是攒画像证据，当天不做不惩罚、跳过后补；证据计数 = SentenceLogs + FreeExpressionLogs，N = max(0, 10 − 条数）。
 
 ### 5.16 瓶颈性质洞察 + 重规划触发（I3 T-007）
 
@@ -193,7 +195,7 @@ Worker 异常不拖垮宿主（`BackgroundServiceExceptionBehavior=Ignore`）。
 
 ### 5.18 Agent 价值用户可见（I6 T-018/T-019）
 
-- **今日学习计划卡**（Dashboard）：消费 `GET /api/planner/current`——主攻场景中文名（经 `GET /api/scenarios` 映射）、第 x/7 天、今日带内词/接触词数、造句目标词、来源徽章（`sourceFindingIds` 非空=「个性化·依据你的弱点画像」，空=「探索期·积累数据后更精准」）；无计划显示测评引导文案。
+- **今日学习计划卡**（Dashboard）：消费 `GET /api/planner/current`——主攻场景中文名（经 `GET /api/scenarios` 映射）、第 x/7 天、今日带内词/接触词数、造句目标词、来源徽章（`sourceFindingIds` 非空=「个性化·依据你的弱点画像」；空=探索期：T-032 起探索周内显示「探索周·第 x/7 天」徽章 + 进度文案「再完成 N 次表达，生成你的专属画像」+ 今日探索任务题目与「去写今日表达」入口——跳造句工作室并默认落到自由表达 Tab，横幅带今日题目；无 Plan 但探索周内同样显示该进度与入口；探索周外回退「探索期·积累数据后更精准」）；画像低置信 Finding 在 LevelPanel 带「初步」徽标（T-032）。
 - **学习洞察卡**（Dashboard）：消费 `GET /api/insights/bottleneck/latest`——瓶颈性质中文名+人话解释（前端 `NATURE_META` 7 类映射）、Agent 结论、时间、「已为你调整学习计划」徽章（ReplanTriggered）；不暴露证据 id 等内部字段；无洞察显示「状态良好」文案。
 - 两卡均为前端纯增量（`hooks/useLearningPlan.ts` / `useBottleneckInsight.ts`），请求失败/加载中静默不渲染。
 

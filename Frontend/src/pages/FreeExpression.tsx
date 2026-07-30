@@ -4,6 +4,7 @@ import { endpoints } from '../api/endpoints'
 import { AiRevision } from '../components/AiRevision'
 import { ErrorAnalysis } from '../components/ErrorAnalysis'
 import { WritingScoreBadge } from '../components/WritingScoreBadge'
+import { useExplorationWeek } from '../hooks/useExplorationWeek'
 import type { FreeExpressionRating } from '../types/sentence'
 
 interface FreeExpressionProps {
@@ -15,6 +16,8 @@ export function FreeExpression({ userLevel = 'A2' }: FreeExpressionProps) {
   const [rating, setRating] = useState<FreeExpressionRating | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // T-032：探索周内展示今日场景表达任务（评分链路不变，仅编排引导）
+  const exploration = useExplorationWeek()
 
   async function submit() {
     if (text.trim().length === 0) return
@@ -42,12 +45,17 @@ export function FreeExpression({ userLevel = 'A2' }: FreeExpressionProps) {
             写一段 2–5 句英文，系统会给出整体反馈。
           </p>
         </div>
+        {exploration?.active && exploration.prompt && (
+          <div className="alert alert-info">
+            今日探索任务（{exploration.scenarioName} · 第 {exploration.day}/{exploration.totalDays} 天）：{exploration.prompt}
+          </div>
+        )}
         <textarea
           value={text}
           onChange={(event) => setText(event.target.value)}
           className="textarea"
           style={{ minHeight: 200 }}
-          placeholder="Today I want to talk about..."
+          placeholder={exploration?.active && exploration.prompt ? exploration.prompt : 'Today I want to talk about...'}
           autoComplete="off"
         />
         {error ? <div className="alert alert-error">{error}</div> : null}

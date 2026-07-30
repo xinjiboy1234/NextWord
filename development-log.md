@@ -41,6 +41,30 @@
 ### 验证
 - `dotnet test`：168 单元 + 6 集成全绿（基线 164+6，净增 4，T-014 生命周期测试零回归）；前端 `npm install && npm run build` 通过。
 - 30 天仿真验收（设计 §4.4）归周密另跑。
+## 2026-07-30 — I7 T-032：画像冷启动「探索周」——表达任务攒证据 + 冷启动画像重生成 + Verifier 放宽档（程实）
+
+### 需求
+- 菜鸟月仿真发现三（`report/sim-month/REPORT.md`）：首测画像 Finding 全被 Verifier 以「证据仅 1 条」判 Questioned → Planner 只消费 Verified → 计划永远「探索期」兜底；画像重生成唯一触发是瓶颈性质变化，而洞察对菜鸟不触发 → 画像死锁，30 天 5 份计划全探索期。按顾言定稿的 `docs/DESIGN-cold-start-profile.md` 实现：探索周每日 1 个场景表达任务攒证据、Dashboard 进度可见、满 7 天或证据 ≥10 条自动重生成画像（每用户一次）、Verifier 冷启动档。
+
+### 决策
+- **触发判断抽纯服务**：`ColdStartExplorationService`（注册满 7 天 / 产出证据 = SentenceLogs + FreeExpressionLogs ≥10 条，满足其一）供 `ProfileScoreSnapshotWorker` 日检复用，可单测。
+- **「每用户仅一次」落标记位**：冷启动重生成画像以 `ModelProfileId = "weakness-profile-coldstart"` 落库，与瓶颈触发（T-007）的 `"weakness-profile"` 重生成互不混淆；复用既有字段，无 schema 变更、无迁移。
+- **放宽档只放宽样本量纪律**：证据真实、数值一致但条数不足 → 置信下调 low 标 Verified 注「初步判断」；伪造/越权/数值不符机械核查任何情况不放宽；第二份画像起（默认档）恢复既有纪律。low 进规划走既有「只认 Verified」逻辑，无需改 Planner。
+- **探索任务编排最小侵入**：不动 LearningPlan ContentJson 与评分链路，`GET /api/planner/current` 响应附带 `exploration` 字段下发第 x/7 天、还差 N 条（N = max(0, 10 − 证据条数)）、今日场景表达题（taxonomy 轮转、优先词池已标注子场景）。
+
+### 实现
+- 后端：Domain 新增 `IColdStartExplorationService` + `ColdStartModels`（ExplorationWeekStatus / ColdStartTriggerEvaluation）；Infrastructure `ColdStartExplorationService`（探索周状态、触发判定、场景轮转出题）；`FindingVerifier` 增 `relaxedColdStart` 放宽档；`WeaknessProfileService.GenerateAsync` 增 `coldStart` 参数（放宽档 + 标记位）；`ProfileScoreSnapshotWorker` 日检挂触发器（面向全部用户，含跳过首测者）+ 入队 force Planner（幂等键 `planner:coldstart:{userId}:{yyyyMMdd}`）；`PlannerEndpoints` /current 附 exploration；DI 注册。
+- 前端：`types/planner` 增 `ExplorationWeek`；`useLearningPlan` 携带 exploration（无 Plan 也透传）；新增 `useExplorationWeek`；Dashboard 计划卡探索周徽章 + 进度文案 + 「去写今日表达」入口（无 Plan 的探索周用户同样显示）；SentenceStudio 探索周默认落自由表达 Tab（用户手动切换后不覆盖）；FreeExpression 今日探索任务横幅 + placeholder 带题；LevelPanel 低置信 Finding 带「初步」徽标。
+- 测试：`ColdStartExplorationTests` 9 例——触发器满 7 天 / 证据 ≥10 / 周内不足静默、「仅一次」且与瓶颈重生成不混淆、进度口径（第 x/7 天、N 口径与下限 0、7 天后探索周结束）、Verifier 放宽档（不足→low Verified 注初步判断、伪造/篡改仍 Questioned、默认档恢复纪律）、全链路标记位闭环（生成后触发器不再放行）。
+
+### 验证
+- `dotnet test`：180 单元 + 6 集成全绿（基线 171+6，净增 9）；前端 `npm install && npm run build` 通过。
+
+### 验收阻断与修复（2026-07-30 周密验收不通过，`report/qa-t032/REPORT.md`，2 项阻断）
+- **阻断 1：FreeExpressionLogs 对画像不可见**。触发计数含自由表达，但 `WeaknessProfiler` 只聚合 SentenceLogs/测评/场景词/阅读统计、Verifier 无对应证据类型 → 纯表达用户冷启动画像必为 0 条 Finding（实测用户 A/B 画像 findings=0）。修复：`WeaknessProfileRequest` 增 `FreeExpressionLogs`（最近 30 条，Id + AiScore + OverallGrade），Profiler 同权聚合；`LlmPromptFactory` 画像提示词增自由表达数据段与 `free_expression_log` 证据规则；`FindingVerifier` 增 `free_expression_log` 证据类型机械核查（存在性/归属本人按 UserId 过滤、Metric=aiScore 数值一致），与 sentence_log 同一纪律，coldStart 放宽档同步生效。
+- **阻断 2：Skill 维 Finding 不进 sourceFindingIds**。`LearningPlanService` 只把场景维 weakness Finding 计入来源，技能画像读了不用 → 有 Verified 技能画像计划仍显示「探索期」（实测用户 C 3 条 Verified 仍 sourceFindingIds=[]）。修复：sourceFindingIds 计入 Verified 技能维 weakness Finding（主攻场景选择逻辑不变：仍只从场景维取、无则覆盖率兜底）——顾言口径：「个性化」徽章语义 = 计划基于了任何 Verified Finding。
+- 测试：新增 3 例——Profiler 聚合自由表达留痕进请求、Verifier 对 free_expression_log 的伪造/篡改/未知指标核查 + 放宽档同步、技能维画像 sourceFindingIds 计入（含仅技能画像的独立用例）；`LearningPlanTests.Generate_uses_only_verified_findings_and_is_idempotent` 断言按新口径反转（skillId 从不含改为计入）。修复合入原提交（--amend）。
+- 非阻断不足（记录在案，未修）：同日幂等不区分 ModelProfileId（同日先有瓶颈重生成则冷启动标记位延迟到次日，反之亦然，最终仍仅一次）；触发循环单用户 LLM 异常会中断当轮其余用户判定（次日恢复）；多实例并发理论可双触发；存量老用户首个日检一次性批量触发（每用户 1 次画像 LLM，上线需关注配额）；真实 LLM 下 low「初步判断」曝光率可能很低（产品知悉）。
 
 ## 2026-07-30 — I7 T-027：造句/自由表达评分纳入相对水平挑战度（程实）
 

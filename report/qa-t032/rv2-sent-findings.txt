@@ -1,0 +1,14 @@
+ Id | ProfileId | Dimension | DimensionKey | Polarity | Confidence | Verification | note 
+----+-----------+-----------+--------------+----------+------------+--------------+------
+  4 |         2 | Skill     | grammar      | Weakness | High       | Verified     | 
+  5 |         2 | Skill     | vocabulary   | Weakness | High       | Verified     | 
+  6 |         2 | Skill     | natural      | Weakness | Medium     | Verified     | 
+  7 |         2 | Skill     | relevance    | Weakness | Medium     | Verified     | 
+(4 rows)
+
+ Id |                UserId                |                      src                       |                                 focus                                 
+----+--------------------------------------+------------------------------------------------+-----------------------------------------------------------------------
+  1 | 48d0be07-eb02-4f04-bb0a-9e74137f1069 | sourceFindingIds":[1,3],"articleIds":["421d975 | focusScenarios":["agree_disagree","daily_routine"],"sourceFindingIds"
+  2 | 2b424042-afc8-4754-9c18-038284f28cec | sourceFindingIds":[4,5,6,7],"articleIds":["421 | focusScenarios":["agree_disagree","daily_routine"],"sourceFindingIds"
+(2 rows)
+

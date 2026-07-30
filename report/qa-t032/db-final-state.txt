@@ -1,0 +1,58 @@
+=== Users ===
+                  Id                  | DisplayName |           CreatedAt           
+--------------------------------------+-------------+-------------------------------
+ 5a2d3095-6d7a-44be-8da8-4fa672319a9a | QA-T032-B   | 2026-07-22 23:23:31.006554+00
+ 11111111-1111-1111-1111-111111111111 | MVP Learner | 2026-07-30 23:20:16.080837+00
+ fbfe5bfa-22d3-4231-8f0b-987c37e396ce | QA-T032-A   | 2026-07-30 23:22:59.484586+00
+ 77156a2f-70a6-4b0e-8353-b788c02a7302 | QA-T032-C   | 2026-07-30 23:28:03.731369+00
+(4 rows)
+
+
+=== WeaknessProfiles ===
+ Id |                UserId                |       ModelProfileId       | AssessmentId |           CreatedAt           | findings 
+----+--------------------------------------+----------------------------+--------------+-------------------------------+----------
+  1 | fbfe5bfa-22d3-4231-8f0b-987c37e396ce | weakness-profile-coldstart |              | 2026-07-30 23:25:32.276238+00 |        0
+  2 | 5a2d3095-6d7a-44be-8da8-4fa672319a9a | weakness-profile-coldstart |              | 2026-07-30 23:25:33.18979+00  |        0
+  3 | 77156a2f-70a6-4b0e-8353-b788c02a7302 | weakness-profile-coldstart |              | 2026-07-30 23:30:13.13529+00  |        4
+(3 rows)
+
+
+=== ProfileFindings (all) ===
+ pid | Id | Dimension | DimensionKey | Polarity | Confidence | Verification |                   note                    
+-----+----+-----------+--------------+----------+------------+--------------+-------------------------------------------
+   3 |  1 | Skill     | grammar      | Weakness | High       | Questioned   | 引用数值不属实：grammar 实际 3，声称 <= 2
+   3 |  2 | Skill     | vocabulary   | Weakness | High       | Verified     | 
+   3 |  3 | Skill     | natural      | Weakness | Medium     | Verified     | 
+   3 |  4 | Skill     | relevance    | Weakness | Medium     | Verified     | 
+(4 rows)
+
+
+=== LearningPlans ===
+ Id |                UserId                | StartDate  |         src          |                       focus                        
+----+--------------------------------------+------------+----------------------+----------------------------------------------------
+  1 | fbfe5bfa-22d3-4231-8f0b-987c37e396ce | 2026-07-30 | sourceFindingIds":[] | focusScenarios":["agree_disagree","daily_routine"]
+  2 | 5a2d3095-6d7a-44be-8da8-4fa672319a9a | 2026-07-30 | sourceFindingIds":[] | focusScenarios":["agree_disagree","daily_routine"]
+  3 | 77156a2f-70a6-4b0e-8353-b788c02a7302 | 2026-07-30 | sourceFindingIds":[] | focusScenarios":["agree_disagree","daily_routine"]
+(3 rows)
+
+
+=== BackgroundJobs ===
+ JobType |                         IdempotencyKey                          |  Status   
+---------+-----------------------------------------------------------------+-----------
+ Planner | planner:coldstart:fbfe5bfa-22d3-4231-8f0b-987c37e396ce:20260730 | Completed
+ Planner | planner:coldstart:5a2d3095-6d7a-44be-8da8-4fa672319a9a:20260730 | Completed
+ Planner | planner:coldstart:77156a2f-70a6-4b0e-8353-b788c02a7302:20260730 | Completed
+(3 rows)
+
+
+=== Evidence counts ===
+                UserId                | count 
+--------------------------------------+-------
+ fbfe5bfa-22d3-4231-8f0b-987c37e396ce |    10
+(1 row)
+
+                UserId                | count 
+--------------------------------------+-------
+ 77156a2f-70a6-4b0e-8353-b788c02a7302 |    10
+(1 row)
+

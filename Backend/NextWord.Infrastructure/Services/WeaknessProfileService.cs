@@ -10,6 +10,8 @@ namespace NextWord.Infrastructure.Services;
 /// WeaknessProfile 画像服务（T-005）：测评完成后触发一次（评估报告后台任务），
 /// Profiler 草稿 → Verifier 核查 → 持久化；同一测评幂等，重复触发直接返回已生成画像。
 /// T-007：AssessmentId 为空时（事件驱动重规划触发的画像重生成）幂等维度改为按日——同日只重生成一次。
+/// T-032：coldStart = true 为探索周冷启动重生成——Verifier 走放宽档（条数不足降 low 标 Verified「初步判断」），
+/// 画像落 ModelProfileId = "weakness-profile-coldstart" 标记位（每用户仅一次的判据）。
 /// </summary>
 public sealed class WeaknessProfileService(
     ApplicationDbContext db,
@@ -18,7 +20,7 @@ public sealed class WeaknessProfileService(
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
-    public async Task<WeaknessProfile> GenerateAsync(Guid userId, Guid? assessmentId, CancellationToken cancellationToken)
+    public async Task<WeaknessProfile> GenerateAsync(Guid userId, Guid? assessmentId, CancellationToken cancellationToken, bool coldStart = false)
     {
         var query = db.WeaknessProfiles
             .Include(profile => profile.Findings)
@@ -39,13 +41,13 @@ public sealed class WeaknessProfileService(
         }
 
         var response = await profiler.BuildDraftsAsync(userId, assessmentId, cancellationToken);
-        var verified = await verifier.VerifyAsync(userId, assessmentId, response.Findings, cancellationToken);
+        var verified = await verifier.VerifyAsync(userId, assessmentId, response.Findings, cancellationToken, coldStart);
 
         var profile = new WeaknessProfile
         {
             UserId = userId,
             AssessmentId = assessmentId,
-            ModelProfileId = "weakness-profile"
+            ModelProfileId = coldStart ? ColdStartExplorationService.ColdStartModelProfileId : "weakness-profile"
         };
         foreach (var item in verified)
         {

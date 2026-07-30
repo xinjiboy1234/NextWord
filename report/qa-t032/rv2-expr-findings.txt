@@ -1,0 +1,26 @@
+ Id | ProfileId |                                                                             evidence                                                                             
+----+-----------+------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  1 |         1 | [{"kind":"free_expression_log","refId":"11e72126-ab4d-410b-9ff3-c05a0f8a7d4f","metric":"aiscore","op":"=","value":45},{"kind":"free_expression_log","refId":"8d8
+  2 |         1 | [{"kind":"reading_stats","refId":"reading","metric":"sessioncount","op":"=","value":0},{"kind":"reading_stats","refId":"reading","metric":"avglookupcount","op":
+  3 |         1 | [{"kind":"free_expression_log","refId":"efd8865b-23c7-4896-84de-c7b02cb65d40","metric":"aiscore","op":"=","value":50},{"kind":"free_expression_log","refId":"8b5
+(3 rows)
+
+ Id |                UserId                |                           src                            |                                   focus                                    
+----+--------------------------------------+----------------------------------------------------------+----------------------------------------------------------------------------
+  1 | 48d0be07-eb02-4f04-bb0a-9e74137f1069 | sourceFindingIds":[1,3],"articleIds":["421d9755-123e-4c4 | focusScenarios":["agree_disagree","daily_routine"],"sourceFindingIds":[1,3
+(1 row)
+
+ Id | DimensionKey | Confidence | Verification |                                         VerificationNote                                         
+----+--------------+------------+--------------+--------------------------------------------------------------------------------------------------
+  1 | grammar      | High       | Verified     | 
+  2 | reading      | Low        | Verified     | 初步判断：证据真实、数值一致，样本量不足（high 需 ≥3 条，实际 2 条），冷启动放宽档置信下调为 low
+  3 | vocabulary   | Medium     | Verified     | 
+(3 rows)
+
+                        Statement                         
+----------------------------------------------------------
+ 自由写作中语法错误频发，主谓一致与动词时态使用不准确
+ 未开展任何阅读练习，查词行为缺失
+ 自由写作中词汇重复率高且词域狭窄，基础名词与动词选择受限
+(3 rows)
+

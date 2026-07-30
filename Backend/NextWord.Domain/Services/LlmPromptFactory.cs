@@ -221,6 +221,11 @@ public static class LlmPromptFactory
             : string.Join("\n", request.SentenceLogs.Select(log =>
                 $"- id={log.Id} word={log.TargetWord} scene={log.Scene} grammar={log.Grammar} natural={log.Natural} vocabulary={log.Vocabulary} relevance={log.Relevance} errorTags=[{string.Join(",", log.ErrorTags)}]"));
 
+        var freeLines = request.FreeExpressionLogs.Count == 0
+            ? "(none)"
+            : string.Join("\n", request.FreeExpressionLogs.Select(log =>
+                $"- id={log.Id} aiScore={log.AiScore} grade={log.OverallGrade}"));
+
         var dimensions = request.AssessmentDimensions is null
             ? "(none)"
             : $"grammar={request.AssessmentDimensions.Grammar} natural={request.AssessmentDimensions.Natural} vocabulary={request.AssessmentDimensions.Vocabulary} relevance={request.AssessmentDimensions.Relevance} expressionScore={request.ExpressionScore} topErrorTags=[{string.Join(",", request.AssessmentDimensions.TopErrorTags)}]";
@@ -240,6 +245,9 @@ public static class LlmPromptFactory
 
         Sentence logs (LLM-graded production records):
         {{logLines}}
+
+        Free expression logs (LLM-graded free writing, aiScore 0-100):
+        {{freeLines}}
 
         Scenario word stats (word mastery per life scenario):
         {{scenarioLines}}
@@ -265,12 +273,13 @@ public static class LlmPromptFactory
         Rules:
         - 3 to 8 findings; cover at least two dimensions when data allows. Data-poor dimensions may be omitted.
         - At most ONE finding per dimension+dimensionKey combination; merge weaker duplicates into the strongest one.
-        - Do NOT reuse the same evidence across findings: each sentence_log id / word_stats scenario / reading_stats metric / assessment_dimension metric may be cited by only ONE finding.
+        - Do NOT reuse the same evidence across findings: each sentence_log id / free_expression_log id / word_stats scenario / reading_stats metric / assessment_dimension metric may be cited by only ONE finding.
         - dimension must be exactly ONE word: scenario, skill, or reading. Do NOT copy a list like "scenario|skill|reading".
         - polarity must be exactly ONE word: strength, weakness, or neutral. confidence must be exactly ONE word: high, medium, or low.
         - dimensionKey: scenario key for scenario findings; grammar|natural|vocabulary|relevance for skill; "reading" for reading.
         - evidence kind must be one of:
           sentence_log — refId = an id from the log list above; metric = grammar|natural|vocabulary|relevance (optional).
+          free_expression_log — refId = an id from the free expression list above; metric = aiScore (optional).
           assessment_dimension — refId = "final"; metric = grammar|natural|vocabulary|relevance|expressionScore.
           word_stats — refId = a scenario key above; metric = coverage|avgMastery|correctRate.
           reading_stats — refId = "reading"; metric = sessionCount|avgLookupCount.

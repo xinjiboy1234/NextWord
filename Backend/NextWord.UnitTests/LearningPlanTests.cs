@@ -35,11 +35,13 @@ public class LearningPlanTests
         var plan = await service.GenerateAsync(user.Id, CancellationToken.None);
 
         var content = JsonSerializer.Deserialize<LearningPlanContent>(plan.ContentJson, JsonOptions)!;
-        // 主攻场景来自 Verified 场景 weakness Finding；存疑条目与其他维度不进生成依据
+        // 主攻场景来自 Verified 场景 weakness Finding；存疑条目不进生成依据；
+        // T-032 起 Verified 技能维 weakness Finding 也计入来源标记（个性化 = 基于任何 Verified Finding）
         Assert.Equal(["dining_out"], content.FocusScenarios);
-        Assert.Equal([verifiedId], content.SourceFindingIds);
+        Assert.Equal(2, content.SourceFindingIds.Count);
+        Assert.Contains(verifiedId, content.SourceFindingIds);
+        Assert.Contains(skillId, content.SourceFindingIds);
         Assert.DoesNotContain(questionedId, content.SourceFindingIds);
-        Assert.DoesNotContain(skillId, content.SourceFindingIds);
 
         // 7 日计划：每天接触词 ≤20%（10 × 0.2 = 2）且全部超带；词队列只来自主攻场景或 core 桶
         Assert.Equal(7, content.Days.Count);
@@ -63,6 +65,38 @@ public class LearningPlanTests
         var again = await service.GenerateAsync(user.Id, CancellationToken.None);
         Assert.Equal(plan.Id, again.Id);
         Assert.Equal(1, await db.LearningPlans.CountAsync(item => item.UserId == user.Id));
+    }
+
+    [Fact]
+    public async Task Generate_marks_plan_personal_with_skill_only_verified_findings()
+    {
+        await using var db = await PostgresTestDatabase.CreateContextAsync();
+        var user = await SeedUserWithBandAsync(db, "plan-skill-source");
+        // T-032 修复（QA 验收阻断 2）：画像只有 Verified 技能维 weakness Finding 时，
+        // 主攻场景仍走覆盖率兜底，但 sourceFindingIds 必须计入该 Finding——计划对消费者即「个性化」
+        var profile = new WeaknessProfile { UserId = user.Id, ModelProfileId = "test" };
+        var skill = new ProfileFinding
+        {
+            Dimension = FindingDimension.Skill,
+            DimensionKey = "grammar",
+            Polarity = FindingPolarity.Weakness,
+            Statement = "语法不稳定。",
+            EvidenceJson = "[]",
+            Confidence = FindingConfidence.Low,
+            Verification = FindingVerification.Verified
+        };
+        profile.Findings.Add(skill);
+        db.WeaknessProfiles.Add(profile);
+        await db.SaveChangesAsync();
+        var service = CreatePlanService(db);
+
+        var plan = await service.GenerateAsync(user.Id, CancellationToken.None);
+
+        var content = JsonSerializer.Deserialize<LearningPlanContent>(plan.ContentJson, JsonOptions)!;
+        Assert.Equal([skill.Id], content.SourceFindingIds);
+        // 主攻场景选择逻辑不变：场景维无 Finding → 覆盖率兜底
+        Assert.NotEmpty(content.FocusScenarios);
+        Assert.All(content.FocusScenarios, key => Assert.True(ScenarioTaxonomy.IsSubScenarioKey(key)));
     }
 
     [Fact]

@@ -1,0 +1,12 @@
+=== 定向单测（隔离库 nextword_qa_t032_unit）===
+dotnet test --filter FullyQualifiedName~ColdStartExplorationTests => 通过 9/9 (18s)
+
+=== 日检触发日志 ===
+      LLM GenerateWeaknessProfile completed in 797ms (ProfileId=weakness-profile)
+      LLM GenerateWeaknessProfile completed in 745ms (ProfileId=weakness-profile)
+      Cold-start profile regeneration triggered for 2 users.
+      Learning plan ready for user fbfe5bfa-22d3-4231-8f0b-987c37e396ce: start 07/30/2026 (force=True)
+      Learning plan ready for user 5a2d3095-6d7a-44be-8da8-4fa672319a9a: start 07/30/2026 (force=True)
+      LLM GenerateWeaknessProfile completed in 21896ms (ProfileId=weakness-profile)
+      Cold-start profile regeneration triggered for 1 users.
+      Learning plan ready for user 77156a2f-70a6-4b0e-8353-b788c02a7302: start 07/30/2026 (force=True)

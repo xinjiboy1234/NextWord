@@ -1,0 +1,13 @@
+{
+    "active": false,
+    "exploration": {
+        "active": true,
+        "day": 1,
+        "totalDays": 7,
+        "evidenceCount": 0,
+        "remainingEvidence": 10,
+        "scenarioKey": "daily_routine",
+        "scenarioName": "\u93c3\u30e5\u7236\u74a7\u5cf0\u7733",
+        "prompt": "\u93af\u546d\udca2\u51ad\u3003\u6748\u6485\u7d94\u93c3\u30e5\u7236\u74a7\u5cf0\u7733\u951b\u6c31\u6564 1\u9225\udc932 \u9359\u30e8\u5af3\u93c2\u56f7\u7d1d\u93bb\u5fda\u582a\u6d63\u72b2\u6e6a\u9286\u5c7e\u68e9\u752f\u6b4c\u6363\u705e\u546b\udc80\u5d85\u6e80\u93c5\udcaf\u6d93\u5b2c\u6b91\u6d93\udc80\u5a06\uff04\u7ca1\u9358\u55d8\u57a8\u93ba\u30e4\u7b05\u93c9\u30e7\u6b91\u7039\u590b\u5e13\u9286\udc82"
+    }
+}

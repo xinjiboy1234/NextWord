@@ -112,9 +112,17 @@ public sealed class LearningPlanService(
             .Distinct()
             .Take(2)
             .ToList();
+        // 来源标记诚实反映计划消费的 Verified Finding（T-032 修复，QA 验收阻断 2）：
+        // 主攻场景仍只取自场景维 weakness Finding，但 Verified 技能维 weakness Finding 同样计入来源——
+        // 「个性化」徽章语义 = 计划基于了任何 Verified Finding，不只场景维。
         var sourceFindingIds = focusFindings
             .Where(finding => focusScenarios.Contains(finding.DimensionKey.ToLowerInvariant()))
             .Select(finding => finding.Id)
+            .Concat(verifiedFindings
+                .Where(finding => finding.Polarity == FindingPolarity.Weakness
+                    && finding.Dimension == FindingDimension.Skill)
+                .Select(finding => finding.Id))
+            .Distinct()
             .ToList();
 
         if (focusScenarios.Count == 0)

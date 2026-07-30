@@ -1,0 +1,35 @@
+ users 
+-------
+     3
+(1 row)
+
+ profiles 
+----------
+        2
+(1 row)
+
+ Verification | count 
+--------------+-------
+ Verified     |     7
+(1 row)
+
+ plans 
+-------
+     2
+(1 row)
+
+  Status   | count 
+-----------+-------
+ Completed |     2
+(1 row)
+
+ free_logs 
+-----------
+        10
+(1 row)
+
+ sentence_logs 
+---------------
+            10
+(1 row)
+

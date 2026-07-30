@@ -1,0 +1,4 @@
+ pid | DimensionKey | Polarity | Confidence | Verification | note | stmt 
+-----+--------------+----------+------------+--------------+------+------
+(0 rows)
+

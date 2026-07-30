@@ -1,4 +1,4 @@
-/** T-018：GET /api/planner/current 响应（active=false 时只有 active 字段） */
+/** T-018：GET /api/planner/current 响应（active=false 时只有 active 与 exploration 字段） */
 export interface CurrentLearningPlan {
   active: boolean
   startDate?: string
@@ -9,6 +9,19 @@ export interface CurrentLearningPlan {
   todayWordCount?: number
   todayExposureCount?: number
   todaySentenceTargets?: string[]
+  exploration?: ExplorationWeek
+}
+
+/** T-032：探索周状态（注册起 7 天；remainingEvidence = 还差几条证据触发画像重生成） */
+export interface ExplorationWeek {
+  active: boolean
+  day: number
+  totalDays: number
+  evidenceCount: number
+  remainingEvidence: number
+  scenarioKey?: string | null
+  scenarioName?: string | null
+  prompt?: string | null
 }
 
 /** GET /api/scenarios 响应（taxonomy + 各子场景有效词数） */

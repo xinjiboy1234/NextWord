@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api/client'
 import { endpoints } from '../api/endpoints'
-import type { CurrentLearningPlan, ScenarioCatalog } from '../types/planner'
+import type { CurrentLearningPlan, ExplorationWeek, ScenarioCatalog } from '../types/planner'
 
 export type LearningPlanStatus = 'loading' | 'error' | 'none' | 'active'
 
@@ -16,6 +16,8 @@ export interface LearningPlanView {
   todaySentenceTargets: string[]
   /** sourceFindingIds 非空 = 个性化（弱点画像驱动），为空 = 探索期 */
   personalized: boolean
+  /** T-032 探索周进度（注册起 7 天内有效；无 Plan 时也可能存在） */
+  exploration: ExplorationWeek | null
 }
 
 const INITIAL: LearningPlanView = {
@@ -26,6 +28,7 @@ const INITIAL: LearningPlanView = {
   todayExposureCount: 0,
   todaySentenceTargets: [],
   personalized: false,
+  exploration: null,
 }
 
 /**
@@ -49,7 +52,7 @@ export function useLearningPlan() {
       }
 
       if (!plan.active) {
-        if (!cancelled) setView({ ...INITIAL, status: 'none' })
+        if (!cancelled) setView({ ...INITIAL, status: 'none', exploration: plan.exploration ?? null })
         return
       }
 
@@ -76,6 +79,7 @@ export function useLearningPlan() {
         todayExposureCount: plan.todayExposureCount ?? 0,
         todaySentenceTargets: plan.todaySentenceTargets ?? [],
         personalized: (plan.sourceFindingIds?.length ?? 0) > 0,
+        exploration: plan.exploration ?? null,
       })
     }
 

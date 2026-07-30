@@ -11,6 +11,9 @@ namespace NextWord.Infrastructure.Services;
 /// Verifier Agent（T-005，DESIGN-weakness-profile §4-2）：对每条 Finding 机械核查，不调用 LLM、不做主观改写——
 /// ① 证据引用真实存在且属于该用户；② 引用数值与库内重算值一致；③ 证据条数支撑声称的置信度。
 /// 任一不通过即标「存疑」（Questioned），不展示、不进规划输入。
+/// T-032 冷启动放宽档（relaxedColdStart，仅首份冷启动重生成画像）：仅放宽样本量纪律——
+/// 条数不足的 Finding 置信下调 low 标 Verified 注「初步判断」；伪造/越权/数值不符仍存疑。
+/// T-032：证据类型新增 free_expression_log（自由表达留痕，Metric=aiScore），核查纪律与 sentence_log 一致。
 /// </summary>
 public sealed class FindingVerifier(ApplicationDbContext db) : IFindingVerifier
 {
@@ -18,7 +21,8 @@ public sealed class FindingVerifier(ApplicationDbContext db) : IFindingVerifier
         Guid userId,
         Guid? assessmentId,
         IReadOnlyList<ProfileFindingDraft> drafts,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool relaxedColdStart = false)
     {
         // 预载被引用的造句留痕（限本人记录；引用他人/不存在的 id 直接查不到 → 存疑）
         var logIds = drafts
@@ -31,6 +35,17 @@ public sealed class FindingVerifier(ApplicationDbContext db) : IFindingVerifier
             .Where(log => log.UserId == userId && logIds.Contains(log.Id))
             .ToListAsync(cancellationToken);
 
+        // T-032：预载被引用的自由表达留痕（同样的存在性/归属纪律）
+        var freeLogIds = drafts
+            .SelectMany(draft => draft.Evidence)
+            .Where(claim => claim.Kind == "free_expression_log" && Guid.TryParse(claim.RefId, out _))
+            .Select(claim => Guid.Parse(claim.RefId))
+            .Distinct()
+            .ToList();
+        var freeLogs = await db.FreeExpressionLogs.AsNoTracking()
+            .Where(log => log.UserId == userId && freeLogIds.Contains(log.Id))
+            .ToListAsync(cancellationToken);
+
         AssessmentFinalResult? final = null;
         if (assessmentId.HasValue)
         {
@@ -40,7 +55,7 @@ public sealed class FindingVerifier(ApplicationDbContext db) : IFindingVerifier
         var results = new List<VerifiedFinding>();
         foreach (var draft in drafts)
         {
-            results.Add(await VerifyOneAsync(userId, draft, logs, final, cancellationToken));
+            results.Add(await VerifyOneAsync(userId, draft, logs, freeLogs, final, cancellationToken, relaxedColdStart));
         }
 
         return results;
@@ -50,8 +65,10 @@ public sealed class FindingVerifier(ApplicationDbContext db) : IFindingVerifier
         Guid userId,
         ProfileFindingDraft draft,
         IReadOnlyList<SentenceLog> logs,
+        IReadOnlyList<FreeExpressionLog> freeLogs,
         AssessmentFinalResult? final,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool relaxedColdStart)
     {
         if (string.IsNullOrWhiteSpace(draft.Statement))
         {
@@ -65,7 +82,7 @@ public sealed class FindingVerifier(ApplicationDbContext db) : IFindingVerifier
 
         foreach (var claim in draft.Evidence)
         {
-            var error = await VerifyClaimAsync(userId, claim, logs, final, cancellationToken);
+            var error = await VerifyClaimAsync(userId, claim, logs, freeLogs, final, cancellationToken);
             if (error is not null)
             {
                 return Questioned(draft, error);
@@ -81,6 +98,16 @@ public sealed class FindingVerifier(ApplicationDbContext db) : IFindingVerifier
         };
         if (draft.Evidence.Count < required)
         {
+            // T-032 冷启动放宽档（仅首份冷启动重生成画像）：证据真实、数值一致但条数不足
+            // → 置信下调 low 标 Verified 并注明「初步判断」，不再整条存疑；机械核查（上方）不放宽。
+            if (relaxedColdStart)
+            {
+                return new VerifiedFinding(
+                    draft with { Confidence = FindingConfidence.Low },
+                    FindingVerification.Verified,
+                    $"初步判断：证据真实、数值一致，样本量不足（{draft.Confidence.ToString().ToLowerInvariant()} 需 ≥{required} 条，实际 {draft.Evidence.Count} 条），冷启动放宽档置信下调为 low");
+            }
+
             return Questioned(draft, $"样本量不足：{draft.Confidence.ToString().ToLowerInvariant()} 需 ≥{required} 条证据，实际 {draft.Evidence.Count} 条");
         }
 
@@ -91,6 +118,7 @@ public sealed class FindingVerifier(ApplicationDbContext db) : IFindingVerifier
         Guid userId,
         EvidenceClaim claim,
         IReadOnlyList<SentenceLog> logs,
+        IReadOnlyList<FreeExpressionLog> freeLogs,
         AssessmentFinalResult? final,
         CancellationToken cancellationToken)
     {
@@ -122,6 +150,32 @@ public sealed class FindingVerifier(ApplicationDbContext db) : IFindingVerifier
                     "natural" => log.NaturalScore,
                     "vocabulary" => log.VocabularyScore,
                     "relevance" => log.RelevanceScore,
+                    _ => null
+                };
+                return CheckValue(claim, actual);
+            }
+            case "free_expression_log":
+            {
+                // T-032：自由表达留痕证据，沿用与 sentence_log 相同的存在性/归属/数值纪律
+                if (!Guid.TryParse(claim.RefId, out var freeLogId))
+                {
+                    return $"证据引用格式非法：{claim.RefId}";
+                }
+
+                var freeLog = freeLogs.FirstOrDefault(item => item.Id == freeLogId);
+                if (freeLog is null)
+                {
+                    return $"证据不存在或不属于该用户：free_expression_log {claim.RefId}";
+                }
+
+                if (claim.Metric is null)
+                {
+                    return null;
+                }
+
+                var actual = claim.Metric switch
+                {
+                    "aiscore" => (double?)freeLog.AiScore,
                     _ => null
                 };
                 return CheckValue(claim, actual);

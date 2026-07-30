@@ -136,6 +136,7 @@ export function LevelPanel() {
                         {DIMENSION_LABELS[finding.dimension] ?? finding.dimension}
                       </Badge>
                       <Badge variant="muted">{CONFIDENCE_LABELS[finding.confidence] ?? finding.confidence}</Badge>
+                      {finding.confidence === 'low' && <Badge variant="muted">初步</Badge>}
                     </span>
                     {finding.statement}
                   </li>

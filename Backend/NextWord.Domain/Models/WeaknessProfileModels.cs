@@ -5,6 +5,7 @@ namespace NextWord.Domain.Models;
 /// <summary>
 /// 证据引用（T-005）：指向真实数据的一条引用，Verifier 据此机械核查。
 /// Kind：sentence_log（RefId=SentenceLog Id，Metric=grammar|natural|vocabulary|relevance）
+///     / free_expression_log（RefId=FreeExpressionLog Id，Metric=aiScore，T-032 新增——探索周表达任务证据）
 ///     / assessment_dimension（RefId=final，Metric=grammar|natural|vocabulary|relevance|expressionScore）
 ///     / word_stats（RefId=场景 key，Metric=coverage|avgMastery|correctRate）
 ///     / reading_stats（RefId=reading，Metric=sessionCount|avgLookupCount）。
@@ -38,6 +39,12 @@ public sealed record SentenceLogEvidence(
     int Relevance,
     IReadOnlyList<string> ErrorTags);
 
+/// <summary>Profiler 可用的自由表达评分留痕（T-032：与 SentenceLogs 同权作为产出证据，含可引用的记录 Id）。</summary>
+public sealed record FreeExpressionLogEvidence(
+    Guid Id,
+    int AiScore,
+    string OverallGrade);
+
 /// <summary>场景词掌握统计（数值统一保留两位小数，Profiler 引用值与 Verifier 重算值同源）。</summary>
 public sealed record ScenarioWordStat(
     string ScenarioKey,
@@ -58,6 +65,7 @@ public sealed record WeaknessProfileRequest(
     AssessmentDimensionSummary? AssessmentDimensions,
     int? ExpressionScore,
     IReadOnlyList<SentenceLogEvidence> SentenceLogs,
+    IReadOnlyList<FreeExpressionLogEvidence> FreeExpressionLogs,
     IReadOnlyList<ScenarioWordStat> ScenarioStats,
     ReadingBehaviorStat Reading,
     LlmRequestOptions? Options = null);

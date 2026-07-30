@@ -1,0 +1,30 @@
+ pid | Id | Dimension | DimensionKey | Polarity | Confidence | Verification |                                               note                                               
+-----+----+-----------+--------------+----------+------------+--------------+--------------------------------------------------------------------------------------------------
+   1 |  1 | Reading   | reading      | Weakness | Low        | Verified     | 初步判断：证据真实、数值一致，样本量不足（high 需 ≥3 条，实际 2 条），冷启动放宽档置信下调为 low
+   1 |  2 | Skill     | grammar      | Weakness | Low        | Verified     | 
+   1 |  3 | Skill     | vocabulary   | Weakness | Low        | Verified     | 
+   1 |  4 | Skill     | natural      | Weakness | Low        | Verified     | 
+   2 |  5 | Skill     | grammar      | Weakness | Medium     | Verified     | 
+   2 |  6 | Skill     | natural      | Weakness | Medium     | Verified     | 
+   2 |  7 | Skill     | vocabulary   | Weakness | Medium     | Verified     | 
+   2 |  8 | Skill     | relevance    | Weakness | Medium     | Questioned   | 引用数值不属实：relevance 实际 4，声称 = 5
+(8 rows)
+
+ Id | ProfileId |                                                                                                           evidence                                                                                                           
+----+-----------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  1 |         1 | [{"kind":"reading_stats","refId":"reading","metric":"sessioncount","op":"=","value":0},{"kind":"reading_stats","refId":"reading","metric":"avglookupcount","op":"=","value":0}]
+  2 |         1 | [{"kind":"free_expression_log","refId":"a456d593-cf57-4322-84cf-0aa21fe4fcd3","metric":"aiscore","op":"=","value":70}]
+  3 |         1 | [{"kind":"free_expression_log","refId":"b7537064-75ed-40ae-b2aa-d624867ec433","metric":"aiscore","op":"=","value":70}]
+  4 |         1 | [{"kind":"free_expression_log","refId":"9046aae5-1c4a-400d-ac77-3297f35bdffa","metric":"aiscore","op":"=","value":70}]
+  5 |         2 | [{"kind":"sentence_log","refId":"935f9a8e-cf30-41fe-82e0-3cbdea21412a","metric":"grammar","op":"\u003C=","value":2},{"kind":"sentence_log","refId":"4f29c95e-b828-4e44-a665-d9066d3156dd","metric":"grammar","op":"\u003C=",
+  6 |         2 | [{"kind":"sentence_log","refId":"935f9a8e-cf30-41fe-82e0-3cbdea21412a","metric":"natural","op":"\u003C=","value":1},{"kind":"sentence_log","refId":"4f29c95e-b828-4e44-a665-d9066d3156dd","metric":"natural","op":"\u003C=",
+  7 |         2 | [{"kind":"sentence_log","refId":"5a267526-0651-493a-b60a-e77f3b3d35dc","metric":"vocabulary","op":"\u003C=","value":2},{"kind":"sentence_log","refId":"2de53a9f-2d4d-465e-aa7d-f1fa4e20eecf","metric":"vocabulary","op":"\u0
+  8 |         2 | [{"kind":"sentence_log","refId":"40ba18f8-c187-4d79-81f1-0dc134a76601","metric":"relevance","op":"=","value":5},{"kind":"sentence_log","refId":"4f29c95e-b828-4e44-a665-d9066d3156dd","metric":"relevance","op":"=","value":
+(8 rows)
+
+ Id |                UserId                |            src            |                       focus                        
+----+--------------------------------------+---------------------------+----------------------------------------------------
+  1 | 1050b0f4-a2cd-4e24-888c-b838a4b0e5e0 | sourceFindingIds":[2,3,4] | focusScenarios":["agree_disagree","daily_routine"]
+  2 | 2af46f7f-33ab-40fb-b10e-acbc3f04a13b | sourceFindingIds":[5,6,7] | focusScenarios":["agree_disagree","daily_routine"]
+(2 rows)
+

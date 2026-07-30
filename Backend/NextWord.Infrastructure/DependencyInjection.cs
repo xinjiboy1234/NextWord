@@ -65,6 +65,7 @@ public static class DependencyInjection
         services.AddScoped<PlannerWorker>();
         services.AddScoped<IBottleneckScreeningService, BottleneckScreeningService>();
         services.AddScoped<IBottleneckInsightService, BottleneckInsightService>();
+        services.AddScoped<IColdStartExplorationService, ColdStartExplorationService>();
         services.AddScoped<BottleneckInsightWorker>();
         services.AddScoped<ReAnnotationWorker>();
         services.AddScoped<ScenarioAnnotationWorker>();

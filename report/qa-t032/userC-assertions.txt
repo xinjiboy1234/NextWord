@@ -1,0 +1,22 @@
+ Id | Dimension | DimensionKey | Polarity | Confidence | Verification |                   note                    
+----+-----------+--------------+----------+------------+--------------+-------------------------------------------
+  1 | Skill     | grammar      | Weakness | High       | Questioned   | 引用数值不属实：grammar 实际 3，声称 <= 2
+  2 | Skill     | vocabulary   | Weakness | High       | Verified     | 
+  3 | Skill     | natural      | Weakness | Medium     | Verified     | 
+  4 | Skill     | relevance    | Weakness | Medium     | Verified     | 
+(4 rows)
+
+ Id |                UserId                | StartDate  |         src          
+----+--------------------------------------+------------+----------------------
+  1 | fbfe5bfa-22d3-4231-8f0b-987c37e396ce | 2026-07-30 | sourceFindingIds":[]
+  2 | 5a2d3095-6d7a-44be-8da8-4fa672319a9a | 2026-07-30 | sourceFindingIds":[]
+  3 | 77156a2f-70a6-4b0e-8353-b788c02a7302 | 2026-07-30 | sourceFindingIds":[]
+(3 rows)
+
+                         IdempotencyKey                          |  Status   
+-----------------------------------------------------------------+-----------
+ planner:coldstart:fbfe5bfa-22d3-4231-8f0b-987c37e396ce:20260730 | Completed
+ planner:coldstart:5a2d3095-6d7a-44be-8da8-4fa672319a9a:20260730 | Completed
+ planner:coldstart:77156a2f-70a6-4b0e-8353-b788c02a7302:20260730 | Completed
+(3 rows)
+

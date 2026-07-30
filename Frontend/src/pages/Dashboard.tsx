@@ -95,7 +95,11 @@ export function Dashboard({ progress, onNavigate }: DashboardProps) {
                 </h3>
                 {plan.status === 'active' && (
                   <Badge variant={plan.personalized ? 'info' : 'muted'}>
-                    {plan.personalized ? '个性化·依据你的弱点画像' : '探索期·积累数据后更精准'}
+                    {plan.personalized
+                      ? '个性化·依据你的弱点画像'
+                      : plan.exploration?.active
+                        ? `探索周·第 ${plan.exploration.day}/${plan.exploration.totalDays} 天`
+                        : '探索期·积累数据后更精准'}
                   </Badge>
                 )}
               </div>
@@ -113,6 +117,48 @@ export function Dashboard({ progress, onNavigate }: DashboardProps) {
                       造句目标：{plan.todaySentenceTargets.join('、')}
                     </p>
                   )}
+                  {!plan.personalized && plan.exploration?.active && (
+                    <div className="stack stack-sm">
+                      <p className="dashboard-info-meta">
+                        {plan.exploration.remainingEvidence > 0
+                          ? `再完成 ${plan.exploration.remainingEvidence} 次表达，生成你的专属画像`
+                          : '证据已集齐，专属画像生成中…'}
+                      </p>
+                      {plan.exploration.prompt && (
+                        <p className="dashboard-info-meta">今日探索任务：{plan.exploration.prompt}</p>
+                      )}
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        style={{ width: 'fit-content' }}
+                        onClick={() => onNavigate('sentence')}
+                      >
+                        去写今日表达
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : plan.exploration?.active ? (
+                <div className="stack stack-sm">
+                  <p className="dashboard-info-title">
+                    探索周 第 {plan.exploration.day}/{plan.exploration.totalDays} 天
+                  </p>
+                  <p className="dashboard-info-meta">
+                    {plan.exploration.remainingEvidence > 0
+                      ? `再完成 ${plan.exploration.remainingEvidence} 次表达，生成你的专属画像`
+                      : '证据已集齐，专属画像生成中…'}
+                  </p>
+                  {plan.exploration.prompt && (
+                    <p className="dashboard-info-meta">今日探索任务：{plan.exploration.prompt}</p>
+                  )}
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    style={{ width: 'fit-content' }}
+                    onClick={() => onNavigate('sentence')}
+                  >
+                    去写今日表达
+                  </button>
                 </div>
               ) : (
                 <p className="dashboard-info-empty">
