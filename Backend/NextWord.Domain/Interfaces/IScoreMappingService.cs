@@ -12,4 +12,6 @@ public interface IScoreMappingService
     int ComputeOverall(int? vocabulary, int? reading, int? writing);
     int ClampScore(int score);
     CefrLevel MapScoreToCefrLevel(int score);
+    /// <summary>T-038：按标签取 CEFR 分带定义（Min/Max），供 cefrDisplay 下行迟滞取当前档下限。</summary>
+    ScoreBand? GetCefrBand(string label);
 }

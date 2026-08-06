@@ -2,6 +2,25 @@
 
 按时间倒序记录需求、决策、实现与验收。
 
+## 2026-08-06 — I7 T-038：cefrDisplay 下行迟滞——上行即时、降档需连续 3 天低于下限（程实）
+
+### 需求
+- 周密 T-033 仿真观察：Overall 在分带边界（B1/B2 边界 70）附近波动时展示档 30 天跳 6 次，用户看到的是噪音。顾言口径：**上行即时、下行迟滞**。
+
+### 决策
+- 迟滞落在 `ScoreProfileService.ApplyUpdateAsync`（写入唯一入口），`SyncLegacyLevels` 算出 raw 展示档后再按迟滞规则修正 `progress.CefrDisplay`；`OverallLevel`、`DifficultyBucket` 与分数本身不动（只影响展示层）。
+- 规则：raw 档高于当前展示档 → 立即升档；raw 档低于当前展示档 → 需当前 Overall 与近 3 天 `ProfileScoreSnapshots` 的 Overall 全部低于当前展示档下限才降，快照不足 3 天不降（`IScoreMappingService.GetCefrBand` 取档下限，分带单一来源）。
+- 测评定级写入不受迟滞约束（首测/复测定级是权威锚点，含 T-042 矫正传导的下调）：`ProfileUpdateCommand` 加 `BypassCefrDisplayHysteresis`，仅 `AssessmentService` 完成定级时置 true；挑战通过、T-022 小步回写走迟滞。
+
+### 实现
+- `IScoreMappingService.GetCefrBand(label)`（ScoreMappingService 实现，按标签取 CefrBands 分带定义）。
+- `ScoreProfileService`：`ApplyCefrDisplayHysteresisAsync` + 快照 Overall 解析（ScoresJson 只读 `overall` 字段，解析失败视为不满足「低于下限」）。
+- `AssessmentService` 定级写入置 `BypassCefrDisplayHysteresis: true`。
+
+### 验证
+- 新增 `CefrDisplayHysteresisTests` 5 例：边界上跳即时（69→70 立升 B2）；单日下探不降（3 天快照有一天在带内）；连续 3 天低于下限才降；快照不足 3 天不降；测评写入不受迟滞（无快照也立即降）；并断言迟滞期间 OverallLevel 仍按 raw 映射（只影响展示层）。
+- `dotnet test`：216 单元 + 6 集成全绿（较 T-037 提交净增 5）。
+
 ## 2026-08-06 — I7 T-037：自由表达评分不再把字面量 free expression 当目标词（程实）
 
 ### 需求

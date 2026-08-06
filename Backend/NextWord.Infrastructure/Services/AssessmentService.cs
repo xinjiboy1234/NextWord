@@ -425,6 +425,7 @@ public sealed class AssessmentService(
         // T-042 矫正传导：防伪闸触发时三维先验逐维 clamp 到矫正后档上限以内（保持相对形状），
         // 否则 CefrDisplay 仍按矫正前虚高档，Planner 词池/造句目标取词带错位（qa-t042 P1）
         var priorScore = guardAdjusted ? Math.Min(expressionScore, scoring.GetBandScoreCeiling(overall)) : expressionScore;
+        // T-038：测评定级写入是权威锚点，cefrDisplay 不走下行迟滞（含 T-042 矫正传导的下调）
         await scoreProfile.ApplyUpdateAsync(
             new ProfileUpdateCommand(
                 assessment.UserId,
@@ -432,7 +433,8 @@ public sealed class AssessmentService(
                 new ProfileScoreAssignment(priorScore, priorScore, priorScore, null),
                 null,
                 $"assessment:{assessment.Id}:complete",
-                JsonSerializer.Serialize(final, JsonOptions)),
+                JsonSerializer.Serialize(final, JsonOptions),
+                BypassCefrDisplayHysteresis: true),
             cancellationToken);
 
         // 等级外壳以测评主定级为准（内核 min 语义不适用于表达优先的初测）

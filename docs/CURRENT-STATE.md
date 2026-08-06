@@ -103,6 +103,7 @@ docker-compose.yml        postgres:16-alpine + redis:7-alpine + api（容器内 
 - **模型**：`UserProgress` 持有 Vocabulary/Reading/Writing 三个 0–100 分；总分 = 三者最小值（最短板，`ScoreMappingService.ComputeOverall`）；CEFR 分带在 `appsettings.json` 的 `ScoreMapping`（T-023 校准：A1 0–20 / A2 20–35 / B1 35–70 / B2 70–85 / C1 85–95 / C2 95–100，全局口径：测评定级、Profile CEFR 展示、计划水平带、挑战定档共用；`DifficultyBuckets` 不变）。
 - **写入**：`ScoreProfileService.ApplyUpdateAsync` 是唯一入口，支持 absolute/delta；`LearningEvents.IdempotencyKey` 幂等去重。写入点三处：测评完成（absolute 先验）、确认挑战通过（+UpgradeDelta）、日常造句/自由表达评分（T-022 小步 delta：observed = `MapSentenceToScore(四维均分)`，delta = clamp(round((observed − current) × 0.1), −2, +2)，幂等键 `sentence-score:{logId}` / `freeexpr-score:{logId}`；测评/挑战的 `SentenceService.RateAsync` 调用不触发该 delta）。
 - **快照**：`ProfileScoreSnapshotWorker` 每日写 `ProfileScoreSnapshots`，供 `GET /api/profile/scores/history?days=` 趋势图。
+- **cefrDisplay 下行迟滞（T-038）**：展示档与 raw 分数映射解耦，防 Overall 在分带边界附近波动时展示档来回跳——上行即时（raw 档高于当前展示档立即升档）；降档需当前 Overall 与近 3 天 `ProfileScoreSnapshots` 的 Overall 全部低于当前展示档下限（快照不足 3 天不降）。只影响 `CefrDisplay` 展示层，`OverallLevel` 升级规则与分数本身不动；测评定级写入是权威锚点（`ProfileUpdateCommand.BypassCefrDisplayHysteresis`，含 T-042 矫正传导的下调）不受迟滞约束。
 - **难度三层**：intrinsic（LLM 标注，持久化于 `WordDifficultyAnnotation`）→ personal（`EstimatedKnownRate`/`PersonalDifficulty` EMA）→ effective（`EffectiveDifficultyCalculator`，含学术语域加成）。
 - **学习工具注册表**：`GET/POST /api/tools` 暴露 7 个工具（get_profile_scores、search_web(DuckDuckGo)、lookup_word_context、get_daily_words、get_evaluation_latest、get_challenge_history、get_recent_learning）。供 Agent 场景使用。
 

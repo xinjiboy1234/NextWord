@@ -44,6 +44,9 @@ public sealed class ScoreMappingService(ScoreMappingOptions options) : IScoreMap
         return label is not null && Enum.TryParse<CefrLevel>(label, out var level) ? level : CefrLevel.A1;
     }
 
+    public ScoreBand? GetCefrBand(string label) =>
+        options.CefrBands.FirstOrDefault(band => string.Equals(band.Label, label, StringComparison.OrdinalIgnoreCase));
+
     private static string? MapBandLabel(IReadOnlyList<ScoreBand> bands, int score)
     {
         foreach (var band in bands)
