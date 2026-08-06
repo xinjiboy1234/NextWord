@@ -9,6 +9,7 @@ import {
   Repeat,
 } from 'lucide-react'
 import { Badge } from '../components/ui/Badge'
+import { LoadingSkeleton } from '../components/LoadingSkeleton'
 import { useDashboardStats, type ModuleBadge } from '../hooks/useDashboardStats'
 import { useLearningPlan } from '../hooks/useLearningPlan'
 import { useBottleneckInsight } from '../hooks/useBottleneckInsight'
@@ -35,9 +36,10 @@ export function Dashboard({ progress, onNavigate }: DashboardProps) {
   const insight = useBottleneckInsight()
   const graduations = useGraduations()
 
-  // T-018/T-019：加载中与请求失败（静默降级）都不展示对应卡片
-  const showPlanCard = plan.status === 'active' || plan.status === 'none'
-  const showInsightCard = insight.status === 'found' || insight.status === 'none'
+  // T-018/T-019：请求失败（静默降级）不展示对应卡片；T-029：加载中展示骨架屏，
+  // 避免 planner 接口慢时（10-25s）首页像「今天没计划」
+  const showPlanCard = plan.status !== 'error'
+  const showInsightCard = insight.status !== 'error'
 
   const items: DashboardItem[] = [
     {
@@ -103,7 +105,9 @@ export function Dashboard({ progress, onNavigate }: DashboardProps) {
                   </Badge>
                 )}
               </div>
-              {plan.status === 'active' ? (
+              {plan.status === 'loading' ? (
+                <LoadingSkeleton lines={3} />
+              ) : plan.status === 'active' ? (
                 <div className="stack stack-sm">
                   <p className="dashboard-info-title">
                     {plan.focusScenarioNames.slice(0, 2).join('、') || '综合练习'}
@@ -185,7 +189,9 @@ export function Dashboard({ progress, onNavigate }: DashboardProps) {
                   <Badge variant="success">已为你调整学习计划</Badge>
                 )}
               </div>
-              {insight.status === 'found' ? (
+              {insight.status === 'loading' ? (
+                <LoadingSkeleton lines={2} />
+              ) : insight.status === 'found' ? (
                 <div className="stack stack-sm">
                   <p className="dashboard-info-title">
                     {insight.natureName}
@@ -198,9 +204,18 @@ export function Dashboard({ progress, onNavigate }: DashboardProps) {
                     {new Date(insight.createdAt).toLocaleString('zh-CN')}
                   </p>
                 </div>
-              ) : (
+              ) : plan.exploration?.active ? (
+                // T-032 探索周期间数据尚少，空状态优先展示探索进度而非「状态良好」
                 <p className="dashboard-info-empty">
-                  近期学习状态良好，未发现明显瓶颈。
+                  探索周 第 {plan.exploration.day}/{plan.exploration.totalDays} 天 ·
+                  {plan.exploration.remainingEvidence > 0
+                    ? ` 再完成 ${plan.exploration.remainingEvidence} 次表达，洞察会更懂你。`
+                    : ' 证据已集齐，专属画像生成中…'}
+                </p>
+              ) : (
+                // T-029：空状态附一句行动建议，不再只是一句「状态良好」
+                <p className="dashboard-info-empty">
+                  近期学习状态良好，未发现明显瓶颈。今天试试用新学的词造句，表达越多，洞察越准。
                 </p>
               )}
             </section>

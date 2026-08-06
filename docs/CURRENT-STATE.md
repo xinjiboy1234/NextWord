@@ -200,8 +200,8 @@ Worker 异常不拖垮宿主（`BackgroundServiceExceptionBehavior=Ignore`）。
 ### 5.18 Agent 价值用户可见（I6 T-018/T-019）
 
 - **今日学习计划卡**（Dashboard）：消费 `GET /api/planner/current`——主攻场景中文名（经 `GET /api/scenarios` 映射）、第 x/7 天、今日带内词/接触词数、造句目标词、来源徽章（`sourceFindingIds` 非空=「个性化·依据你的弱点画像」；空=探索期：T-032 起探索周内显示「探索周·第 x/7 天」徽章 + 进度文案「再完成 N 次表达，生成你的专属画像」+ 今日探索任务题目与「去写今日表达」入口——跳造句工作室并默认落到自由表达 Tab，横幅带今日题目；无 Plan 但探索周内同样显示该进度与入口；探索周外回退「探索期·积累数据后更精准」）；画像低置信 Finding 在 LevelPanel 带「初步」徽标（T-032）。
-- **学习洞察卡**（Dashboard）：消费 `GET /api/insights/bottleneck/latest`——瓶颈性质中文名+人话解释（前端 `NATURE_META` 7 类映射）、Agent 结论、时间、「已为你调整学习计划」徽章（ReplanTriggered）；不暴露证据 id 等内部字段；无洞察显示「状态良好」文案。
-- 两卡均为前端纯增量（`hooks/useLearningPlan.ts` / `useBottleneckInsight.ts`），请求失败/加载中静默不渲染。
+- **学习洞察卡**（Dashboard）：消费 `GET /api/insights/bottleneck/latest`——瓶颈性质中文名+人话解释（前端 `NATURE_META` 7 类映射）、Agent 结论、时间、「已为你调整学习计划」徽章（ReplanTriggered）；不暴露证据 id 等内部字段；无洞察空状态（T-029）：探索周内优先显示探索进度（第 x/7 天 · 再完成 N 次表达），探索周外附行动建议（「今天试试用新学的词造句…」）。
+- 两卡均为前端纯增量（`hooks/useLearningPlan.ts` / `useBottleneckInsight.ts`）；T-029 起加载中渲染骨架屏（既有 `LoadingSkeleton`），仅请求失败静默不渲染。
 
 ## 6. API 全量清单
 

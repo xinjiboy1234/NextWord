@@ -39,6 +39,20 @@
 ### 验证
 - 新增 `FreeExpressionRatingTests` 4 例：捕获桩断言请求不再含字面量 free expression；prompt 变体无 Target Word 行且挑战度规则仍在；造句 prompt 不变；Mock 回归——高质量自由表达段落相关性/词汇维不被压、不拿 C。
 - `dotnet test`：211 单元 + 6 集成全绿。
+## 2026-08-06 — I7 T-029：Dashboard 双卡加载骨架与洞察空状态行动建议（程实）
+
+### 需求
+- 菜鸟月仿真 UI 走查（`report/sim-month/data/ui-walkthrough.md` O1/O3）：计划卡/洞察卡接口 10-25s 无加载态，期间像「今天没计划」；洞察卡空状态对 207 条记录的用户仍只说「状态良好」，无行动建议。
+
+### 决策
+- **加载态改骨架屏**：计划卡/洞察卡 status 为 loading 时展示卡片外壳 + 既有 `LoadingSkeleton`（`skeleton` 样式已在设计系统内，不引依赖）；仅请求失败（静默降级 error）才不展示卡片，保持 T-018/T-019 降级口径。
+- **空状态分层**：探索周进行中（T-032 exploration.active）优先显示探索进度（第 X/7 天 · 再完成 N 次表达），不与计划卡的探索周文案冲突；非探索周给一句行动建议（「今天试试用新学的词造句，表达越多，洞察越准」）。
+
+### 实现
+- 仅前端 `Frontend/src/pages/Dashboard.tsx`：showPlanCard/showInsightCard 条件由「active/none」改为「非 error」；两卡 loading 分支渲染骨架；洞察卡 none 分支按探索周三态出文案。
+
+### 验证
+- `cd Frontend && npm install && npm run build` 通过；纯前端改动未跑 dotnet test。
 
 ## 2026-07-30 — I7 T-040：多词短语命中口径——词序列连续匹配，短语可确认可毕业（程实）
 
