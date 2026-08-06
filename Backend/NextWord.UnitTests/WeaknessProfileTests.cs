@@ -129,6 +129,41 @@ public class WeaknessProfileTests
         Assert.Equal(2, profile.Findings.Count(finding => finding.Verification == FindingVerification.Questioned));
     }
 
+    // ── T-045：画像重生成（assessmentId 空）assessment_dimension 证据回退最近测评核对 ──
+
+    [Fact]
+    public async Task Verifier_falls_back_to_latest_assessment_when_regenerated_without_assessment_id()
+    {
+        await using var db = await PostgresTestDatabase.CreateContextAsync();
+        var user = await SeedUserAsync(db, "profile-regen");
+        await SeedAssessmentWithFinalAsync(db, user.Id, grammar: 4.0, natural: 4.0, vocabulary: 3.0, relevance: 4.0);
+        var verifier = new FindingVerifier(db);
+
+        var truthful = new ProfileFindingDraft(
+            FindingDimension.Skill, "grammar", FindingPolarity.Strength, "测评语法维稳定。",
+            [new EvidenceClaim("assessment_dimension", "final", "grammar", "<=", 4)],
+            FindingConfidence.Low);
+        var mismatched = truthful with
+        {
+            Statement = "引用数值与最近测评不符。",
+            Evidence = [new EvidenceClaim("assessment_dimension", "final", "grammar", "=", 2)]
+        };
+
+        // 重生成画像场景（assessmentId 空）：回退用户最近一次 FinalLevel 记录核对
+        // 修复前一律「测评 FinalLevel 记录缺失」→ 全灭（qa-t039 P2-1）
+        var results = await verifier.VerifyAsync(user.Id, null, [truthful, mismatched], CancellationToken.None);
+
+        Assert.Equal(FindingVerification.Verified, results[0].Verification);
+        Assert.Equal(FindingVerification.Questioned, results[1].Verification);
+        Assert.Contains("不属实", results[1].Note);
+
+        // 用户确实没有任何 FinalLevel 记录：核验失败口径不变（不放宽机械核查）
+        var noAssessment = await SeedUserAsync(db, "profile-regen-none");
+        var orphaned = await verifier.VerifyAsync(noAssessment.Id, null, [truthful], CancellationToken.None);
+        Assert.Equal(FindingVerification.Questioned, orphaned[0].Verification);
+        Assert.Contains("记录缺失", orphaned[0].Note);
+    }
+
     [Fact]
     public async Task Report_switches_to_verified_findings_after_assessment()
     {

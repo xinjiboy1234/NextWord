@@ -2,6 +2,24 @@
 
 按时间倒序记录需求、决策、实现与验收。
 
+## 2026-08-07 — I7 T-045：画像重生成 evidence 核验回退最近测评——修复重生成 findings 全灭（程实）
+
+### 需求
+- qa-t039 P2-1：洞察触发画像重生成传 `assessmentId: null`（`BottleneckInsightService`）→ `FindingVerifier` 对 assessment_dimension 证据核验「测评 FinalLevel 记录缺失」→ 重生成画像 5 条 findings 中 4 条 Questioned → Planner 只消费 Verified → 计划个性化徽章第 12 天起退化为探索期。
+
+### 决策（两条修法取最小）
+- **取 Verifier 侧回退**：`FindingVerifier.VerifyAsync` 去掉「仅 assessmentId 有值才加载 FinalResult」的守卫，始终走 `WeaknessProfiler.LoadFinalResultAsync`——该方法本身在 assessmentId 空时按时间倒序取用户最近一次 FinalLevel 记录，**与 Profiler 生成草稿时喂给 LLM 的维度值完全同源**。
+- 否决「Profiler 无测评上下文时不产出 assessment_dimension 证据」：Profiler 明明已把最近测评维度值喂给 LLM（`WeaknessProfiler` 同样调 `LoadFinalResultAsync(null)`），却不让 Verifier 用同一来源核验，自相矛盾；且要改 prompt + 草稿过滤，侵入更大、还丢信号。
+- 用户确实无任何 FinalLevel 记录时核验失败口径不变（机械核查不放宽）。
+
+### 实现
+- `FindingVerifier.cs`：删 `if (assessmentId.HasValue)` 守卫（净改一处），类注释与行内注释同步 T-045 口径。
+
+### 验证
+- 新增 `WeaknessProfileTests.Verifier_falls_back_to_latest_assessment_when_regenerated_without_assessment_id`：assessmentId 空 + 数值与最近测评一致 → Verified；数值不符 → Questioned「不属实」；用户无任何 FinalLevel 记录 → 仍 Questioned「记录缺失」。
+- 既有 Verifier/冷启动放宽档/洞察测试（WeaknessProfileTests + ColdStartExplorationTests + BottleneckInsightTests 共 41 例）零回归。
+- `dotnet test`：219 单元 + 6 集成全绿（较 T-044 提交点净增 1）。
+
 ## 2026-08-07 — I7 T-044：毕业判定口径放宽——整篇 C 及以上且词汇维 ≥3 即达标（程实）
 
 ### 需求
@@ -16,7 +34,7 @@
 ### 验证
 - `WordLifecycleTests.Free_expression_graduates_spontaneous_use_with_trace` 按新口径重写（注明口径变化）：A 档毕业回归；未出现的词不毕业；**C 档词汇维 4 含池词 → 毕业留痕 graduatedWords**；D 档含池词 → 不毕业；C 档词汇维 2 → 不毕业。
 - B 档回归由 `Free_expression_with_phrase_graduates_spontaneous_use`（短语 + B 档 → 毕业）覆盖。
-- `dotnet test` 全绿（见 T-045 一并收尾的基线数）。
+- `dotnet test`：218 单元 + 6 集成全绿（T-044 提交点）。
 
 ## 2026-08-06 — I7 T-038：cefrDisplay 下行迟滞——上行即时、降档需连续 3 天低于下限（程实）
 

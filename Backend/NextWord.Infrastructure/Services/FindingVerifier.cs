@@ -14,6 +14,7 @@ namespace NextWord.Infrastructure.Services;
 /// T-032 冷启动放宽档（relaxedColdStart，仅首份冷启动重生成画像）：仅放宽样本量纪律——
 /// 条数不足的 Finding 置信下调 low 标 Verified 注「初步判断」；伪造/越权/数值不符仍存疑。
 /// T-032：证据类型新增 free_expression_log（自由表达留痕，Metric=aiScore），核查纪律与 sentence_log 一致。
+/// T-045：assessment_dimension 证据在 assessmentId 空（画像重生成）时回退用户最近一次 FinalLevel 记录核对（与 Profiler 草稿输入同源）。
 /// </summary>
 public sealed class FindingVerifier(ApplicationDbContext db) : IFindingVerifier
 {
@@ -46,11 +47,11 @@ public sealed class FindingVerifier(ApplicationDbContext db) : IFindingVerifier
             .Where(log => log.UserId == userId && freeLogIds.Contains(log.Id))
             .ToListAsync(cancellationToken);
 
-        AssessmentFinalResult? final = null;
-        if (assessmentId.HasValue)
-        {
-            final = await WeaknessProfiler.LoadFinalResultAsync(db, userId, assessmentId, cancellationToken);
-        }
+        // T-045：assessmentId 空（洞察触发重生成等无测评上下文场景）时回退到「用户最近一次 FinalLevel 记录」核对——
+        // LoadFinalResultAsync 本身在 assessmentId 空时即按时间倒序取最近一次，与 Profiler 生成草稿时喂给 LLM 的维度值同源；
+        // 修复前此处仅在 assessmentId 有值时加载，重生成画像的 assessment_dimension 证据一律「记录缺失」全灭（qa-t039 P2-1）。
+        // 用户确实无任何 FinalLevel 记录时 final 仍为 null，核验失败口径不变。
+        var final = await WeaknessProfiler.LoadFinalResultAsync(db, userId, assessmentId, cancellationToken);
 
         var results = new List<VerifiedFinding>();
         foreach (var draft in drafts)
