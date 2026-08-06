@@ -43,15 +43,34 @@ public class AssessmentScoringServiceTests
         Assert.Equal(expected, _service.MapExpressionScore(composite));
     }
 
+    /// <summary>T-042：升带阈值 60→70——65 不再升带，75 升带；降带 &lt;40 不变。</summary>
     [Theory]
+    [InlineData(75, BandMove.Up)]
     [InlineData(70, BandMove.Up)]
-    [InlineData(60, BandMove.Up)]
-    [InlineData(59.9, BandMove.Stay)]
-    [InlineData(50, BandMove.Stay)]
+    [InlineData(69.9, BandMove.Stay)]
+    [InlineData(65, BandMove.Stay)]
+    [InlineData(60, BandMove.Stay)]
     [InlineData(39.9, BandMove.Down)]
     public void Band_move_follows_block_expression(double blockExpression, BandMove expected)
     {
         Assert.Equal(expected, _service.DecideBandMove(blockExpression));
+    }
+
+    /// <summary>T-042 识别防伪闸：表达定级档 − 词汇识别参考档 ≥2 下调 1 档；档差不足、样本缺失、反向均不矫正。</summary>
+    [Theory]
+    [InlineData(CefrLevel.B2, CefrLevel.A1, CefrLevel.B1, true)]  // 仿真菜鸟剧本：表达 B2 + 识别 A1 → 下调
+    [InlineData(CefrLevel.C1, CefrLevel.A2, CefrLevel.B2, true)]  // 档差 3 → 只下调 1 档（一次性）
+    [InlineData(CefrLevel.B2, CefrLevel.B1, CefrLevel.B2, false)] // 档差 1 不矫正
+    [InlineData(CefrLevel.A2, CefrLevel.A1, CefrLevel.A2, false)] // 档差 1 不矫正
+    [InlineData(CefrLevel.A2, CefrLevel.C1, CefrLevel.A2, false)] // 反向（识别高于表达）不矫正
+    [InlineData(CefrLevel.A1, CefrLevel.A1, CefrLevel.A1, false)] // A1 为下限
+    [InlineData(CefrLevel.B2, null, CefrLevel.B2, false)]         // 识别样本缺失不矫正
+    public void Recognition_guard_adjusts_only_when_gap_at_least_two(
+        CefrLevel expressionLevel, CefrLevel? vocabReferenceLevel, CefrLevel expectedLevel, bool expectedAdjusted)
+    {
+        var (level, adjusted) = _service.ApplyRecognitionGuard(expressionLevel, vocabReferenceLevel);
+        Assert.Equal(expectedLevel, level);
+        Assert.Equal(expectedAdjusted, adjusted);
     }
 
     [Theory]
@@ -62,6 +81,16 @@ public class AssessmentScoringServiceTests
     public void Convergence_rules(int completedBlocks, BandMove lastMove, bool expected)
     {
         Assert.Equal(expected, _service.ShouldConverge(completedBlocks, lastMove));
+    }
+
+    /// <summary>T-042 矫正传导：分数带上限（含）= 分带 Max − 1，供先验 clamp 进矫正后档。</summary>
+    [Theory]
+    [InlineData(CefrLevel.A1, 19)]
+    [InlineData(CefrLevel.B1, 69)]
+    [InlineData(CefrLevel.B2, 84)]
+    public void Band_score_ceiling_follows_score_mapping(CefrLevel level, int expected)
+    {
+        Assert.Equal(expected, _service.GetBandScoreCeiling(level));
     }
 
     [Theory]

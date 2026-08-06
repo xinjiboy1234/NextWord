@@ -11,6 +11,15 @@ namespace NextWord.Domain.Services;
 /// </summary>
 public sealed class AssessmentScoringService(ScoreMappingOptions options) : IAssessmentScoringService
 {
+    /// <summary>块表现升带阈值（T-042：60→70，慷慨评分下 60 等于不设防；降带 &lt;40 不变）。</summary>
+    public const double BandUpThreshold = 70;
+
+    /// <summary>块表现降带阈值（不含）。</summary>
+    public const double BandDownThreshold = 40;
+
+    /// <summary>识别防伪闸档差（T-042，DESIGN-assessment-anti-inflation §2.2）：表达定级档 − 词汇识别参考档达到此值即下调 1 档。</summary>
+    public const int RecognitionGuardBandGap = 2;
+
     /// <summary>产出题单题得分：四维加权（语法/自然度权重高于词汇/相关度），0–100。</summary>
     public double ScoreProductionDimensions(int grammar, int natural, int vocabulary, int relevance)
     {
@@ -43,9 +52,40 @@ public sealed class AssessmentScoringService(ScoreMappingOptions options) : IAss
         return CefrLevel.C1;
     }
 
-    /// <summary>块表现决策：≥60 升带，&lt;40 降带，其余保持（T-009：65→60，低带中等偏上答案块均分约 61–65，65 摸不到）。</summary>
+    /// <summary>块表现决策：≥<see cref="BandUpThreshold"/> 升带，&lt;<see cref="BandDownThreshold"/> 降带，其余保持（T-042：升带 60→70）。</summary>
     public BandMove DecideBandMove(double blockExpressionScore) =>
-        blockExpressionScore >= 60 ? BandMove.Up : blockExpressionScore < 40 ? BandMove.Down : BandMove.Stay;
+        blockExpressionScore >= BandUpThreshold ? BandMove.Up : blockExpressionScore < BandDownThreshold ? BandMove.Down : BandMove.Stay;
+
+    /// <summary>
+    /// 识别防伪闸（T-042，DESIGN-assessment-anti-inflation §2.2）：定级完成后一次性矫正。
+    /// 表达定级档 − 词汇识别参考档 ≥ <see cref="RecognitionGuardBandGap"/> 时下调 1 档（下限 A1）；
+    /// 识别样本缺失（null）或反向（识别高于表达）不矫正。返回矫正后定级与是否发生矫正。
+    /// </summary>
+    public (CefrLevel Level, bool Adjusted) ApplyRecognitionGuard(CefrLevel expressionLevel, CefrLevel? vocabReferenceLevel)
+    {
+        if (vocabReferenceLevel is null
+            || (int)expressionLevel - (int)vocabReferenceLevel.Value < RecognitionGuardBandGap
+            || expressionLevel <= CefrLevel.A1)
+        {
+            return (expressionLevel, false);
+        }
+
+        return ((CefrLevel)((int)expressionLevel - 1), true);
+    }
+
+    /// <summary>指定 CEFR 档的分数带上限（含，= 分带 Max − 1）：T-042 矫正传导——分数先验逐维 clamp 进矫正后档，避免 CefrDisplay 仍按虚高档。</summary>
+    public int GetBandScoreCeiling(CefrLevel level)
+    {
+        foreach (var band in options.CefrBands)
+        {
+            if (Enum.TryParse<CefrLevel>(band.Label, out var bandLevel) && bandLevel == level)
+            {
+                return band.Max - 1;
+            }
+        }
+
+        return 100;
+    }
 
     /// <summary>收敛：最多 3 块；满 2 块且表现稳定（不再升降带）即可收敛，总题量 ≤15。</summary>
     public bool ShouldConverge(int completedBlocks, BandMove lastMove) =>

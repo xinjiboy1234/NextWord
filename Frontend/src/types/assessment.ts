@@ -71,6 +71,8 @@ export interface AssessmentFinalResult {
   readingReferenceLevel: CefrLevel
   dimensions: AssessmentDimensionSummary
   evaluationReportId?: number | null
+  /** T-042 识别防伪闸留痕：发生矫正时为表达定级原档，未矫正为 null */
+  originalLevelBeforeGuard?: CefrLevel | null
 }
 
 export interface SentenceQuizQuestion {

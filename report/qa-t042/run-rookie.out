@@ -1,0 +1,32 @@
+{
+  "script": "rookie",
+  "final": {
+    "overallLevel": "B1",
+    "expressionScore": 69,
+    "vocabularyReferenceScore": 100,
+    "readingReferenceScore": 0,
+    "vocabularyReferenceLevel": "C1",
+    "readingReferenceLevel": "A1",
+    "dimensions": {
+      "grammar": 3.9,
+      "natural": 3.2,
+      "vocabulary": 3,
+      "relevance": 3.6,
+      "topErrorTags": [
+        "缺少冠词 'a'：'vacuum cleaner' 是可数名词单数，需加不定冠词；缺少定冠词 'the'：'floor' 在此处特指说话人所在房间的地板，需用 'the floor'",
+        "'nice'虽正确，但在A2水平更推荐使用更基础、高频的形容词如'kind'或'friendly'；'nice'略偏抽象，且在初学者语境中易与'good'等混淆，影响精准表达。",
+        "动词第三人称单数错误：'clean' 应为 'cleans'；缺少连词或标点连接句子，导致语流生硬；未使用目标词 'free expression'，且内容与 'housing_chores' 场景关联薄弱（仅提及洗碗，未体现表达观点、选择权或自主性等自由表达维度）",
+        "动词 'marinate' 使用正确，但句子过于简略，缺少时间、时长或目的等常见搭配信息，显得不够自然；B1 学习者应能尝试加入基本状语以增强表达完整性。",
+        "'Afterwards' 使用正确，但句子为两个独立简单句，用句号连接显得生硬；B1 学习者应尝试使用并列连词（如 and）或分号连接逻辑紧密的短句，以体现基本语篇衔接能力。"
+      ],
+      "comments": [
+        "表达力综合分 69/100：语法 3.9、自然度 3.2、词汇 3.0、相关度 3.6（各维度满分 5）。",
+        "主定级 B1 由表达力综合分决定；词汇识别 100、阅读 0 仅作参考，不影响定级。"
+      ]
+    },
+    "evaluationReportId": 1,
+    "originalLevelBeforeGuard": null
+  },
+  "reportSummary": "你的综合水平为 Overall 69（B1）。以下为经交叉验证的能力画像。",
+  "progressLevel": "B1"
+}

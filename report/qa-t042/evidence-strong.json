@@ -1,0 +1,122 @@
+{
+  "script": "strong",
+  "email": "qa-t042-strong-e5b16f5a@example.com",
+  "assessmentId": "6e692162-15ad-47f8-9218-ca89ced702d1",
+  "blocks": [
+    {
+      "blockIndex": 1,
+      "band": "A2",
+      "blockExpressionScore": 76,
+      "nextBand": "B1",
+      "converged": false,
+      "productionAnswers": [
+        "She tends to get upset when her plans are changed at the last minute.",
+        "She takes great care to ensure every detail of the project is perfect.",
+        "I’d really appreciate it if you could help me with this report—I’m struggling to meet the deadline.  \nThanks so much for stepping in; your support made all the difference.  \nI’m truly grateful—not just for the assistance, but for how patiently and thoughtfully you guided me through it."
+      ]
+    },
+    {
+      "blockIndex": 2,
+      "band": "B1",
+      "blockExpressionScore": 96,
+      "nextBand": "B2",
+      "converged": false,
+      "productionAnswers": [
+        "I treat myself to a fancy coffee every now and then to break up the routine.",
+        "This new electric car is surprisingly affordable, making it an attractive option for budget-conscious buyers.",
+        "She has this quiet intensity—her gaze steady, her words deliberate, as if every sentence carries weight. I always find myself leaning in slightly, not just to hear her better but because her presence feels like a calm, magnetic force. There’s something deeply reassuring about her groundedness, especially in chaotic moments."
+      ]
+    },
+    {
+      "blockIndex": 3,
+      "band": "B2",
+      "blockExpressionScore": 90.7,
+      "nextBand": null,
+      "converged": true,
+      "productionAnswers": [
+        "She excels in creative writing, whereas her brother has a natural talent for mathematics.",
+        "That rings true—many people I know have experienced exactly the same sense of disorientation when returning home after years abroad.",
+        "Hi there—how’s your day going so far?  \nI just grabbed a coffee, and it’s been the perfect little pick-me-up.  \nIt’s always nice to catch up, even if just for a few minutes!"
+      ]
+    }
+  ],
+  "final": {
+    "overallLevel": "C1",
+    "expressionScore": 88,
+    "vocabularyReferenceScore": 100,
+    "readingReferenceScore": 100,
+    "vocabularyReferenceLevel": "C1",
+    "readingReferenceLevel": "C1",
+    "dimensions": {
+      "grammar": 4.8,
+      "natural": 4.6,
+      "vocabulary": 4,
+      "relevance": 3.9,
+      "topErrorTags": [
+        "'tends to get upset' 语法正确，但对A2学习者而言略显复杂；'tends to' 属于B1及以上常用结构，A2更常使用简单现在时；'are changed' 是被动语态，A2阶段通常尚未掌握被动语态的熟练运用，建议改用主动表达或更基础句式。",
+        "'takes great care' 属于B1及以上常用搭配，对A2学习者而言过于正式且抽象；'ensure' 和 'perfect' 超出A2词汇大纲（CEFR A2词表不包含这两个词）；整句语法结构（不定式目的状语+被动语态'is perfect'）超出A2理解与产出能力。",
+        "未使用目标词 'free expression'；句子虽自然地道，但属于超出A2水平的复杂表达（如 'not just for... but for how patiently and thoughtfully you guided me...'），含高级连接结构和抽象副词，不符合A2学习者应掌握的语言范围；感谢语过度丰富，A2阶段更需聚焦基础功能表达（如 'thank you for helping me'）",
+        "句子语法正确，用词自然；'every now and then' 准确表达了‘偶尔、时不时’的频率含义，符合B1学习者对短语的掌握要求；整句结构清晰，动词时态（一般现在时）和搭配（treat oneself to...）均恰当。",
+        "句子语法正确，结构清晰；'affordable' 使用准确，符合B1水平对形容词表‘价格合理’的掌握要求；'budget-conscious buyers' 稍偏正式，但属可理解的常见搭配，未超出B1认知范围。"
+      ],
+      "comments": [
+        "表达力综合分 88/100：语法 4.8、自然度 4.6、词汇 4.0、相关度 3.9（各维度满分 5）。",
+        "主定级 C1 由表达力综合分决定；词汇识别 100、阅读 100 仅作参考，不影响定级。"
+      ]
+    },
+    "evaluationReportId": 2,
+    "originalLevelBeforeGuard": null
+  },
+  "reportSchemaVersion": 2,
+  "reportSummary": "你的综合水平为 Overall 88（C1）。以下为经交叉验证的能力画像。",
+  "finalLevelRecord": {
+    "overallLevel": 5,
+    "expressionScore": 88,
+    "vocabularyReferenceScore": 100,
+    "readingReferenceScore": 100,
+    "vocabularyReferenceLevel": 5,
+    "readingReferenceLevel": 5,
+    "dimensions": {
+      "grammar": 4.8,
+      "natural": 4.6,
+      "vocabulary": 4,
+      "relevance": 3.9,
+      "topErrorTags": [
+        "'tends to get upset' 语法正确，但对A2学习者而言略显复杂；'tends to' 属于B1及以上常用结构，A2更常使用简单现在时；'are changed' 是被动语态，A2阶段通常尚未掌握被动语态的熟练运用，建议改用主动表达或更基础句式。",
+        "'takes great care' 属于B1及以上常用搭配，对A2学习者而言过于正式且抽象；'ensure' 和 'perfect' 超出A2词汇大纲（CEFR A2词表不包含这两个词）；整句语法结构（不定式目的状语+被动语态'is perfect'）超出A2理解与产出能力。",
+        "未使用目标词 'free expression'；句子虽自然地道，但属于超出A2水平的复杂表达（如 'not just for... but for how patiently and thoughtfully you guided me...'），含高级连接结构和抽象副词，不符合A2学习者应掌握的语言范围；感谢语过度丰富，A2阶段更需聚焦基础功能表达（如 'thank you for helping me'）",
+        "句子语法正确，用词自然；'every now and then' 准确表达了‘偶尔、时不时’的频率含义，符合B1学习者对短语的掌握要求；整句结构清晰，动词时态（一般现在时）和搭配（treat oneself to...）均恰当。",
+        "句子语法正确，结构清晰；'affordable' 使用准确，符合B1水平对形容词表‘价格合理’的掌握要求；'budget-conscious buyers' 稍偏正式，但属可理解的常见搭配，未超出B1认知范围。"
+      ],
+      "comments": [
+        "表达力综合分 88/100：语法 4.8、自然度 4.6、词汇 4.0、相关度 3.9（各维度满分 5）。",
+        "主定级 C1 由表达力综合分决定；词汇识别 100、阅读 100 仅作参考，不影响定级。"
+      ]
+    },
+    "evaluationReportId": 2,
+    "originalLevelBeforeGuard": null
+  },
+  "progressLevel": "C1",
+  "planner": {
+    "active": true,
+    "startDate": "2026-08-06",
+    "dayIndex": 0,
+    "focusScenarios": [
+      "agree_disagree",
+      "daily_routine"
+    ],
+    "sourceFindingIds": [],
+    "articleIds": [
+      "f7b3ddd8-4e07-4544-9a24-fda84959f900",
+      "e55e6e76-1b25-4a44-af3d-320b48c1516d",
+      "a43b111a-d036-4501-97de-9a321fb730cf"
+    ],
+    "todayWordCount": 8,
+    "todayExposureCount": 0,
+    "todaySentenceTargets": [
+      "take issue with",
+      "stand by",
+      "stance"
+    ]
+  }
+}

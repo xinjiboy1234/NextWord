@@ -50,9 +50,9 @@ public class AdaptiveAssessmentServiceTests
         Assert.Equal(block.Production.Select(item => item.Id), again.Block!.Production.Select(item => item.Id));
         Assert.Equal(block.Vocabulary[0].Word, again.Block.Vocabulary[0].Word);
 
-        // 提交：产出全对（LLM 满分），识别题全部故意答错 → 升带但不收敛（1 块）
+        // 提交：产出全对（LLM 满分），识别题也答对（与表达同档，不触发 T-042 防伪闸）→ 升带但不收敛（1 块）
         var result1 = await service.SubmitBlockAsync(assessment.Id, 1,
-            await AnswersAsync(service, assessment.Id, 1, recognitionCorrect: false), CancellationToken.None);
+            await AnswersAsync(service, assessment.Id, 1, recognitionCorrect: true), CancellationToken.None);
         Assert.False(result1.Converged);
         Assert.Equal(100, result1.BlockExpressionScore);
         Assert.Equal(CefrLevel.B1, result1.NextBand);
@@ -64,7 +64,7 @@ public class AdaptiveAssessmentServiceTests
         Assert.All(block2.Production.Where(item => item.Kind == "sentence"),
             item => Assert.StartsWith("b1word", item.TargetWord!));
         var result2 = await service.SubmitBlockAsync(assessment.Id, 2,
-            await AnswersAsync(service, assessment.Id, 2, recognitionCorrect: false), CancellationToken.None);
+            await AnswersAsync(service, assessment.Id, 2, recognitionCorrect: true), CancellationToken.None);
         Assert.False(result2.Converged);
         Assert.Equal(CefrLevel.B2, result2.NextBand);
 
@@ -72,16 +72,17 @@ public class AdaptiveAssessmentServiceTests
         var block3 = (await service.GetNextBlockAsync(assessment.Id, CancellationToken.None)).Block!;
         Assert.Equal(CefrLevel.B2, block3.Band);
         var result3 = await service.SubmitBlockAsync(assessment.Id, 3,
-            await AnswersAsync(service, assessment.Id, 3, recognitionCorrect: false), CancellationToken.None);
+            await AnswersAsync(service, assessment.Id, 3, recognitionCorrect: true), CancellationToken.None);
         Assert.True(result3.Converged);
         Assert.Null(result3.NextBand);
 
-        // 主定级 = 表达力综合分（100 → C1）；识别全错只作参考，不拖低整体
+        // 主定级 = 表达力综合分（100 → C1）；识别同档（全对）只作参考，防伪闸不矫正
         var final = result3.Final!;
         Assert.Equal(CefrLevel.C1, final.OverallLevel);
         Assert.Equal(100, final.ExpressionScore);
-        Assert.Equal(0, final.VocabularyReferenceScore);
-        Assert.Equal(0, final.ReadingReferenceScore);
+        Assert.Equal(100, final.VocabularyReferenceScore);
+        Assert.Equal(100, final.ReadingReferenceScore);
+        Assert.Null(final.OriginalLevelBeforeGuard);
         Assert.Equal(5.0, final.Dimensions.Grammar);
         Assert.NotEmpty(final.Dimensions.Comments);
 
@@ -152,6 +153,99 @@ public class AdaptiveAssessmentServiceTests
         Assert.True(result2.Converged); // 2 块稳定即收敛，总量 10 题
         Assert.Equal(52, result2.Final!.ExpressionScore);
         Assert.Equal(CefrLevel.B1, result2.Final.OverallLevel); // T-023 新分带（B2 起点 70）：52 → B1
+        Assert.Null(result2.Final.OriginalLevelBeforeGuard); // 识别全对（参考 C1）反向不矫正
+    }
+
+    /// <summary>T-042 验收 §4-1/5：表达 76（定级 B2）+ 词汇识别全错（参考 A1），档差 ≥2 → 下调 1 档至 B1 并留痕。</summary>
+    [Fact]
+    public async Task Inflated_expression_is_adjusted_by_recognition_guard()
+    {
+        await using var db = await PostgresTestDatabase.CreateContextAsync();
+        var service = CreateService(db, new StubLlmProvider(4, 4, 4, 3)); // 76 分 ≥70 → 每块升带
+        var user = await SeedPoolAsync(db);
+        var assessment = await service.StartInitialAsync(user.Id, CancellationToken.None);
+
+        await service.GetNextBlockAsync(assessment.Id, CancellationToken.None);
+        var result1 = await service.SubmitBlockAsync(assessment.Id, 1,
+            await AnswersAsync(service, assessment.Id, 1, recognitionCorrect: false), CancellationToken.None);
+        Assert.Equal(76, result1.BlockExpressionScore);
+        Assert.Equal(CefrLevel.B1, result1.NextBand);
+
+        await service.GetNextBlockAsync(assessment.Id, CancellationToken.None);
+        await service.SubmitBlockAsync(assessment.Id, 2,
+            await AnswersAsync(service, assessment.Id, 2, recognitionCorrect: false), CancellationToken.None);
+        await service.GetNextBlockAsync(assessment.Id, CancellationToken.None);
+        var result3 = await service.SubmitBlockAsync(assessment.Id, 3,
+            await AnswersAsync(service, assessment.Id, 3, recognitionCorrect: false), CancellationToken.None);
+        Assert.True(result3.Converged);
+
+        // 表达定级 B2 − 识别 A1 = 3 档 → 下调 1 档至 B1；结果含用户可读矫正说明
+        var final = result3.Final!;
+        Assert.Equal(76, final.ExpressionScore);
+        Assert.Equal(CefrLevel.B1, final.OverallLevel);
+        Assert.Equal(CefrLevel.B2, final.OriginalLevelBeforeGuard);
+        Assert.Contains(final.Dimensions.Comments,
+            comment => comment.Contains("表达表现 B2") && comment.Contains("调整为 B1"));
+
+        // 留痕可查：Assessment.FinalLevel 为矫正后定级，FinalLevel 记录含原定级
+        var done = await service.GetAsync(assessment.Id, CancellationToken.None);
+        Assert.Equal(CefrLevel.B1, done!.FinalLevel);
+        var finalRecord = done.Records.Single(item => item.Step == AssessmentStepType.FinalLevel);
+        var recorded = JsonSerializer.Deserialize<AssessmentFinalResult>(finalRecord.ScoresJson, JsonOptions)!;
+        Assert.Equal(CefrLevel.B1, recorded.OverallLevel);
+        Assert.Equal(CefrLevel.B2, recorded.OriginalLevelBeforeGuard);
+
+        // 矫正传导（qa-t042 P1）：三维分数先验 clamp 到矫正后档内（B1 上限 69），CefrDisplay 取矫正后档
+        var progress = await db.UserProgress.SingleAsync(item => item.UserId == user.Id);
+        Assert.Equal(CefrLevel.B1, progress.OverallLevel);
+        Assert.Equal(69, progress.VocabularyScore);
+        Assert.Equal(69, progress.ReadingScore);
+        Assert.Equal(69, progress.WritingScore);
+        var scores = await new ScoreProfileService(db, new ScoreMappingService(new ScoreMappingOptions()))
+            .GetScoresAsync(user.Id, CancellationToken.None);
+        Assert.Equal("B1", scores.CefrDisplay);
+
+        // Planner 词池带与矫正后定级一致：背词队列与造句目标全部带内（B1，不再给 B2 习语）
+        var planService = new LearningPlanService(db, new ScoreProfileService(db, new ScoreMappingService(new ScoreMappingOptions())));
+        var plan = await planService.GenerateAsync(user.Id, CancellationToken.None);
+        var content = JsonSerializer.Deserialize<LearningPlanContent>(plan.ContentJson, JsonOptions)!;
+        var plannedIds = content.Days.SelectMany(day => day.WordIds).ToList();
+        var plannedLevels = await db.Words
+            .Where(word => plannedIds.Contains(word.Id))
+            .Select(word => word.CefrLevel)
+            .ToListAsync();
+        Assert.NotEmpty(plannedLevels);
+        Assert.All(plannedLevels, level => Assert.Equal(CefrLevel.B1, level));
+        var targets = content.Days.SelectMany(day => day.SentenceTargets).ToList();
+        Assert.NotEmpty(targets);
+        var targetWords = await db.Words.Where(word => targets.Contains(word.Lemma)).ToListAsync();
+        Assert.Equal(targets.Distinct().Count(), targetWords.Count);
+        Assert.All(targetWords, word => Assert.Equal(CefrLevel.B1, word.CefrLevel));
+    }
+
+    /// <summary>T-042 验收 §4-4：识别样本缺失（用户全跳过识别题）时不矫正不报错。</summary>
+    [Fact]
+    public async Task Missing_recognition_sample_disables_guard()
+    {
+        await using var db = await PostgresTestDatabase.CreateContextAsync();
+        var service = CreateService(db, new StubLlmProvider(4, 4, 4, 3)); // 76 分
+        var user = await SeedPoolAsync(db);
+        var assessment = await service.StartInitialAsync(user.Id, CancellationToken.None);
+
+        await service.GetNextBlockAsync(assessment.Id, CancellationToken.None);
+        await service.SubmitBlockAsync(assessment.Id, 1,
+            await AnswersAsync(service, assessment.Id, 1, skipRecognition: true), CancellationToken.None);
+        await service.GetNextBlockAsync(assessment.Id, CancellationToken.None);
+        await service.SubmitBlockAsync(assessment.Id, 2,
+            await AnswersAsync(service, assessment.Id, 2, skipRecognition: true), CancellationToken.None);
+        await service.GetNextBlockAsync(assessment.Id, CancellationToken.None);
+        var result3 = await service.SubmitBlockAsync(assessment.Id, 3,
+            await AnswersAsync(service, assessment.Id, 3, skipRecognition: true), CancellationToken.None);
+        Assert.True(result3.Converged);
+
+        // 识别样本缺失 → 防伪闸不触发，表达定级 B2 原样保留
+        Assert.Equal(CefrLevel.B2, result3.Final!.OverallLevel);
+        Assert.Null(result3.Final.OriginalLevelBeforeGuard);
     }
 
     [Fact]
@@ -237,9 +331,9 @@ public class AdaptiveAssessmentServiceTests
         return user;
     }
 
-    /// <summary>构造作答：产出题给非空文本；识别题按题库中正确答案选择全对或全错。</summary>
+    /// <summary>构造作答：产出题给非空文本；识别题按题库中正确答案选择全对或全错；skipRecognition 时识别题整题跳过（无作答记录）。</summary>
     private static async Task<List<AssessmentAnswerItem>> AnswersAsync(
-        AssessmentService service, Guid assessmentId, int blockIndex, bool recognitionCorrect)
+        AssessmentService service, Guid assessmentId, int blockIndex, bool recognitionCorrect = false, bool skipRecognition = false)
     {
         var stored = await service.GetAsync(assessmentId, CancellationToken.None);
         var record = stored!.Records.Single(item => item.QuestionType == $"block:{blockIndex}");
@@ -250,6 +344,11 @@ public class AdaptiveAssessmentServiceTests
         foreach (var item in root.GetProperty("production").EnumerateArray())
         {
             answers.Add(new AssessmentAnswerItem(item.GetProperty("id").GetString()!, "I wrote a long enough answer here.", null, null));
+        }
+
+        if (skipRecognition)
+        {
+            return answers;
         }
 
         foreach (var item in root.GetProperty("vocabulary").EnumerateArray())

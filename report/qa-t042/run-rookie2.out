@@ -1,0 +1,32 @@
+{
+  "script": "rookie",
+  "final": {
+    "overallLevel": "B1",
+    "expressionScore": 79,
+    "vocabularyReferenceScore": 0,
+    "readingReferenceScore": 0,
+    "vocabularyReferenceLevel": "A1",
+    "readingReferenceLevel": "A1",
+    "dimensions": {
+      "grammar": 4.9,
+      "natural": 3.9,
+      "vocabulary": 3,
+      "relevance": 3.6,
+      "topErrorTags": [
+        "'as usual' 使用正确，符合A2水平；但句子过于简单，缺乏上下文支撑（如时间、频率或对比），略显单薄，自然度稍弱。A2学习者可尝试加入简单状语（如every day, on Mondays）使表达更充实。",
+        "句子语法正确、自然，完全符合A2水平；但'expect'在A2阶段属稍高阶动词（CEFR A2词汇表中未强制要求），虽可理解使用，但更常见的A2表达是'I think my friend will come today'或'I hope my friend comes today'。",
+        "未使用目标词 'free expression'；句子均为基础主谓宾结构，与A2水平相符但未体现目标主题；内容局限于客观描述，缺乏主观感受或个性表达，偏离'travel_lodging'场景中'自由表达'的交际意图",
+        "'somewhat' 使用正确，符合 B1 水平对程度副词的掌握要求；但句子过于简单，未体现 B1 应具备的稍复杂表达（如加入原因、对比或上下文），词汇运用偏保守，缺乏同义替换或自然搭配拓展。",
+        "'stock of pencils' 语法上可接受，但母语者更常使用 'in stock' 这一固定搭配，且语序需调整；'in the shop' 表达地点略显冗余，通常用 'at the shop' 或直接说 'We have pencils in stock' 更自然"
+      ],
+      "comments": [
+        "表达力综合分 79/100：语法 4.9、自然度 3.9、词汇 3.0、相关度 3.6（各维度满分 5）。",
+        "表达表现 B2，综合词汇掌握情况调整为 B1。"
+      ]
+    },
+    "evaluationReportId": 4,
+    "originalLevelBeforeGuard": "B2"
+  },
+  "reportSummary": "你的综合水平为 Overall 79（B2）。以下为经交叉验证的能力画像。表达表现 B2，综合词汇掌握情况调整为 B1。",
+  "progressLevel": "B1"
+}

@@ -60,8 +60,21 @@ public sealed class EvaluationReportService(
         // T-005：测评触发的报告先生成 WeaknessProfile（Profiler → Verifier），
         // 报告内容切换为已验证 Finding 列表；画像失败或全存疑时回退模板文案
         IReadOnlyList<ProfileFinding>? verifiedFindings = null;
+        string? guardNote = null;
         if (report.AssessmentId.HasValue)
         {
+            // T-042：识别防伪闸矫正留痕进报告摘要（原定级 → 矫正后定级，用户可读）
+            var finalRecord = await db.AssessmentRecords
+                .Where(item => item.AssessmentId == report.AssessmentId.Value && item.Step == AssessmentStepType.FinalLevel)
+                .FirstOrDefaultAsync(cancellationToken);
+            if (finalRecord is not null
+                && JsonSerializer.Deserialize<AssessmentFinalResult>(finalRecord.ScoresJson, JsonOptions) is { } finalResult
+                && finalResult.OriginalLevelBeforeGuard is { } originalLevel
+                && originalLevel != finalResult.OverallLevel)
+            {
+                guardNote = $"表达表现 {originalLevel}，综合词汇掌握情况调整为 {finalResult.OverallLevel}。";
+            }
+
             try
             {
                 var profile = await weaknessProfiles.GenerateAsync(report.UserId, report.AssessmentId.Value, cancellationToken);
@@ -101,14 +114,14 @@ public sealed class EvaluationReportService(
 
         if (verifiedFindings is not null)
         {
-            report.ContentJson = JsonSerializer.Serialize(BuildProfileContent(verifiedFindings, scores), JsonOptions);
+            report.ContentJson = JsonSerializer.Serialize(BuildProfileContent(verifiedFindings, scores, guardNote), JsonOptions);
         }
         else
         {
             var content = new
             {
                 schemaVersion = 1,
-                summary = $"你的综合水平为 Overall {scores.Overall}（{scores.CefrDisplay ?? scores.DifficultyBucket}）。",
+                summary = $"你的综合水平为 Overall {scores.Overall}（{scores.CefrDisplay ?? scores.DifficultyBucket}）。{guardNote}",
                 strengths,
                 weaknesses,
                 recommendations = new[]
@@ -147,12 +160,12 @@ public sealed class EvaluationReportService(
     /// schemaVersion 2 报告内容（T-005）：已验证 Finding 列表为主体；
     /// strengths/weaknesses 由 Finding 派生，兼容旧前端展示。
     /// </summary>
-    private static object BuildProfileContent(IReadOnlyList<ProfileFinding> findings, UserProfileScores scores)
+    private static object BuildProfileContent(IReadOnlyList<ProfileFinding> findings, UserProfileScores scores, string? guardNote)
     {
         return new
         {
             schemaVersion = 2,
-            summary = $"你的综合水平为 Overall {scores.Overall}（{scores.CefrDisplay ?? scores.DifficultyBucket}）。以下为经交叉验证的能力画像。",
+            summary = $"你的综合水平为 Overall {scores.Overall}（{scores.CefrDisplay ?? scores.DifficultyBucket}）。以下为经交叉验证的能力画像。{guardNote}",
             strengths = findings.Where(finding => finding.Polarity == FindingPolarity.Strength).Select(finding => finding.Statement).ToList(),
             weaknesses = findings.Where(finding => finding.Polarity == FindingPolarity.Weakness).Select(finding => finding.Statement).ToList(),
             recommendations = new[]

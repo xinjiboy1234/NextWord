@@ -139,15 +139,20 @@ public sealed class AssessmentService(
             productionScores.Add(new ProductionScore(item.Id, score, log.GrammarScore, log.NaturalScore, log.VocabularyScore, log.RelevanceScore, log.ErrorTags));
         }
 
-        // 识别题：只作参考信号，不进主定级
+        // 识别题：只作参考信号，不进主定级；未作答（跳过）不计入样本（T-042：全跳过 = 样本缺失，防伪闸不矫正）
         var vocabScores = payload.Vocabulary
-            .Select(item => new VocabScore(item.Id, answers.FirstOrDefault(answer => answer.Id == item.Id)?.SelectedIndex == item.CorrectIndex))
+            .Select(item => (Item: item, SelectedIndex: answers.FirstOrDefault(answer => answer.Id == item.Id)?.SelectedIndex))
+            .Where(pair => pair.SelectedIndex is not null)
+            .Select(pair => new VocabScore(pair.Item.Id, pair.SelectedIndex == pair.Item.CorrectIndex))
             .ToList();
         ReadingScore? readingScore = null;
         if (payload.Reading is not null)
         {
+            // 与词汇识别同口径（T-042）：未作答（跳过）不计样本
             var readingAnswer = answers.FirstOrDefault(answer => answer.Id == payload.Reading.Id);
-            readingScore = new ReadingScore(readingAnswer?.SelectedIndex == payload.Reading.CorrectIndex, readingAnswer?.LookupCount ?? 0);
+            readingScore = readingAnswer?.SelectedIndex is int selectedIndex
+                ? new ReadingScore(selectedIndex == payload.Reading.CorrectIndex, readingAnswer.LookupCount ?? 0)
+                : null;
         }
 
         var blockExpression = productionScores.Count == 0 ? 0 : Math.Round(productionScores.Average(item => item.Score), 1);
@@ -356,7 +361,7 @@ public sealed class AssessmentService(
 
         var expressionComposite = production.Count == 0 ? 0 : production.Average(item => item.Score);
         var expressionScore = Math.Clamp((int)Math.Round(expressionComposite), 0, 100);
-        var overall = scoring.MapExpressionScore(expressionComposite);
+        var expressionLevel = scoring.MapExpressionScore(expressionComposite);
 
         // 识别题：参考信号，不进主定级
         var vocabAccuracy = vocabulary.Count == 0 ? 0 : vocabulary.Count(item => item.Correct) * 100.0 / vocabulary.Count;
@@ -368,6 +373,13 @@ public sealed class AssessmentService(
             .Sum();
         var vocabReferenceScore = scoring.MapVocabToScore(vocabAccuracy);
         var readingReferenceScore = scoring.MapReadingToScore(readingAccuracy, lookupCount, Math.Max(readingWordCount, 1));
+        var vocabReferenceLevel = scoring.MapVocabAccuracy(vocabAccuracy);
+        var readingReferenceLevel = scoring.MapReadingAccuracy(readingAccuracy, lookupCount, Math.Max(readingWordCount, 1));
+
+        // T-042 识别防伪闸：表达定级档 − 词汇识别参考档 ≥2 时下调 1 档（一次性、下限 A1）；
+        // 识别样本缺失（无词汇识别作答）不矫正；识别不加权进表达分，只做矫正信号
+        var (overall, guardAdjusted) = scoring.ApplyRecognitionGuard(
+            expressionLevel, vocabulary.Count == 0 ? null : vocabReferenceLevel);
 
         var grammar = production.Count == 0 ? 0 : production.Average(item => item.Grammar);
         var natural = production.Count == 0 ? 0 : production.Average(item => item.Natural);
@@ -384,7 +396,9 @@ public sealed class AssessmentService(
         var comments = new List<string>
         {
             $"表达力综合分 {expressionScore}/100：语法 {grammar:0.0}、自然度 {natural:0.0}、词汇 {vocabDim:0.0}、相关度 {relevance:0.0}（各维度满分 5）。",
-            $"主定级 {overall} 由表达力综合分决定；词汇识别 {vocabReferenceScore}、阅读 {readingReferenceScore} 仅作参考，不影响定级。"
+            guardAdjusted
+                ? $"表达表现 {expressionLevel}，综合词汇掌握情况调整为 {overall}。"
+                : $"主定级 {overall} 由表达力综合分决定；词汇识别 {vocabReferenceScore}、阅读 {readingReferenceScore} 仅作参考，不影响定级。"
         };
         var dimensions = new AssessmentDimensionSummary(
             Math.Round(grammar, 1), Math.Round(natural, 1), Math.Round(vocabDim, 1), Math.Round(relevance, 1),
@@ -395,10 +409,11 @@ public sealed class AssessmentService(
             expressionScore,
             vocabReferenceScore,
             readingReferenceScore,
-            scoring.MapVocabAccuracy(vocabAccuracy),
-            scoring.MapReadingAccuracy(readingAccuracy, lookupCount, Math.Max(readingWordCount, 1)),
+            vocabReferenceLevel,
+            readingReferenceLevel,
             dimensions,
-            null);
+            null,
+            guardAdjusted ? expressionLevel : null);
 
         assessment.Status = AssessmentStatus.Completed;
         assessment.EndAt = DateTimeOffset.UtcNow;
@@ -406,12 +421,15 @@ public sealed class AssessmentService(
 
         var previous = (await users.GetOrCreateProgressAsync(assessment.UserId, cancellationToken)).OverallLevel;
         // 表达优先：档案各维度分数统一以表达力综合分为初始先验；识别题只进结果展示与画像内核，
-        // 不写权威分，避免「最短板 min」把识别参考分低的好表达者拖低（DESIGN-assessment-rework §2.2）
+        // 不写权威分，避免「最短板 min」把识别参考分低的好表达者拖低（DESIGN-assessment-rework §2.2）。
+        // T-042 矫正传导：防伪闸触发时三维先验逐维 clamp 到矫正后档上限以内（保持相对形状），
+        // 否则 CefrDisplay 仍按矫正前虚高档，Planner 词池/造句目标取词带错位（qa-t042 P1）
+        var priorScore = guardAdjusted ? Math.Min(expressionScore, scoring.GetBandScoreCeiling(overall)) : expressionScore;
         await scoreProfile.ApplyUpdateAsync(
             new ProfileUpdateCommand(
                 assessment.UserId,
                 "AssessmentCompleted",
-                new ProfileScoreAssignment(expressionScore, expressionScore, expressionScore, null),
+                new ProfileScoreAssignment(priorScore, priorScore, priorScore, null),
                 null,
                 $"assessment:{assessment.Id}:complete",
                 JsonSerializer.Serialize(final, JsonOptions)),

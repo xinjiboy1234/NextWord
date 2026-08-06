@@ -20,6 +20,30 @@
 - `dotnet test`：182 单元 + 6 集成全绿（基线 175+6，净增 7）；前端无改动跳过 build。
 - 新增 `TargetWordMatcherTests` 5 例（纯函数）：单词词边界回归（armed 不含 arm）、分隔变体命中（标点/多余空白/大小写）、乱序与中间插词不命中、词边界仍生效（upbeat≠up）、不做词形变换、空目标不命中。
 - `WordLifecycleTests` 净增 2 例（真实 PG + 评分桩）：短语造句 A 档确认 + 分隔变体确认 + 乱序不确认；自由表达含短语 B 档毕业 spontaneous_use 留痕 + graduatedWords 响应。
+## 2026-07-30 — I7 T-042：测评定级防伪闸——升带阈值 70 + 识别档差矫正留痕（程实）
+
+### 需求
+- 按 `docs/DESIGN-assessment-anti-inflation.md`（顾言定稿，T-041 拆出）实现：T-023 分带校准后定级仍虚高（仿真菜鸟表达 75 定 B2、词汇识别参考仅 33），产出池按定级带取词致毕业链路结构性不可达。两道闸：自适应升带阈值 60→70；定级完成后识别防伪闸一次性矫正（档差 ≥2 下调 1 档并明示留痕）。验收：设计 §4 五条。
+
+### 决策
+- **阈值/档差常量集中**：`AssessmentScoringService.BandUpThreshold=70` / `BandDownThreshold=40` / `RecognitionGuardBandGap=2`，后续按仿真再校准只改一处。
+- **识别样本缺失的口径落为「无作答」**：设计括号写「用户全跳过识别题」——`SubmitBlockAsync` 起未作答的词汇识别题不再记入样本（原来记为答错），`FinalizeAsync` 以 `vocabulary.Count == 0` 判定样本缺失不矫正；已作答部分仍按正确率映射参考档。
+- **留痕位置**：`AssessmentFinalResult` 新增 `OriginalLevelBeforeGuard`（矫正时为表达定级原档，未矫正 null），随 FinalLevel `AssessmentRecord` 持久化；`Assessment.FinalLevel`、`UserProgress.OverallLevel`、LevelHistory 均为矫正后定级。用户可读说明进 `Dimensions.Comments`（结果页已渲染 comments，无需额外 UI）与评估报告摘要（`EvaluationReportService` 两条内容路径都拼接）。
+- 识别不加权进表达力综合分、T-023 分带表与 T-027 评分 prompt 不动、确认挑战路径不动（§2.3 不做的事全部守住）。
+
+### 实现
+- 后端：`AssessmentScoringService`（阈值常量 + `ApplyRecognitionGuard`，档差 ≥2 下调 1 档、下限 A1、null 样本/反向不矫正）；`IAssessmentScoringService` 接口同步；`AssessmentService.FinalizeAsync`（主定级后应用矫正、矫正说明进 comments、留痕字段）与 `SubmitBlockAsync`（跳过识别题不计样本）；`AssessmentModels.AssessmentFinalResult`（新增 `OriginalLevelBeforeGuard`）；`EvaluationReportService`（报告摘要含矫正说明）。
+- 前端：`types/assessment.ts` 补 `originalLevelBeforeGuard` 字段；结果页经 comments 展示矫正说明（既有渲染）。
+- 测试：`AssessmentScoringServiceTests` 块表现阈值用例更新（65 不升带/75 升带，60 由 Up 改 Stay）+ 防伪闸 7 例（档差 ≥2 矫正、档差 1/反向/A1 下限/样本缺失不矫正）；`AdaptiveAssessmentServiceTests` 净增 2 例（表达 76 + 识别全错 → B2 矫正为 B1 且留痕可查；全跳过识别题 → 不矫正不报错），strong-user 用例改识别答对（识别全错拖低表达定级正是 T-042 新行为，原「不拖低」断言随之更新）。
+
+### 验证
+- `dotnet test`：185 单元 + 6 集成全绿（T-034 基线 168+6，净增 17）；前端 `npm install && npm run build` 通过。
+- 菜鸟剧本仿真复跑（设计 §4.1）归周密验收。
+
+### 验收修复（2026-08-06，周密「有条件通过」→ P1 返修）
+- **P1（矫正未传导分数先验/CefrDisplay）**：`FinalizeAsync` 原以未矫正表达分写三维先验 → `CefrDisplay` 仍按矫正前虚高档，Planner 词池/造句目标按虚高档取词（实测矫正后 B1 用户拿到全 B2 习语），T-041 病灶未收口。按顾言拍板口径修复：矫正触发时三维先验逐维 clamp 到矫正后档上限以内（`AssessmentScoringService.GetBandScoreCeiling` = 分带 Max − 1，保持相对形状，不做复杂换算）→ `CefrDisplay` 与评估报告摘要头部同根因归正（P2 一并修掉，报告在 `ApplyUpdateAsync` 之后取分，无需额外改动）。
+- **P3（阅读题口径对齐）**：阅读题未作答由「记答错」改为与词汇识别同口径「不计样本」；「跳识别用户参考分显示 0/A1」展示语义不动，留 backlog。
+- 测试补强：矫正用户三维先验 ≤ 矫正后档上限（69）、`CefrDisplay=B1`、Planner 背词队列与造句目标全部带内 B1（真实 PG，含 `LearningPlanService.GenerateAsync` 实跑）；`GetBandScoreCeiling` 映射 3 例。
 
 ## 2026-07-30 — I7 T-034：词生命周期提速——回忆考察配额 + Recalled 池补位 + 毕业时刻可见（程实）
 

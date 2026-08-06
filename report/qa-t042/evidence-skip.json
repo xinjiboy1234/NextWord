@@ -1,0 +1,122 @@
+{
+  "script": "skip",
+  "email": "qa-t042-skip-2b8e27fb@example.com",
+  "assessmentId": "f92e051e-618d-402c-9371-488ff7d41743",
+  "blocks": [
+    {
+      "blockIndex": 1,
+      "band": "A2",
+      "blockExpressionScore": 84,
+      "nextBand": "B1",
+      "converged": false,
+      "productionAnswers": [
+        "Please sit down so we can begin the meeting.",
+        "The train arrived on time despite the heavy rain and traffic delays.",
+        "I genuinely believe that open dialogue is essential for resolving misunderstandings, especially when perspectives differ significantly. While I respect others’ viewpoints, I also feel it’s important to articulate my own stance clearly and respectfully—without aggression, but with conviction. That said, I’m always willing to reconsider my position if presented with thoughtful, evidence-based reasoning."
+      ]
+    },
+    {
+      "blockIndex": 2,
+      "band": "B1",
+      "blockExpressionScore": 89.3,
+      "nextBand": "B2",
+      "converged": false,
+      "productionAnswers": [
+        "I reckon we’ll need to leave early to avoid the traffic.",
+        "After years of careful consideration and completing the rigorous legal process, they decided to adopt a child from overseas.",
+        "I’ve recently taken on more household responsibilities, like cooking dinner and doing the laundry, which has made me appreciate how much effort goes into keeping a home running smoothly. While I sometimes feel overwhelmed by the sheer volume of chores, I’ve started using a shared digital calendar with my flatmates to coordinate tasks—and it’s already reduced tension significantly. Honestly, there’s a quiet satisfaction in coming home to a tidy space I’ve helped create."
+      ]
+    },
+    {
+      "blockIndex": 3,
+      "band": "B2",
+      "blockExpressionScore": 88.7,
+      "nextBand": null,
+      "converged": true,
+      "productionAnswers": [
+        "The outcome of the election could go either way, as both candidates are neck and neck in the latest polls.",
+        "As it happens, I was already planning to visit Paris next month, so your suggestion couldn’t have come at a better time.",
+        "I’ll just settle the bill first—could you please print the receipt?  \nOnce that’s done, I’d appreciate it if we could proceed with processing the application right away.  \nEverything seems straightforward, but I’d be grateful if you could confirm the next steps and estimated timeline."
+      ]
+    }
+  ],
+  "final": {
+    "overallLevel": "C1",
+    "expressionScore": 87,
+    "vocabularyReferenceScore": 0,
+    "readingReferenceScore": 0,
+    "vocabularyReferenceLevel": "A1",
+    "readingReferenceLevel": "A1",
+    "dimensions": {
+      "grammar": 4.9,
+      "natural": 4.3,
+      "vocabulary": 3.8,
+      "relevance": 4.2,
+      "topErrorTags": [
+        "'begin the meeting'语法正确，但对A2学习者而言，'start'比'begin'更基础、更常用，属于高频A2动词；当前用词略超A2核心词汇范围，但未影响理解，故词汇分扣1分。",
+        "'on time' 使用正确，但整句包含 'despite the heavy rain and traffic delays' 这一较复杂的让步状语结构，超出了A2学习者应掌握的语法和词汇范围（如 'despite', 'traffic delays' 属B1+词汇）；句子虽语法正确，但不符合A2水平的语言简洁性与常用表达习惯。",
+        "词汇超出A2水平：'genuinely believe'、'articulate my own stance'、'evidence-based reasoning'等属B2+表达，不符合A2学习者应掌握的词汇范围；句式过长且嵌套复杂（如while引导让步状语从句、that said过渡语），增加理解与产出负担；'free expression'未显性出现，但整段确实在表达该概念，故相关性得满分；自然度偏低因用词和节奏脱离日常A2口语习惯。",
+        "'I reckon' 使用正确，符合英式英语口语习惯，语境（预测+交通）自然贴切；但B1学习者使用该短语属略高于典型B1词汇范围（CEFR B1核心词表未收录'reckon'作‘认为’义），虽正确且地道，故vocabulary_score扣1分以反映其稍超纲性。",
+        "'Years of careful consideration' 和 'rigorous legal process' 属于较正式、偏高级的表达，对B1学习者略显复杂；'overseas' 是正确用词，但B1阶段更常用 'from another country' 或 'from abroad'，更易理解且符合该水平常用语域。"
+      ],
+      "comments": [
+        "表达力综合分 87/100：语法 4.9、自然度 4.3、词汇 3.8、相关度 4.2（各维度满分 5）。",
+        "主定级 C1 由表达力综合分决定；词汇识别 0、阅读 0 仅作参考，不影响定级。"
+      ]
+    },
+    "evaluationReportId": 3,
+    "originalLevelBeforeGuard": null
+  },
+  "reportSchemaVersion": 2,
+  "reportSummary": "你的综合水平为 Overall 87（C1）。以下为经交叉验证的能力画像。",
+  "finalLevelRecord": {
+    "overallLevel": 5,
+    "expressionScore": 87,
+    "vocabularyReferenceScore": 0,
+    "readingReferenceScore": 0,
+    "vocabularyReferenceLevel": 1,
+    "readingReferenceLevel": 1,
+    "dimensions": {
+      "grammar": 4.9,
+      "natural": 4.3,
+      "vocabulary": 3.8,
+      "relevance": 4.2,
+      "topErrorTags": [
+        "'begin the meeting'语法正确，但对A2学习者而言，'start'比'begin'更基础、更常用，属于高频A2动词；当前用词略超A2核心词汇范围，但未影响理解，故词汇分扣1分。",
+        "'on time' 使用正确，但整句包含 'despite the heavy rain and traffic delays' 这一较复杂的让步状语结构，超出了A2学习者应掌握的语法和词汇范围（如 'despite', 'traffic delays' 属B1+词汇）；句子虽语法正确，但不符合A2水平的语言简洁性与常用表达习惯。",
+        "词汇超出A2水平：'genuinely believe'、'articulate my own stance'、'evidence-based reasoning'等属B2+表达，不符合A2学习者应掌握的词汇范围；句式过长且嵌套复杂（如while引导让步状语从句、that said过渡语），增加理解与产出负担；'free expression'未显性出现，但整段确实在表达该概念，故相关性得满分；自然度偏低因用词和节奏脱离日常A2口语习惯。",
+        "'I reckon' 使用正确，符合英式英语口语习惯，语境（预测+交通）自然贴切；但B1学习者使用该短语属略高于典型B1词汇范围（CEFR B1核心词表未收录'reckon'作‘认为’义），虽正确且地道，故vocabulary_score扣1分以反映其稍超纲性。",
+        "'Years of careful consideration' 和 'rigorous legal process' 属于较正式、偏高级的表达，对B1学习者略显复杂；'overseas' 是正确用词，但B1阶段更常用 'from another country' 或 'from abroad'，更易理解且符合该水平常用语域。"
+      ],
+      "comments": [
+        "表达力综合分 87/100：语法 4.9、自然度 4.3、词汇 3.8、相关度 4.2（各维度满分 5）。",
+        "主定级 C1 由表达力综合分决定；词汇识别 0、阅读 0 仅作参考，不影响定级。"
+      ]
+    },
+    "evaluationReportId": 3,
+    "originalLevelBeforeGuard": null
+  },
+  "progressLevel": "C1",
+  "planner": {
+    "active": true,
+    "startDate": "2026-08-06",
+    "dayIndex": 0,
+    "focusScenarios": [
+      "agree_disagree",
+      "daily_routine"
+    ],
+    "sourceFindingIds": [],
+    "articleIds": [
+      "f7b3ddd8-4e07-4544-9a24-fda84959f900",
+      "e55e6e76-1b25-4a44-af3d-320b48c1516d",
+      "a43b111a-d036-4501-97de-9a321fb730cf"
+    ],
+    "todayWordCount": 8,
+    "todayExposureCount": 0,
+    "todaySentenceTargets": [
+      "back up",
+      "stance",
+      "take issue with"
+    ]
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "script": "skip",
+  "final": {
+    "overallLevel": "C1",
+    "expressionScore": 87,
+    "vocabularyReferenceScore": 0,
+    "readingReferenceScore": 0,
+    "vocabularyReferenceLevel": "A1",
+    "readingReferenceLevel": "A1",
+    "dimensions": {
+      "grammar": 4.9,
+      "natural": 4.3,
+      "vocabulary": 3.8,
+      "relevance": 4.2,
+      "topErrorTags": [
+        "'begin the meeting'语法正确，但对A2学习者而言，'start'比'begin'更基础、更常用，属于高频A2动词；当前用词略超A2核心词汇范围，但未影响理解，故词汇分扣1分。",
+        "'on time' 使用正确，但整句包含 'despite the heavy rain and traffic delays' 这一较复杂的让步状语结构，超出了A2学习者应掌握的语法和词汇范围（如 'despite', 'traffic delays' 属B1+词汇）；句子虽语法正确，但不符合A2水平的语言简洁性与常用表达习惯。",
+        "词汇超出A2水平：'genuinely believe'、'articulate my own stance'、'evidence-based reasoning'等属B2+表达，不符合A2学习者应掌握的词汇范围；句式过长且嵌套复杂（如while引导让步状语从句、that said过渡语），增加理解与产出负担；'free expression'未显性出现，但整段确实在表达该概念，故相关性得满分；自然度偏低因用词和节奏脱离日常A2口语习惯。",
+        "'I reckon' 使用正确，符合英式英语口语习惯，语境（预测+交通）自然贴切；但B1学习者使用该短语属略高于典型B1词汇范围（CEFR B1核心词表未收录'reckon'作‘认为’义），虽正确且地道，故vocabulary_score扣1分以反映其稍超纲性。",
+        "'Years of careful consideration' 和 'rigorous legal process' 属于较正式、偏高级的表达，对B1学习者略显复杂；'overseas' 是正确用词，但B1阶段更常用 'from another country' 或 'from abroad'，更易理解且符合该水平常用语域。"
+      ],
+      "comments": [
+        "表达力综合分 87/100：语法 4.9、自然度 4.3、词汇 3.8、相关度 4.2（各维度满分 5）。",
+        "主定级 C1 由表达力综合分决定；词汇识别 0、阅读 0 仅作参考，不影响定级。"
+      ]
+    },
+    "evaluationReportId": 3,
+    "originalLevelBeforeGuard": null
+  },
+  "reportSummary": "你的综合水平为 Overall 87（C1）。以下为经交叉验证的能力画像。",
+  "progressLevel": "C1"
+}

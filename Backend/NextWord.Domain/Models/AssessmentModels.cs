@@ -50,6 +50,7 @@ public sealed record AssessmentBlockResult(
 /// <summary>
 /// 定级结果：主叙事为表达力综合分（产出维度加权）；识别分仅参考展示，不参与主定级。
 /// 固定等级外壳保留；Dimensions 为可读维度评价内核（供 T-005 WeaknessProfile）。
+/// OriginalLevelBeforeGuard：T-042 识别防伪闸留痕——发生矫正时为表达定级原档，未矫正为 null。
 /// </summary>
 public sealed record AssessmentFinalResult(
     CefrLevel OverallLevel,
@@ -59,7 +60,8 @@ public sealed record AssessmentFinalResult(
     CefrLevel VocabularyReferenceLevel,
     CefrLevel ReadingReferenceLevel,
     AssessmentDimensionSummary Dimensions,
-    long? EvaluationReportId);
+    long? EvaluationReportId,
+    CefrLevel? OriginalLevelBeforeGuard = null);
 
 public sealed record AssessmentDimensionSummary(
     double Grammar,

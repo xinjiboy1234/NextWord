@@ -83,9 +83,11 @@ docker-compose.yml        postgres:16-alpine + redis:7-alpine + api（容器内 
 
 ### 5.5 首次水平测评（`/assessment`）— I2 T-004 重构
 
-- **自适应分块**：以当前估计水平为起点（未测评用户 A2），每块 5 题（提示造句 ×2 + 情境表达 ×1 + 词义选择 ×1 + 阅读理解 ×1，产出占 60%），块表现 ≥60 升带、<40 降带（T-009 校准），满 2 块且稳定即收敛、最多 3 块（总题量 ≤15）。
+- **自适应分块**：以当前估计水平为起点（未测评用户 A2），每块 5 题（提示造句 ×2 + 情境表达 ×1 + 词义选择 ×1 + 阅读理解 ×1，产出占 60%），块表现 ≥70 升带、<40 降带（T-042：升带阈值 60→70，慷慨评分下 60 等于不设防），满 2 块且稳定即收敛、最多 3 块（总题量 ≤15）。
 - **产出题全部走 LLM 真实评分**：复用造句工作室四维链路（`SentenceService.RateAsync`，情境表达走 `free expression` 目标），词数启发式已废弃；评分留痕 `SentenceLogs`。
-- **主定级 = 表达力综合分**（语法/自然度 0.3 + 词汇/相关度 0.2 加权，阈值直接派生自 ScoreMapping 分带、封顶 C1）；识别题仅作参考展示，不参与定级——「最短板 min」已废弃。档案各维度分数以表达力综合分为初始先验写入 Score 内核。
+- **主定级 = 表达力综合分**（语法/自然度 0.3 + 词汇/相关度 0.2 加权，阈值直接派生自 ScoreMapping 分带、封顶 C1）；识别题仅作参考展示，不加权进表达分——「最短板 min」已废弃。档案各维度分数以表达力综合分为初始先验写入 Score 内核。
+- **识别防伪闸（T-042）**：定级完成后一次性矫正——表达定级档 − 词汇识别参考档 ≥2 时下调 1 档（下限 A1，C1 封顶在前）；识别样本缺失（全跳过识别题）或反向（识别高于表达）不矫正。矫正留痕（`AssessmentFinalResult.OriginalLevelBeforeGuard` + FinalLevel 记录），结果页 comments 与评估报告摘要含「表达表现 X，综合词汇掌握情况调整为 Y」说明；常量在 `AssessmentScoringService`（`BandUpThreshold=70` / `BandDownThreshold=40` / `RecognitionGuardBandGap=2`）。确认挑战路径不受影响。
+- **矫正传导（qa-t042 P1 修复）**：矫正触发时三维分数先验逐维 clamp 到矫正后档上限以内（`GetBandScoreCeiling`，保持维度相对形状），`CefrDisplay` 与评估报告头部随之取矫正后档——Planner 词池/造句目标按矫正后定级取词；识别/阅读题未作答均不计样本（同口径）。
 - **词池纪律**：出题词只选水平带内且 `utility=high/medium`（顶端带词池过薄时向下一带补充，绝不超带）；情境场景取自 I1 taxonomy（优先词池已标注场景）。
 - **阅读题**：从库内文章按难度带就近选文，考点词取自正文中出现的库内词，正确答案位置随机（硬编码与 index-0 恒定已废除）。
 - 端点：`GET /api/assessment/{id}/next-block`（幂等，未提交的块重发原题）→ `POST /api/assessment/{id}/blocks/{n}/submit`（同步 LLM 评分，收敛时直接定级并入队 `EvaluationReport`）。

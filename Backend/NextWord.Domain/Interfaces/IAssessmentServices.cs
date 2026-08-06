@@ -14,6 +14,12 @@ public interface IAssessmentScoringService
     BandMove DecideBandMove(double blockExpressionScore);
     bool ShouldConverge(int completedBlocks, BandMove lastMove);
 
+    // ── T-042：识别防伪闸（定级后一次性矫正，识别样本缺失传 null 不矫正）──
+    (CefrLevel Level, bool Adjusted) ApplyRecognitionGuard(CefrLevel expressionLevel, CefrLevel? vocabReferenceLevel);
+
+    // ── T-042：矫正传导——指定 CEFR 档的分数带上限（含），供分数先验 clamp ──
+    int GetBandScoreCeiling(CefrLevel level);
+
     // ── 识别题参考映射（不计入主定级）；MapXxxToScore 同时被挑战流沿用 ──
     CefrLevel MapVocabAccuracy(double accuracyPercent);
     CefrLevel MapReadingAccuracy(double accuracyPercent, int lookupCount, int wordCount);
