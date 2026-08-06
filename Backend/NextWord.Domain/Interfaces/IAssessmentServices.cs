@@ -65,24 +65,33 @@ public sealed record ChallengeSubmitRequest(
     string TargetWord,
     string Scene,
     Guid? SentenceWordId,
-    int ReadingSelectedIndex,
-    int LookupCount);
+    int? ReadingSelectedIndex,
+    int LookupCount)
+{
+    /// <summary>T-035：阅读 3 题作答；为 null 时回退单题 <see cref="ReadingSelectedIndex"/>（旧客户端/旧会话）。</summary>
+    public IReadOnlyList<int>? ReadingSelectedIndexes { get; init; }
+}
 
 public sealed record ChallengeStartResponse(Guid ChallengeSessionId, ChallengePackClientView Pack);
 
 public sealed record ChallengePackClientView(
     IReadOnlyList<VocabQuizQuestionClient> Vocabulary,
     SentenceQuizQuestion Sentence,
-    ReadingQuizQuestionClient Reading,
+    IReadOnlyList<ReadingQuizQuestionClient> Readings,
     string AttemptedLevel);
 
 public sealed record VocabQuizQuestionClient(string Word, IReadOnlyList<string> Options, string Difficulty);
 public sealed record ReadingQuizQuestionClient(Guid ArticleId, string Question, IReadOnlyList<string> Options, string ArticleExcerpt);
 
+/// <summary>
+/// T-035：Daily 通过后带规则点评（Feedback，未通过为 null）；PassCount 为累计通过次数（Daily 未通过也返回当前计数；确认挑战为 null）。
+/// </summary>
 public sealed record ChallengeSubmitResponse(
     bool Passed,
     double TotalScore,
     int VocabularyScore,
     int WritingScore,
     int ReadingScore,
-    long? EvaluationReportId);
+    long? EvaluationReportId,
+    string? Feedback,
+    int? PassCount);

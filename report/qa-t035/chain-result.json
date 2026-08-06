@@ -1,0 +1,110 @@
+{
+  "steps": [
+    {
+      "name": "register+skip",
+      "data": {
+        "email": "qa-t035-1786106647435@example.com",
+        "skip": {
+          "skipped": true,
+          "defaultLevel": "A2"
+        }
+      }
+    },
+    {
+      "name": "start#1",
+      "data": {
+        "attemptedLevel": "B1",
+        "vocabCount": 5,
+        "sentenceWord": "up to now",
+        "readings": [
+          {
+            "question": "文中 \"memory\" 的含义是什么？",
+            "options": [
+              "继续走",
+              "……怎么样？",
+              "电子邮件",
+              "记忆"
+            ],
+            "excerptHead": "Many students struggle to balance study hours with proper re"
+          },
+          {
+            "question": "文中 \"clearly\" 的含义是什么？",
+            "options": [
+              "分类；分拣",
+              "出租车",
+              "有时",
+              "明显地"
+            ],
+            "excerptHead": "Presentations challenge learners to organize ideas and speak"
+          },
+          {
+            "question": "文中 \"encourage\" 的含义是什么？",
+            "options": [
+              "实话说",
+              "显然地",
+              "鼓励",
+              "有（强调拥有）"
+            ],
+            "excerptHead": "Modern cities face growing pressure to reduce waste and prot"
+          }
+        ]
+      }
+    },
+    {
+      "name": "run1 attempts (2/3 reading)",
+      "data": [
+        {
+          "sentence": "The expression \"up to now\" means \"到目前为止\" in Chinese, and I used it naturally when discussing my study plans with classmates today.",
+          "passed": true,
+          "readingScore": 67,
+          "writingScore": 75,
+          "vocabularyScore": 100,
+          "feedback": "词汇是你的最长板，继续保持；阅读还有提升空间。",
+          "passCount": 1
+        }
+      ]
+    },
+    {
+      "name": "run2 (1/3 reading)",
+      "data": {
+        "passed": false,
+        "readingScore": 33,
+        "writingScore": 55,
+        "feedback": null,
+        "passCount": 1
+      }
+    },
+    {
+      "name": "dashboard",
+      "data": {
+        "upgradeCandidate": true,
+        "challengePassCount": 1,
+        "challengeFirstPassLevels": [
+          "B1"
+        ],
+        "overallLevel": "A2"
+      }
+    },
+    {
+      "name": "recent",
+      "data": [
+        {
+          "attemptedLevel": "B1",
+          "passed": false,
+          "totalScore": 62.7,
+          "vocabularyScore": 100,
+          "sentenceScore": 2.75,
+          "readingScore": 33
+        },
+        {
+          "attemptedLevel": "B1",
+          "passed": true,
+          "totalScore": 80.7,
+          "vocabularyScore": 100,
+          "sentenceScore": 3.75,
+          "readingScore": 67
+        }
+      ]
+    }
+  ]
+}

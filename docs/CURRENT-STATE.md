@@ -98,7 +98,12 @@ docker-compose.yml        postgres:16-alpine + redis:7-alpine + api（容器内 
 ### 5.6 综合挑战（`/challenge`）
 
 - `POST /api/challenge/start` 生成挑战包（`ChallengeSession` 存题目，客户端不拿答案）；可带 `confirmationChallenge` 锁定目标等级。
-- `POST /api/challenge/submit`：客户端提交原始答案，服务端按 `ChallengeThresholds` 计分（词汇正确率 ≥0.6、写作 ≥53、阅读 ≥100、升级增量 5）；确认挑战通过则 ProfileScore 加 UpgradeDelta 并出评估报告。
+- `POST /api/challenge/submit`：客户端提交原始答案，服务端按 `ChallengeThresholds` 计分（词汇正确率 ≥0.6、写作 ≥53、阅读 ≥67、升级增量 5）；确认挑战通过则 ProfileScore 加 UpgradeDelta 并出评估报告。
+- **挑战有结果化（T-035，DESIGN-challenge-outcome）**：
+  - Daily 通过即时反馈——规则点评（`ChallengeFeedback`，零 LLM：本次三维得分 vs Profile 三维分，指出最长/短板，差 ≥10 分才说「高出一截/拖了后腿」）+ 累计通过计数（ChallengeRecords 派生，不加新表）；**不改分数**，分数权威仍只属于测评/确认挑战/练习回写。未通过无点评，前端给鼓励文案。
+  - 升级候选强引导：`IsUpgradeCandidate=true` 时 Dashboard 引导条与挑战页顶部均出现「你已具备冲击 {下一级} 的实力，来确认挑战」，点击发起 `confirmationChallenge=true` 的挑战；确认挑战加分升级逻辑不动。
+  - 阅读题 1→3 降方差：按目标档从库内选 3 篇/3 题（选文与考点词口径复用测评 `AssessmentService.BuildReadingItemAsync`：难度带就近、考点词出自正文、词义选择），得分 = 正确率映射（0/33/67/100），`lookupCount` 扣分口径不变；`ChallengeThresholds.ReadingScoreMin` 100→67（配置）。`ChallengePack.Readings` 为新字段，旧会话 JSON（仅单题 `reading`）反序列化为 null 自动回退单题计分，旧客户端单题 `readingSelectedIndex` 同样兼容。
+  - 挑战记录可读性：历史记录分数带满分参照（造句 X/5、其余 X/100），AttemptedLevel 旁解释「挑战比当前等级高一档的内容」；LevelPanel 等级历史区展示累计通过次数与各档首次通过标记（`/api/level/dashboard` 新增 `challengePassCount`/`challengeFirstPassLevels`）。
 
 ### 5.7 Score 内核（v1）
 
@@ -289,7 +294,7 @@ Users、UserLlmSettings、Words、WordScenarios、WordDifficultyAnnotations、Di
 | `/reading` | ArticleLibrary | 按难度筛选、难度/CEFR 分组 |
 | `/reading/:articleId` | ArticleReader | 点词查义弹层、词汇提取面板、评论线程、阅读计时 |
 | `/assessment` | InitialAssessment | 自适应分块测评（2–3 块，产出为主）+ 结果页 |
-| `/challenge` | ChallengeMode | 三阶段挑战 + 近期挑战列表 |
+| `/challenge` | ChallengeMode | 三阶段挑战（阅读 3 题）+ 通过点评/计数 + 候选确认挑战引导条 + 近期挑战列表（满分参照） |
 | `/review` | ReviewQueue | 翻转卡片复习 + 活动统计 + 最近记录 |
 | `/word-bank` | Home | 全量词条表格 + 搜索 + 详情 |
 | `/profile` | ProfilePage | 用户信息、LevelPanel、ProgressDetail、CEFR 开关、管理入口 |

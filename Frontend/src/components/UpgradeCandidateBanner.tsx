@@ -3,29 +3,29 @@ import { nextCefrLevel } from '../lib/cefr'
 
 interface UpgradeCandidateBannerProps {
   currentLevel?: string
-  onOpenLevel: () => void
+  /** T-035：主行动改为直达确认挑战（/challenge，confirmationChallenge=true） */
+  onStartChallenge: () => void
   onDismiss: () => void
 }
 
 export function UpgradeCandidateBanner({
   currentLevel,
-  onOpenLevel,
+  onStartChallenge,
   onDismiss,
 }: UpgradeCandidateBannerProps) {
   const nextLevel = currentLevel ? nextCefrLevel(currentLevel) : null
-  const levelHint = currentLevel && nextLevel
-    ? `${currentLevel} 升至 ${nextLevel}`
-    : '你已达到升级候选条件'
 
   return (
     <div className="upgrade-banner">
       <Star size={20} aria-hidden="true" style={{ color: 'var(--info)', flexShrink: 0 }} />
       <p>
         <strong>升级候选：</strong>
-        {levelHint}。前往「我的」页面查看详情或参加挑战测试。
+        {nextLevel
+          ? `你已具备冲击 ${nextLevel} 的实力，来确认挑战。`
+          : '你已具备冲击下一级的实力，来确认挑战。'}
       </p>
-      <button type="button" className="btn btn-sm btn-primary" onClick={onOpenLevel}>
-        查看等级
+      <button type="button" className="btn btn-sm btn-primary" onClick={onStartChallenge}>
+        去确认挑战
       </button>
       <button
         type="button"

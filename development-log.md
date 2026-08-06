@@ -2,6 +2,26 @@
 
 按时间倒序记录需求、决策、实现与验收。
 
+## 2026-08-07 — I7 T-035：挑战有结果化——通过点评与计数 + 候选强引导 + 阅读 3 题降方差（程实）
+
+### 需求
+- sim-month 发现七「挑战过了也白过」：Daily 通过零反馈；挑战按上一档出题无解释；阅读单题 0/100 方差过大；历史记录分数无满分参照。设计定稿 `docs/DESIGN-challenge-outcome.md`（顾言，2026-07-30）。
+
+### 实现（按设计 §2，分数权威不动）
+- **Daily 通过即时反馈**：新增 `ChallengeFeedback`（Domain，纯规则零 LLM）——本次三维得分 vs Profile 三维分，指出最长/短板，差 ≥10 才说「高出一截/拖了后腿」；`ChallengeSubmitResponse` 新增 `Feedback`/`PassCount`（通过计数从 ChallengeRecords 派生，不加新表）；不改分数。未通过无点评，前端给鼓励文案。
+- **升级候选强引导**：Dashboard `UpgradeCandidateBanner` 文案改「你已具备冲击 {下一级} 的实力，来确认挑战」，主行动直达 `/challenge`（state.confirmation 自动发起 `confirmationChallenge=true`）；挑战页顶部同文案引导条（取 `/api/progress` 的 `isUpgradeCandidate`）。确认挑战加分升级逻辑一行未改。
+- **阅读 1→3 题降方差**：`ChallengePack.Readings` 新字段（`Reading` 保留第一题），选文与考点词口径复用测评（难度带就近、考点词出自正文摘要、词义选择题）；得分 = 正确率映射（0/33/67/100），lookupCount 扣分口径不变；`ChallengeThresholds.ReadingScoreMin` 100→67（options 默认值 + appsettings）。
+- **记录可读性**：近期挑战分数带满分参照（造句 X/5、其余 X/100），AttemptedLevel 旁解释「挑战比当前等级高一档的内容」；`/api/level/dashboard` 新增 `challengePassCount`/`challengeFirstPassLevels`，LevelPanel 等级历史区展示。
+
+### 兼容
+- 旧会话 JSON 无 `readings` 属性 → 反序列化为 null，自动回退单题 `Reading` 计分；旧客户端单题 `readingSelectedIndex`（int?）与新 `readingSelectedIndexes` 双字段并存，新旧提交都不炸。
+- 无实体/schema 变更，不新增迁移。
+
+### 验证
+- 新增 `ChallengeOutcomeTests` 6 例（设计 §4 五条全覆盖）：点评最长/短板与画像对比、2/3 题 67 过阈值、1/3 题 33 不过、旧单题会话兼容、3 篇/3 题出题（考点词出自摘要正文）、通过计数 +1。
+- 出题测试播种选 C2 档（测评选带封顶 C1），避免污染共享测试库带内词池（首轮全量曾因此撞 `AdaptiveAssessmentServiceTests`，已修）。
+- `dotnet test` 全量、前端 `npm run build` 通过。
+
 ## 2026-08-07 — I7 T-045：画像重生成 evidence 核验回退最近测评——修复重生成 findings 全灭（程实）
 
 ### 需求

@@ -19,7 +19,7 @@ test.describe('挑战测评', () => {
       pack: {
         vocabulary: unknown[]
         sentence: { word: string; scene: string; wordId: string | null }
-        reading: { options: string[] }
+        readings: { options: string[] }[]
       }
     }
 
@@ -33,7 +33,7 @@ test.describe('挑战测评', () => {
         targetWord: started.pack.sentence.word,
         scene: started.pack.sentence.scene,
         sentenceWordId: started.pack.sentence.wordId,
-        readingSelectedIndex: 0,
+        readingSelectedIndexes: started.pack.readings.map(() => 0),
         lookupCount: 0,
       },
     })

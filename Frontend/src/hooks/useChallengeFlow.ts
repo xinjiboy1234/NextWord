@@ -8,6 +8,7 @@ export function useChallengeFlow() {
   const [pack, setPack] = useState<ChallengeStartResponse['pack'] | null>(null)
   const [result, setResult] = useState<ChallengeSubmitResponse | null>(null)
   const [loading, setLoading] = useState(false)
+  const [isConfirmation, setIsConfirmation] = useState(false)
 
   const start = useCallback(async (confirmation = false) => {
     setLoading(true)
@@ -16,6 +17,7 @@ export function useChallengeFlow() {
       setSessionId(response.data.challengeSessionId)
       setPack(response.data.pack)
       setResult(null)
+      setIsConfirmation(confirmation)
     } finally {
       setLoading(false)
     }
@@ -27,7 +29,8 @@ export function useChallengeFlow() {
     targetWord: string
     scene: string
     sentenceWordId?: string | null
-    readingSelectedIndex: number
+    /** T-035：阅读 3 题作答 */
+    readingSelectedIndexes: number[]
     lookupCount: number
     confirmation?: boolean
   }) {
@@ -40,11 +43,11 @@ export function useChallengeFlow() {
       targetWord: payload.targetWord,
       scene: payload.scene,
       sentenceWordId: payload.sentenceWordId,
-      readingSelectedIndex: payload.readingSelectedIndex,
+      readingSelectedIndexes: payload.readingSelectedIndexes,
       lookupCount: payload.lookupCount,
     })
     setResult(response.data)
   }
 
-  return { sessionId, pack, result, loading, start, submit }
+  return { sessionId, pack, result, loading, isConfirmation, start, submit }
 }

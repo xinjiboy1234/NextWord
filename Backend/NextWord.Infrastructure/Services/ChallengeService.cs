@@ -5,6 +5,7 @@ using NextWord.Domain.Entities;
 using NextWord.Domain.Enums;
 using NextWord.Domain.Interfaces;
 using NextWord.Domain.Models;
+using NextWord.Domain.Services;
 using NextWord.Infrastructure.Data;
 
 namespace NextWord.Infrastructure.Services;
@@ -45,11 +46,15 @@ public sealed class ChallengeService(
         var clientView = new ChallengePackClientView(
             pack.Vocabulary.Select(q => new VocabQuizQuestionClient(q.Word, q.Options, q.Difficulty.ToString())).ToList(),
             pack.Sentence,
-            new ReadingQuizQuestionClient(pack.Reading.ArticleId, pack.Reading.Question, pack.Reading.Options, pack.Reading.ArticleExcerpt),
+            GetReadings(pack).Select(q => new ReadingQuizQuestionClient(q.ArticleId, q.Question, q.Options, q.ArticleExcerpt)).ToList(),
             pack.AttemptedLevel.ToString());
 
         return new ChallengeStartResponse(session.Id, clientView);
     }
+
+    /// <summary>T-035：阅读题组取值——新会话用 Readings，旧会话 JSON 无该属性回退单题 Reading。</summary>
+    private static IReadOnlyList<ReadingQuizQuestion> GetReadings(ChallengePack pack) =>
+        pack.Readings is { Count: > 0 } readings ? readings : [pack.Reading];
 
     public async Task<ChallengeSubmitResponse> SubmitChallengeAsync(Guid userId, ChallengeSubmitRequest request, CancellationToken cancellationToken)
     {
@@ -79,9 +84,16 @@ public sealed class ChallengeService(
         var sentenceAverage = (sentenceLog.GrammarScore + sentenceLog.NaturalScore + sentenceLog.VocabularyScore + sentenceLog.RelevanceScore) / 4.0;
         var writingScore = scoring.MapSentenceToScore(sentenceAverage);
 
-        var readingCorrect = request.ReadingSelectedIndex == pack.Reading.CorrectIndex;
-        var readingAccuracy = readingCorrect ? 100.0 : 0.0;
-        var readingScore = scoring.MapReadingToScore(readingAccuracy, request.LookupCount, pack.Reading.ArticleExcerpt.Length / 5);
+        // T-035：阅读按题组正确率映射（3 题 → 0/33/67/100），lookupCount 扣分口径不变；兼容旧单题会话与旧客户端
+        var readings = GetReadings(pack);
+        IReadOnlyList<int> readingAnswers = request.ReadingSelectedIndexes
+            ?? (request.ReadingSelectedIndex is int legacyIndex ? [legacyIndex] : []);
+        var readingCorrect = readings
+            .Select((q, i) => i < readingAnswers.Count && readingAnswers[i] == q.CorrectIndex)
+            .Count(x => x);
+        var readingAccuracy = readings.Count == 0 ? 0 : readingCorrect * 100.0 / readings.Count;
+        var readingWordCount = readings.Sum(q => q.ArticleExcerpt.Length / 5);
+        var readingScore = scoring.MapReadingToScore(readingAccuracy, request.LookupCount, readingWordCount);
 
         var options = thresholds.Value;
         var passed = vocabAccuracy / 100.0 >= options.VocabAccuracyMin
@@ -134,7 +146,21 @@ public sealed class ChallengeService(
         db.ChallengeSessions.Remove(session);
         await db.SaveChangesAsync(cancellationToken);
 
-        return new ChallengeSubmitResponse(passed, total, vocabScore, writingScore, readingScore, reportId);
+        // T-035：Daily 通过即时反馈——规则点评（零 LLM，不改分数）+ 累计通过计数（ChallengeRecords 派生，不加新表）
+        string? feedback = null;
+        int? passCount = null;
+        if (!session.ConfirmationChallenge)
+        {
+            passCount = await db.ChallengeRecords.AsNoTracking()
+                .CountAsync(item => item.UserId == userId && item.Passed, cancellationToken);
+            if (passed)
+            {
+                var profileScores = await scoreProfile.GetScoresAsync(userId, cancellationToken);
+                feedback = ChallengeFeedback.Build(vocabScore, writingScore, readingScore, profileScores);
+            }
+        }
+
+        return new ChallengeSubmitResponse(passed, total, vocabScore, writingScore, readingScore, reportId, feedback, passCount);
     }
 
     public async Task<IReadOnlyList<ChallengeRecord>> GetRecentAsync(Guid userId, int count, CancellationToken cancellationToken)
@@ -155,7 +181,7 @@ public sealed class LevelDashboardService(ApplicationDbContext db, ILevelEngine 
         var progress = await db.UserProgress.AsNoTracking().FirstOrDefaultAsync(item => item.UserId == userId, cancellationToken);
         if (progress is null)
         {
-            return new LevelDashboardDto(CefrLevel.A1, CefrLevel.A1, CefrLevel.A1, CefrLevel.A1, CefrLevel.A1, false, false, [], null);
+            return new LevelDashboardDto(CefrLevel.A1, CefrLevel.A1, CefrLevel.A1, CefrLevel.A1, CefrLevel.A1, false, false, [], null, 0, []);
         }
 
         var histories = (await db.LevelHistories.AsNoTracking()
@@ -174,6 +200,18 @@ public sealed class LevelDashboardService(ApplicationDbContext db, ILevelEngine 
 
         var upgrade = levelEngine.EvaluateUpgradeCandidate(progress, recentChallenges);
         var scores = await scoreProfile.GetScoresAsync(userId, cancellationToken);
+
+        // T-035：挑战荣誉从 ChallengeRecords 派生（不加新表）——累计通过次数 + 各档首次通过标记
+        var passedChallenges = await db.ChallengeRecords.AsNoTracking()
+            .Where(item => item.UserId == userId && item.Passed)
+            .ToListAsync(cancellationToken);
+        var firstPassLevels = passedChallenges
+            .GroupBy(item => item.AttemptedLevel)
+            .Select(group => (Level: group.Key, First: group.Min(item => item.Timestamp)))
+            .OrderBy(item => item.First)
+            .Select(item => item.Level)
+            .ToList();
+
         return new LevelDashboardDto(
             progress.OverallLevel,
             progress.VocabLevel,
@@ -183,7 +221,9 @@ public sealed class LevelDashboardService(ApplicationDbContext db, ILevelEngine 
             progress.HasCompletedInitialAssessment,
             upgrade.IsCandidate,
             histories,
-            scores);
+            scores,
+            passedChallenges.Count,
+            firstPassLevels);
     }
 
     public async Task<IReadOnlyList<LevelHistory>> GetHistoryAsync(Guid userId, CancellationToken cancellationToken)
@@ -205,4 +245,6 @@ public sealed record LevelDashboardDto(
     bool HasCompletedInitialAssessment,
     bool UpgradeCandidate,
     IReadOnlyList<LevelHistory> RecentHistory,
-    UserProfileScores? Scores);
+    UserProfileScores? Scores,
+    int ChallengePassCount,
+    IReadOnlyList<CefrLevel> ChallengeFirstPassLevels);

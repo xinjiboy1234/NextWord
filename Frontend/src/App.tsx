@@ -195,7 +195,7 @@ function AuthenticatedApp() {
       {showUpgradeCandidate && (
         <UpgradeCandidateBanner
           currentLevel={progress?.overallLevel}
-          onOpenLevel={() => navigate('/profile#profile-level')}
+          onStartChallenge={() => navigate('/challenge', { state: { confirmation: true } })}
           onDismiss={() => {
             localStorage.setItem(UPGRADE_DISMISS_KEY, '1')
             setUpgradeDismissed(true)

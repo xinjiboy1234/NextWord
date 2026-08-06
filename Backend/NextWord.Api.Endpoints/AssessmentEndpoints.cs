@@ -84,7 +84,8 @@ public static class ChallengeEndpoints
                     request.Scene,
                     request.SentenceWordId,
                     request.ReadingSelectedIndex,
-                    request.LookupCount),
+                    request.LookupCount)
+                { ReadingSelectedIndexes = request.ReadingSelectedIndexes },
                 ct);
             return Results.Ok(record);
         });
@@ -135,5 +136,9 @@ public sealed record ChallengeSubmitBody(
     string TargetWord,
     string Scene,
     Guid? SentenceWordId,
-    int ReadingSelectedIndex,
-    int LookupCount);
+    int? ReadingSelectedIndex,
+    int LookupCount)
+{
+    /// <summary>T-035：阅读 3 题作答；缺省时回退单题 ReadingSelectedIndex（旧客户端）。</summary>
+    public IReadOnlyList<int>? ReadingSelectedIndexes { get; init; }
+}

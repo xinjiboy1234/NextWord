@@ -7,11 +7,19 @@ public sealed record SpellingQuizQuestion(string Chinese, string CorrectSpelling
 public sealed record SentenceQuizQuestion(Guid? WordId, string Word, string Scene);
 public sealed record ReadingQuizQuestion(Guid ArticleId, string Question, IReadOnlyList<string> Options, int CorrectIndex, string ArticleExcerpt);
 
+/// <summary>
+/// 挑战包。T-035 起阅读从 1 题增至 3 题：<see cref="Readings"/> 为完整题组，
+/// <see cref="Reading"/> 保留为第一题，兼容旧会话 JSON（无 readings 属性时 Readings 为 null，回退单题）。
+/// </summary>
 public sealed record ChallengePack(
     IReadOnlyList<VocabQuizQuestion> Vocabulary,
     SentenceQuizQuestion Sentence,
     ReadingQuizQuestion Reading,
-    CefrLevel AttemptedLevel);
+    CefrLevel AttemptedLevel)
+{
+    /// <summary>阅读题组（T-035，3 题）；旧会话数据无此属性，反序列化为 null。</summary>
+    public IReadOnlyList<ReadingQuizQuestion>? Readings { get; init; }
+}
 
 // ── 自适应分块测评（T-004，DESIGN-assessment-rework）────────────────────
 

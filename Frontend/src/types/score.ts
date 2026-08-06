@@ -72,7 +72,8 @@ export interface ChallengeStartResponse {
   pack: {
     vocabulary: Array<{ word: string; options: string[]; difficulty: string }>
     sentence: { wordId: string | null; word: string; scene: string }
-    reading: { articleId: string; question: string; options: string[]; articleExcerpt: string }
+    /** T-035：阅读题组（3 题） */
+    readings: Array<{ articleId: string; question: string; options: string[]; articleExcerpt: string }>
     attemptedLevel: string
   }
 }
@@ -84,4 +85,8 @@ export interface ChallengeSubmitResponse {
   writingScore: number
   readingScore: number
   evaluationReportId: number | null
+  /** T-035：Daily 通过的规则点评（未通过/确认挑战为 null） */
+  feedback: string | null
+  /** T-035：累计挑战通过次数（确认挑战为 null） */
+  passCount: number | null
 }

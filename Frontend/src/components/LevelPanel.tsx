@@ -185,6 +185,21 @@ export function LevelPanel() {
       <div className="section-header">
         <h3>等级历史</h3>
       </div>
+      {dashboard.challengePassCount > 0 && (
+        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>
+          挑战已通过 <strong>{dashboard.challengePassCount}</strong> 次
+          {dashboard.challengeFirstPassLevels.length > 0 && (
+            <>
+              {' · 首次通过 '}
+              {dashboard.challengeFirstPassLevels.map((level) => (
+                <span key={level} style={{ marginRight: 4, display: 'inline-block' }}>
+                  <Badge variant="success">{level}</Badge>
+                </span>
+              ))}
+            </>
+          )}
+        </p>
+      )}
       {dashboard.recentHistory.length === 0 ? (
         <p style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>暂无记录。</p>
       ) : (

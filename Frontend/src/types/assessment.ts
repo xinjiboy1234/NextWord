@@ -81,15 +81,18 @@ export interface SentenceQuizQuestion {
   scene: string
 }
 
+export interface ChallengeReadingQuestion {
+  articleId: string
+  question: string
+  options: string[]
+  articleExcerpt: string
+}
+
 export interface ChallengePackClient {
   vocabulary: Array<{ word: string; options: string[]; difficulty: string }>
   sentence: SentenceQuizQuestion
-  reading: {
-    articleId: string
-    question: string
-    options: string[]
-    articleExcerpt: string
-  }
+  /** T-035：阅读题组（3 题） */
+  readings: ChallengeReadingQuestion[]
   attemptedLevel: CefrLevel
 }
 
@@ -129,4 +132,8 @@ export interface LevelDashboard {
     difficultyBucket: string
     cefrDisplay: string | null
   } | null
+  /** T-035：挑战累计通过次数（ChallengeRecords 派生） */
+  challengePassCount: number
+  /** T-035：各档首次通过标记（按首通时间排序） */
+  challengeFirstPassLevels: CefrLevel[]
 }
