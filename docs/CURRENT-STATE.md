@@ -92,6 +92,8 @@ docker-compose.yml        postgres:16-alpine + redis:7-alpine + api（容器内 
 - **词池纪律**：出题词只选水平带内且 `utility=high/medium`（顶端带词池过薄时向下一带补充，绝不超带）；情境场景取自 I1 taxonomy（优先词池已标注场景）。
 - **阅读题**：从库内文章按难度带就近选文，考点词取自正文中出现的库内词，正确答案位置随机（硬编码与 index-0 恒定已废除）。
 - 端点：`GET /api/assessment/{id}/next-block`（幂等，未提交的块重发原题）→ `POST /api/assessment/{id}/blocks/{n}/submit`（同步 LLM 评分，收敛时直接定级并入队 `EvaluationReport`）。
+- **老用户文案（T-030）**：`hasCompletedInitialAssessment=true` 的用户进入 `/assessment` 显示「重新水平测评」+「本次结果将覆盖现有定级」提示，不再显示「首次水平测评」。
+- **造句评分 prompt（T-030）**：`LlmPromptFactory.BuildSentenceRatingPrompt` 的 Scene 字段改传场景中文名（`ScenarioTaxonomy.Find(key)?.ZhName`，未收录回退原 key），避免 LLM 反馈文案复述内部场景 key 且与计划卡口径一致。
 
 ### 5.6 综合挑战（`/challenge`）
 
@@ -116,7 +118,7 @@ docker-compose.yml        postgres:16-alpine + redis:7-alpine + api（容器内 
 
 - `GET /api/profile`：等级、连胜、统计、等级历史、LLM 设置；`PUT /api/profile` 改显示名。
 - BYOK：`GET /api/profile/llm/presets`（OpenAI/DeepSeek/Qwen 预设）+ `PUT /api/profile/llm` 存用户自己的 OpenAI 兼容 API（`UserLlmSettings`，API key 脱敏返回）；`UserLlmProviderFactory` 按用户构建 provider。
-- `GET /api/evaluation/latest|{id}` 查看评估报告（测评触发的报告内容为已验证 Finding 画像，见 §5.14；其余触发为模板文案）。
+- `GET /api/evaluation/latest|{id}` 查看评估报告（测评触发的报告内容为已验证 Finding 画像，见 §5.14；其余触发为模板文案——T-030 起模板摘要不再带英文「Overall」，且词汇/阅读同分时不评强弱，只写「表现相当」）。
 - `GET /api/profile/weakness`：最新 WeaknessProfile（含每条 Finding 的核查状态与存疑原因）。
 - `POST /api/feedback`：释义错误 / 标记已知 / 排除单词（触发 ReAnnotation 后台任务）。
 
@@ -260,7 +262,7 @@ Worker 异常不拖垮宿主（`BackgroundServiceExceptionBehavior=Ignore`）。
 - `GET /api/insights/bottleneck/latest`（最新 BottleneckInsight：性质/结论/证据引用/是否触发重规划）
 
 **日志 / 健康**
-- `GET /api/logs/summary`、`GET /api/logs/recent`
+- `GET /api/logs/summary`、`GET /api/logs/recent`（T-030 起 recent 的拼写结果文案中文化：正确/拼错，原为 correct/missed）
 - `GET /api/health`（匿名）、`GET /api/health/details`（匿名；DB CanConnect + LLM 注册检查）
 
 ## 7. 数据模型

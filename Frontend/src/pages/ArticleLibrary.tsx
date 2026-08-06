@@ -16,6 +16,22 @@ const LEVEL_LABELS: Record<string, string> = {
   Advanced: '高级',
 }
 
+/** T-030：文章来源/话题标签 → 中文（避免 Builtin、environment 等内部字段外露） */
+const SOURCE_LABELS: Record<string, string> = {
+  Builtin: '内置',
+  Llm: 'AI 生成',
+}
+const TOPIC_LABELS: Record<string, string> = {
+  life: '生活',
+  nature: '自然',
+  school: '校园',
+  environment: '环境',
+  work: '职场',
+  culture: '文化',
+  technology: '科技',
+  academic: '学术',
+}
+
 export function ArticleLibrary({ onOpen }: ArticleLibraryProps) {
   const [articles, setArticles] = useState<ArticleSummary[]>([])
   const [recommended, setRecommended] = useState<ArticleSummary[]>([])
@@ -59,7 +75,7 @@ export function ArticleLibrary({ onOpen }: ArticleLibraryProps) {
   const grouped = useMemo(() => {
     const map = new Map<string, ArticleSummary[]>()
     for (const article of articles) {
-      const key = `${article.difficultyLevel} / ${article.cefrLevel}`
+      const key = `${LEVEL_LABELS[article.difficultyLevel] ?? article.difficultyLevel} · ${article.cefrLevel}`
       const list = map.get(key) ?? []
       list.push(article)
       map.set(key, list)
@@ -129,8 +145,8 @@ export function ArticleLibrary({ onOpen }: ArticleLibraryProps) {
                     <div>
                       <h4 style={{ fontWeight: 540, fontSize: 'var(--text-base)' }}>{article.title}</h4>
                       <p style={{ marginTop: 'var(--space-1)', fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>
-                        {article.wordCount} 词 · {article.source}
-                        {article.topicTag ? ` · ${article.topicTag}` : ''}
+                        {article.wordCount} 词 · {SOURCE_LABELS[article.source] ?? article.source}
+                        {article.topicTag ? ` · ${TOPIC_LABELS[article.topicTag] ?? article.topicTag}` : ''}
                       </p>
                     </div>
                     <button type="button" onClick={() => onOpen(article.id)} className="btn btn-primary btn-sm">

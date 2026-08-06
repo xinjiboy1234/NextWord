@@ -101,15 +101,20 @@ public sealed class EvaluationReportService(
 
         var strengths = new List<string>();
         var weaknesses = new List<string>();
-        if ((scores.Vocabulary ?? 0) >= (scores.Reading ?? 0))
+        // T-030：同分不评强弱（避免「较强（64 分）/相对薄弱（64 分）」自相矛盾）
+        if ((scores.Vocabulary ?? 0) > (scores.Reading ?? 0))
         {
             strengths.Add($"词汇能力较强（{scores.Vocabulary} 分）");
             weaknesses.Add($"阅读相对薄弱（{scores.Reading} 分）");
         }
-        else
+        else if ((scores.Reading ?? 0) > (scores.Vocabulary ?? 0))
         {
             strengths.Add($"阅读能力较好（{scores.Reading} 分）");
             weaknesses.Add($"词汇需要加强（{scores.Vocabulary} 分）");
+        }
+        else
+        {
+            strengths.Add($"词汇与阅读表现相当（同为 {scores.Vocabulary} 分）");
         }
 
         if (verifiedFindings is not null)
@@ -121,7 +126,7 @@ public sealed class EvaluationReportService(
             var content = new
             {
                 schemaVersion = 1,
-                summary = $"你的综合水平为 Overall {scores.Overall}（{scores.CefrDisplay ?? scores.DifficultyBucket}）。{guardNote}",
+                summary = $"你的综合水平为 {scores.Overall} 分（{scores.CefrDisplay ?? scores.DifficultyBucket}）。{guardNote}",
                 strengths,
                 weaknesses,
                 recommendations = new[]
@@ -165,7 +170,7 @@ public sealed class EvaluationReportService(
         return new
         {
             schemaVersion = 2,
-            summary = $"你的综合水平为 Overall {scores.Overall}（{scores.CefrDisplay ?? scores.DifficultyBucket}）。以下为经交叉验证的能力画像。{guardNote}",
+            summary = $"你的综合水平为 {scores.Overall} 分（{scores.CefrDisplay ?? scores.DifficultyBucket}）。以下为经交叉验证的能力画像。{guardNote}",
             strengths = findings.Where(finding => finding.Polarity == FindingPolarity.Strength).Select(finding => finding.Statement).ToList(),
             weaknesses = findings.Where(finding => finding.Polarity == FindingPolarity.Weakness).Select(finding => finding.Statement).ToList(),
             recommendations = new[]

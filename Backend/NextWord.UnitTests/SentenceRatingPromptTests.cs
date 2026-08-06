@@ -21,6 +21,29 @@ public sealed class SentenceRatingPromptTests
     }
 
     [Fact]
+    public void BuildSentenceRatingPrompt_MapsSceneKeyToChineseName()
+    {
+        var prompt = LlmPromptFactory.BuildSentenceRatingPrompt(new SentenceRatingRequest(
+            "I ask for directions.",
+            "directions",
+            "directions",
+            "B1"));
+
+        // T-030：prompt 用场景中文名，避免反馈文案复述内部 key（directions → 问路导航，与计划卡口径一致）
+        Assert.Contains("Scene: 问路导航", prompt);
+        Assert.DoesNotContain("Scene: directions", prompt);
+    }
+
+    [Fact]
+    public void BuildSentenceRatingPrompt_KeepsUnknownSceneKeyAsFallback()
+    {
+        var prompt = LlmPromptFactory.BuildSentenceRatingPrompt(new SentenceRatingRequest(
+            "I write whatever.", "whatever", "free", "B1"));
+
+        Assert.Contains("Scene: free", prompt);
+    }
+
+    [Fact]
     public void ExplanationLanguageHelper_Resolve_PrefersRequestOverDefault()
     {
         var resolved = ExplanationLanguageHelper.Resolve("en-US", "zh-CN");

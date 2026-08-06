@@ -1,4 +1,5 @@
 using NextWord.Domain.Models;
+using NextWord.Domain.Scenarios;
 
 namespace NextWord.Domain.Services;
 
@@ -21,13 +22,16 @@ public static class LlmPromptFactory
             request.ExplanationLanguage,
             ExplanationLanguageHelper.Default);
         var explanationLanguageName = ExplanationLanguageHelper.GetPromptDisplayName(explanationLanguage);
+        // T-030：prompt 传场景中文名（taxonomy 未收录时回退原 key），
+        // 避免 LLM 在反馈文案里复述内部场景 key（如 'directions'）且口径与计划卡不一致
+        var sceneDisplay = ScenarioTaxonomy.Find(request.Scene)?.ZhName ?? request.Scene;
 
         return $$"""
         You are an English language assessment assistant. Rate this sentence.
 
         User Level: {{request.UserLevel}}
         Target Word: {{request.TargetWord}}
-        Scene: {{request.Scene}}
+        Scene: {{sceneDisplay}}
         User Sentence: {{request.UserSentence}}
         Feedback Language: {{explanationLanguage}} ({{explanationLanguageName}})
 

@@ -1,3 +1,4 @@
+import axios from 'axios'
 import { BookOpenText } from 'lucide-react'
 import { useState } from 'react'
 import { Tabs } from '../components/ui/Tabs'
@@ -24,8 +25,15 @@ export function LoginPage() {
       } else {
         await register(email, password, displayName || email)
       }
-    } catch {
-      setError(mode === 'login' ? '登录失败，请检查邮箱和密码。' : '注册失败，邮箱可能已被使用。')
+    } catch (err) {
+      // T-030：区分网络/服务错误与凭证错误——502 等网关错误不再误报「请检查邮箱和密码」
+      const status = axios.isAxiosError(err) ? err.response?.status : undefined
+      const serverUnreachable = status === undefined || status >= 500
+      if (serverUnreachable) {
+        setError('无法连接服务器，请检查网络后稍后再试。')
+      } else {
+        setError(mode === 'login' ? '登录失败，请检查邮箱和密码。' : '注册失败，邮箱可能已被使用。')
+      }
     } finally {
       setSubmitting(false)
     }

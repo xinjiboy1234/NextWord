@@ -18,6 +18,18 @@ const CONFIDENCE_LABELS: Record<string, string> = {
   low: '低置信',
 }
 
+/** T-030：后端枚举/内部字段 → 中文标签（避免 Overall/Initial/Intermediate 等英文外露） */
+const LEVEL_CHANGE_REASON_LABELS: Record<string, string> = {
+  Initial: '首次测评',
+  Upgrade: '等级提升',
+  Rollback: '等级回调',
+}
+const DIFFICULTY_BUCKET_LABELS: Record<string, string> = {
+  Basic: '基础',
+  Intermediate: '中级',
+  Advanced: '高级',
+}
+
 export function LevelPanel() {
   const [dashboard, setDashboard] = useState<LevelDashboard | null>(null)
   const [loading, setLoading] = useState(true)
@@ -83,7 +95,7 @@ export function LevelPanel() {
         </p>
         {scores && (
           <p style={{ color: 'var(--muted)', fontSize: 'var(--text-sm)', marginTop: 4 }}>
-            综合 Score {scores.overall.toFixed(0)} · {scores.difficultyBucket}
+            综合 Score {scores.overall.toFixed(0)} · {DIFFICULTY_BUCKET_LABELS[scores.difficultyBucket] ?? scores.difficultyBucket}
           </p>
         )}
         <p style={{ color: 'var(--muted)', fontSize: 'var(--text-sm)', maxWidth: '36ch', margin: '4px auto 0' }}>
@@ -189,7 +201,7 @@ export function LevelPanel() {
                 <td>
                   <Badge variant="info">{item.fromLevel} → {item.toLevel}</Badge>
                 </td>
-                <td style={{ color: 'var(--muted)' }}>{item.reason}</td>
+                <td style={{ color: 'var(--muted)' }}>{LEVEL_CHANGE_REASON_LABELS[item.reason] ?? item.reason}</td>
               </tr>
             ))}
           </tbody>

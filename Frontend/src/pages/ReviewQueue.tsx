@@ -132,6 +132,10 @@ export function ReviewQueue() {
                   <span className="val" style={{ color: 'var(--muted)' }}>{log.result}</span>
                 </div>
               ))}
+              {/* T-030：造句字母档图例，避免用户不知道 B 算不算好 */}
+              <p style={{ fontSize: 'var(--text-xs)', color: 'var(--muted)' }}>
+                造句评分档：A 优秀 · B 良好 · C 及格 · D 需重写
+              </p>
             </div>
           )}
         </div>

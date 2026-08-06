@@ -60,7 +60,8 @@ public static class LogEndpoints
                 .ToListAsync(ct))
                 .OrderByDescending(log => log.Timestamp)
                 .Take(take)
-                .Select(log => new RecentLogDto("spelling", log.CorrectSpelling, log.IsCorrect ? "correct" : "missed", log.Timestamp))
+                // T-030：结果文案中文化（原 correct/missed 英文外露）
+                .Select(log => new RecentLogDto("spelling", log.CorrectSpelling, log.IsCorrect ? "正确" : "拼错", log.Timestamp))
                 .ToList();
 
             return Results.Ok(sentenceLogs.Concat(spellingLogs).OrderByDescending(log => log.Timestamp).Take(take));

@@ -126,6 +126,7 @@ function AuthenticatedApp() {
         element={(
           <InitialAssessment
             autoStart={needsAssessment}
+            hasCompleted={progress?.hasCompletedInitialAssessment ?? false}
             onComplete={handleAssessmentComplete}
           />
         )}

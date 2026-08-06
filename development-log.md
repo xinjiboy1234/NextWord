@@ -39,6 +39,26 @@
 ### 验证
 - 新增 `FreeExpressionRatingTests` 4 例：捕获桩断言请求不再含字面量 free expression；prompt 变体无 Target Word 行且挑战度规则仍在；造句 prompt 不变；Mock 回归——高质量自由表达段落相关性/词汇维不被压、不拿 C。
 - `dotnet test`：211 单元 + 6 集成全绿。
+## 2026-08-06 — I7 T-030：文案与内部字段泄露清理（程实）
+
+### 需求
+- 菜鸟月仿真 UI 走查（`report/sim-month/data/ui-walkthrough.md` O6/O7/O9/O11/O13 + E0）：造句反馈泄露场景 key 'directions' 且译作「指路/指示」与计划卡「问路导航」口径不一；Profile/阅读/复习页英文外露（Overall/Initial/Builtin/correct 等）；老用户进 /assessment 仍见「首次水平测评」；登录 502 误报「请检查邮箱和密码」；评估报告三维同分却写「较强/薄弱」自相矛盾。
+
+### 决策
+- **场景 key 从 prompt 源头收口**：`BuildSentenceRatingPrompt` 的 Scene 字段改传 `ScenarioTaxonomy` 中文名（未收录回退原 key）——LLM 反馈文案复述的即是中文名，与计划卡同源同口径，比前端再映射一层更小改动。
+- **英文外露统一走前端映射表**（项目无 i18n 框架，跟随既有 `NATURE_META`/`LEVEL_LABELS` 硬编码中文的做法）：等级历史 reason（Initial/Upgrade/Rollback）、难度桶（Basic/Intermediate/Advanced）、文章来源（Builtin/Llm）、话题标签（life 等 8 个种子话题）各自 fallback 原文。
+- **同分不评强弱**：报告模板 `>=` 分支拆为严格大于两分支 + 同分「表现相当」，消除「较强（64）/薄弱（64）」自相矛盾。
+- **登录错误按 HTTP 状态分层**：无响应或 ≥500（网络/网关/服务错误）→「无法连接服务器，请检查网络后稍后再试」；4xx 才是凭证/注册冲突文案。
+
+### 实现
+- 后端：`LlmPromptFactory`（Scene 中文名 + 注释）；`EvaluationReportService`（同分不评强弱、摘要去「Overall」英文）；`LogEndpoints`（recent 拼写结果 correct/missed → 正确/拼错）。
+- 前端：`LevelPanel`（reason/难度桶中文映射）；`ArticleLibrary`（分组标题难度中文、source/topicTag 中文映射）；`InitialAssessment`+`App.tsx`（新增 `hasCompleted` prop，老用户显示「重新水平测评」+ 覆盖定级提示）；`LoginPage`（axios 状态区分网络/凭证错误）；`ReviewQueue`（最近记录加字母档图例 A 优秀 · B 良好 · C 及格 · D 需重写）。
+- 测试：`SentenceRatingPromptTests` 净增 2 例（directions → Scene: 问路导航、未收录 key 回退原文）。
+
+### 验证
+- `dotnet test`：209 单元 + 6 集成全绿；前端 `npm run build` 通过。
+- 存量已生成的评估报告/日志文案为历史快照不追溯，新内容生效。
+
 ## 2026-08-06 — I7 T-029：Dashboard 双卡加载骨架与洞察空状态行动建议（程实）
 
 ### 需求

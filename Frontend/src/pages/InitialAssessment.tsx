@@ -7,6 +7,8 @@ import type { AssessmentAnswerItem } from '../types/assessment'
 interface InitialAssessmentProps {
   autoStart?: boolean
   immersive?: boolean
+  /** T-030：已完成首次测评的老用户进入 /assessment 时按「重新测评」口径展示 */
+  hasCompleted?: boolean
   onComplete?: () => void
   onStepChange?: (step: number) => void
 }
@@ -15,7 +17,7 @@ interface InitialAssessmentProps {
  * T-004 自适应分块测评：每块 5 题（提示造句 ×2 + 情境表达 ×1 + 词义选择 ×1 + 阅读理解 ×1），
  * 2–3 块收敛。产出题走 LLM 真实评分，识别题仅作参考。
  */
-export function InitialAssessment({ autoStart = false, immersive = false, onComplete, onStepChange }: InitialAssessmentProps) {
+export function InitialAssessment({ autoStart = false, immersive = false, hasCompleted = false, onComplete, onStepChange }: InitialAssessmentProps) {
   const flow = useAssessmentFlow()
   const autoStarted = useRef(false)
   const [productionAnswers, setProductionAnswers] = useState<Record<string, string>>({})
@@ -77,10 +79,17 @@ export function InitialAssessment({ autoStart = false, immersive = false, onComp
   if (!flow.assessmentId) {
     return (
       <section className={sectionClass}>
-        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-xl)', fontWeight: 700 }}>首次水平测评</h2>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-xl)', fontWeight: 700 }}>
+          {hasCompleted ? '重新水平测评' : '首次水平测评'}
+        </h2>
         <p style={{ marginTop: 'var(--space-2)', fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>
           2–3 块、共 10–15 题，以造句和情境表达为主，逐块自适应难度
         </p>
+        {hasCompleted && (
+          <p className="alert alert-info" style={{ marginTop: 'var(--space-3)' }}>
+            你已完成过首次测评，本次结果将覆盖现有定级。
+          </p>
+        )}
         {displayError && <p className="alert alert-error" style={{ marginTop: 'var(--space-3)' }}>{displayError}</p>}
         {(autoStart || flow.loading) && !displayError ? (
           <p style={{ marginTop: 'var(--space-4)', fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>{flow.loading ? '正在准备测评...' : '即将开始...'}</p>
@@ -92,7 +101,7 @@ export function InitialAssessment({ autoStart = false, immersive = false, onComp
             className="btn btn-primary"
             style={{ marginTop: 'var(--space-4)' }}
           >
-            {flow.loading ? '准备中...' : '开始测评'}
+            {flow.loading ? '准备中...' : hasCompleted ? '开始重新测评' : '开始测评'}
           </button>
         )}
       </section>
