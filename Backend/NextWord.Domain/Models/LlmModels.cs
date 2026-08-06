@@ -58,7 +58,9 @@ public sealed record SentenceRatingRequest(
     string Scene,
     string UserLevel,
     LlmRequestOptions? Options = null,
-    string? ExplanationLanguage = null);
+    string? ExplanationLanguage = null,
+    /// <summary>T-037：自由表达评分专用标记——无指定目标词，相关性按「围绕场景/主题」评而非「是否用了某词」。</summary>
+    bool IsFreeExpression = false);
 
 public sealed record SentenceRatingResponse(
     int GrammarScore,

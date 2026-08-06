@@ -2,6 +2,25 @@
 
 按时间倒序记录需求、决策、实现与验收。
 
+## 2026-08-06 — I7 T-037：自由表达评分不再把字面量 free expression 当目标词（程实）
+
+### 需求
+- 周密实测：自由表达评分把字面量 `free expression` 当 targetWord 传给 LLM，qwen-plus 当成「写作主题」，高质量段落被判 off-topic 拿 C（aiScore 80 判 C）。
+
+### 决策
+- 自由表达请求改传中性主题描述（`TargetWord="日常自由表达"` / `Scene="daily-life"`）+ `SentenceRatingRequest.IsFreeExpression` 标记（可选参数，造句/测评链路签名不变）。
+- prompt 出自由表达专门变体（`BuildFreeExpressionRatingPrompt`）：无 Target Word 行，明确「没有指定主题词、不因未用任何特定词扣分」，相关性维度评「内容是否围绕日常场景/主题连贯展开、言之有物」；T-027 挑战度规则抽成共享常量，造句/自由表达两变体共用。
+- Mock 同步：自由表达按 `IsFreeExpression` 标记判定（保留字面量回退兼容存量调用），相关性/词汇维不扣「未用目标词」。
+- 测评情境表达题（`AssessmentService` 经 `SentenceService.RateAsync` 传 `free expression` 目标）同源问题本任务不动（影响 SentenceLog 留痕口径，另开任务跟进）。
+
+### 实现
+- `LlmModels.cs`：`SentenceRatingRequest` 加 `IsFreeExpression = false`。
+- `FreeExpressionService.RateAsync`：中性主题 + 标记；`LlmPromptFactory`：变体分支 + `ChallengeRules` 常量；`LlmMockProvider`：按标记判定自由表达。
+
+### 验证
+- 新增 `FreeExpressionRatingTests` 4 例：捕获桩断言请求不再含字面量 free expression；prompt 变体无 Target Word 行且挑战度规则仍在；造句 prompt 不变；Mock 回归——高质量自由表达段落相关性/词汇维不被压、不拿 C。
+- `dotnet test`：211 单元 + 6 集成全绿。
+
 ## 2026-07-30 — I7 T-040：多词短语命中口径——词序列连续匹配，短语可确认可毕业（程实）
 
 ### 需求

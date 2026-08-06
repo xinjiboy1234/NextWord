@@ -54,7 +54,9 @@ public sealed class LlmMockProvider(IModelProfileResolver modelProfileResolver) 
         var target = request.TargetWord.Trim();
         var useChinese = ExplanationLanguageHelper.IsChinese(
             ExplanationLanguageHelper.Resolve(request.ExplanationLanguage, ExplanationLanguageHelper.Default));
-        var isFreeExpression = string.Equals(target, "free expression", StringComparison.OrdinalIgnoreCase);
+        // T-037：自由表达由 IsFreeExpression 标记判定（不再靠 targetWord 字面量），相关性/词汇维不扣「未用目标词」
+        var isFreeExpression = request.IsFreeExpression
+            || string.Equals(target, "free expression", StringComparison.OrdinalIgnoreCase);
         var usesTarget = isFreeExpression || sentence.Contains(target, StringComparison.OrdinalIgnoreCase);
         var hasSentenceShape = sentence.Length >= 12 && (sentence.EndsWith('.') || sentence.EndsWith('!') || sentence.EndsWith('?'));
         var grammar = hasSentenceShape ? 4 : 3;

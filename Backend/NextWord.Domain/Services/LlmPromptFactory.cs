@@ -11,6 +11,12 @@ public static class LlmPromptFactory
 
     public static string BuildSentenceRatingPrompt(SentenceRatingRequest request)
     {
+        // T-037：自由表达走专门变体——不出现 Target Word 行，相关性按「围绕日常场景/主题」评
+        if (request.IsFreeExpression)
+        {
+            return BuildFreeExpressionRatingPrompt(request);
+        }
+
         var explanationLanguage = ExplanationLanguageHelper.Resolve(
             request.ExplanationLanguage,
             ExplanationLanguageHelper.Default);
@@ -42,10 +48,60 @@ public static class LlmPromptFactory
         - Scores must be integers from 0 to 5.
         - Be fair but not overly generous.
         - Evaluate whether the target word is used naturally and correctly.
-        - If this is free expression, evaluate the whole passage.
         - Write error_analysis and suggestion in {{explanationLanguageName}}.
         - Keep ai_revision in natural English as the corrected learner sentence.
 
+        {{ChallengeRules}}
+        """;
+    }
+
+    /// <summary>
+    /// T-037 自由表达评分专用变体：没有目标词，相关性维度评「内容是否围绕日常场景/主题连贯展开、言之有物」，
+    /// 不要求也不期待出现任何特定词（修复 qwen 把字面量 targetWord 当写作主题、好段落被判 off-topic 的问题）。
+    /// </summary>
+    public static string BuildFreeExpressionRatingPrompt(SentenceRatingRequest request)
+    {
+        var explanationLanguage = ExplanationLanguageHelper.Resolve(
+            request.ExplanationLanguage,
+            ExplanationLanguageHelper.Default);
+        var explanationLanguageName = ExplanationLanguageHelper.GetPromptDisplayName(explanationLanguage);
+
+        return $$"""
+        You are an English language assessment assistant. Rate this free-writing passage.
+
+        User Level: {{request.UserLevel}}
+        Task: everyday free writing — the learner writes freely about their daily life; there is no assigned topic word.
+        User Passage: {{request.UserSentence}}
+        Feedback Language: {{explanationLanguage}} ({{explanationLanguageName}})
+
+        Return only JSON:
+        {
+          "grammar_score": 0,
+          "natural_score": 0,
+          "vocabulary_score": 0,
+          "relevance_score": 0,
+          "overall_grade": "A/B/C/D",
+          "ai_revision": "string",
+          "error_analysis": ["string"],
+          "difficulty_level": "basic|intermediate|advanced",
+          "suggestion": "string"
+        }
+
+        Rules:
+        - Scores must be integers from 0 to 5.
+        - Be fair but not overly generous.
+        - Evaluate the whole passage, not a single sentence.
+        - There is NO target word: never penalize the learner for not using any particular word or phrase.
+        - relevance_score measures whether the passage stays on a coherent everyday topic and says something substantive — any coherent everyday theme counts as relevant.
+        - Write error_analysis and suggestion in {{explanationLanguageName}}.
+        - Keep ai_revision in natural English as the corrected learner passage.
+
+        {{ChallengeRules}}
+        """;
+    }
+
+    /// <summary>T-027 挑战度规则（评分尺子是 User Level 对应的水平带，四维评分与 overall_grade 都适用），造句与自由表达共用。</summary>
+    private const string ChallengeRules = """
         挑战度规则（T-027，评分尺子是 User Level 对应的水平带，四维评分与 overall_grade 都适用）：
         - 句子复杂度与用词和该水平带相称且正确，才可给 A 或各维度满分。
         - 明显低于水平带的「安全简单句」（如 B2 用户只写主谓宾短句、只用基础词），即使完全正确：
@@ -54,7 +110,6 @@ public static class LlmPromptFactory
         - 水平较低的用户写出与其水平相称的简单句，仍可正常得 B 或 A——不要惩罚符合其水平的简单表达。
         - ai_revision 照旧给出改写建议，可适当示范更贴合水平带的表达。
         """;
-    }
 
     public static string BuildDefinitionPrompt(DefinitionRequest request)
     {

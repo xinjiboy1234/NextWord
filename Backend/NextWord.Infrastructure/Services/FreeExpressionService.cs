@@ -24,13 +24,16 @@ public sealed class FreeExpressionService(
         // T-027：评分尺子 = 用户当前水平带（UserProgress 投影，ScoreMapping 单一来源），与造句评分同口径
         var scores = await scoreProfile.GetScoresAsync(userId, cancellationToken);
         var ratingBand = RatingBandResolver.Resolve(scores, userLevel);
+        // T-037：不再传「free expression」字面量——qwen 把它当写作主题，高质量段落被判 off-topic；
+        // 传中性主题描述 + IsFreeExpression 标记，prompt 走自由表达变体，相关性按「围绕日常场景/主题」评
         var rating = await llm.RateSentenceAsync(new SentenceRatingRequest(
             userText.Trim(),
-            "free expression",
-            "free-expression",
+            "日常自由表达",
+            "daily-life",
             ratingBand,
             new LlmRequestOptions("feedback-rich", "free_expression_feedback"),
-            explanationLanguage), cancellationToken);
+            explanationLanguage,
+            IsFreeExpression: true), cancellationToken);
 
         var score = (rating.GrammarScore + rating.NaturalScore + rating.VocabularyScore + rating.RelevanceScore) * 5;
         var log = new FreeExpressionLog
