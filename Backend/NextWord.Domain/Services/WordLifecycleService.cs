@@ -84,6 +84,14 @@ public static class WordLifecycleService
         string.Equals(overallGrade?.Trim(), "A", StringComparison.OrdinalIgnoreCase)
         || string.Equals(overallGrade?.Trim(), "B", StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// 自发使用毕业整篇评分口径（T-044 放宽）：C 及以上（A/B/C）即可进入毕业判定——
+    /// 整篇 C 不连坐单词；D 档仍不毕业（防烂底线不动）。造句确认口径（A/B）不动，见 <see cref="IsPassingGrade"/>。
+    /// </summary>
+    public static bool IsGraduationGrade(string? overallGrade) =>
+        IsPassingGrade(overallGrade)
+        || string.Equals(overallGrade?.Trim(), "C", StringComparison.OrdinalIgnoreCase);
+
     /// <summary>提示造句正确使用：句中含目标词（统一命中口径，单词词边界/短语连续词序列，T-040）且句子达标。</summary>
     public static bool IsPromptedUseCorrect(string sentence, string lemma, string? overallGrade) =>
         TargetWordMatcher.IsHit(lemma, sentence) && IsPassingGrade(overallGrade);
@@ -118,7 +126,7 @@ public static class WordLifecycleService
         SetStage(relationship, WordLifecycleStage.Recalled, now);
     }
 
-    /// <summary>自发使用毕业：自由表达中自发正确使用一次且当次评分达标；留痕所在 FreeExpressionLog。</summary>
+    /// <summary>自发使用毕业：自由表达中自发正确使用一次且当次评分达标（T-044 口径：整篇 C 及以上且词汇维 ≥3）；留痕所在 FreeExpressionLog。</summary>
     public static void Graduate(UserWordRelationship relationship, Guid freeExpressionLogId, DateTimeOffset now)
     {
         if (relationship.LifecycleStage != WordLifecycleStage.PromptedUse)

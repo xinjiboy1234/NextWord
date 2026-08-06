@@ -52,19 +52,21 @@ public sealed class FreeExpressionService(
         await db.SaveChangesAsync(cancellationToken);
         // T-014 自发使用毕业判定：自由表达（非指定目标词的产出）中自发使用候选池词且当次评分达标 → 毕业留痕
         // T-034：返回本次毕业词列表，随评分响应带给前端做毕业时刻提示
-        var graduatedWords = await GraduatedSpontaneousUseAsync(userId, log, cancellationToken);
+        var graduatedWords = await GraduatedSpontaneousUseAsync(userId, log, rating.VocabularyScore, cancellationToken);
         return new FreeExpressionRatingResult(log, graduatedWords);
     }
 
     /// <summary>
     /// T-014（DESIGN-word-lifecycle §2）：统一命中口径（T-040 TargetWordMatcher：单词词边界、多词短语连续词序列）做词级判定——
-    /// 当次评分达标（A/B）时，文中出现的 prompted_use 候选池词毕业（spontaneous_use），
+    /// 当次评分达标时，文中出现的 prompted_use 候选池词毕业（spontaneous_use），
     /// 留痕所在 FreeExpressionLog Id；评分不达标或词未出现不毕业。
+    /// T-044 评分达标口径放宽：整篇 C 及以上且词汇维 ≥3 即达标（D 档或词汇维 ≤2 仍不毕业，防烂底线不动）；
+    /// 造句确认门槛（A/B）与 TargetWordMatcher 命中口径不动。
     /// T-034：返回本次毕业的词 lemma 列表（无毕业返回空列表）。
     /// </summary>
-    private async Task<IReadOnlyList<string>> GraduatedSpontaneousUseAsync(Guid userId, FreeExpressionLog log, CancellationToken cancellationToken)
+    private async Task<IReadOnlyList<string>> GraduatedSpontaneousUseAsync(Guid userId, FreeExpressionLog log, int vocabularyScore, CancellationToken cancellationToken)
     {
-        if (!WordLifecycleService.IsPassingGrade(log.OverallGrade))
+        if (!WordLifecycleService.IsGraduationGrade(log.OverallGrade) || vocabularyScore < 3)
         {
             return [];
         }

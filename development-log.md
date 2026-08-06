@@ -2,6 +2,22 @@
 
 按时间倒序记录需求、决策、实现与验收。
 
+## 2026-08-07 — I7 T-044：毕业判定口径放宽——整篇 C 及以上且词汇维 ≥3 即达标（程实）
+
+### 需求
+- qa-t039 终验 P1：毕业判定要求整篇自由表达 A/B 才执行池词自发使用检查（`FreeExpressionService` 评级闸），菜鸟人设 12 篇全 C/D → 判定代码一次都没执行到，毕业 0（T-034 同一锚点连续两轮不过）。
+- 顾言裁定口径：**整篇 C 及以上且词汇维 ≥3 即达标**（整篇平庸不连坐单词）；D 档或词汇维 ≤2 仍不毕业（防烂底线不动）；造句确认门槛（A/B）与 T-040 命中口径不动。
+
+### 实现
+- `WordLifecycleService.IsGraduationGrade`：毕业专用整篇评分口径 A/B/C（`IsPassingGrade` 仍为 A/B，造句确认链路不动）。
+- `FreeExpressionService.GraduatedSpontaneousUseAsync`：闸门改为 `IsGraduationGrade(OverallGrade) && VocabularyScore ≥ 3`；词汇维取当次 LLM 评分的 `VocabularyScore`（FreeExpressionLog 不落四维分，按参数传入）。
+- 文档同步：`docs/DESIGN-word-lifecycle.md` §2 毕业流转条件、`docs/CURRENT-STATE.md` §5.1/§5.17 毕业口径。
+
+### 验证
+- `WordLifecycleTests.Free_expression_graduates_spontaneous_use_with_trace` 按新口径重写（注明口径变化）：A 档毕业回归；未出现的词不毕业；**C 档词汇维 4 含池词 → 毕业留痕 graduatedWords**；D 档含池词 → 不毕业；C 档词汇维 2 → 不毕业。
+- B 档回归由 `Free_expression_with_phrase_graduates_spontaneous_use`（短语 + B 档 → 毕业）覆盖。
+- `dotnet test` 全绿（见 T-045 一并收尾的基线数）。
+
 ## 2026-08-06 — I7 T-038：cefrDisplay 下行迟滞——上行即时、降档需连续 3 天低于下限（程实）
 
 ### 需求

@@ -162,7 +162,9 @@ public class WordLifecycleTests
 
         var graduateWord = await SeedWordWithStageAsync(db, user.Id, "graduateme", WordLifecycleStage.PromptedUse);
         var absentWord = await SeedWordWithStageAsync(db, user.Id, "absentword", WordLifecycleStage.PromptedUse);
-        var lowGradeWord = await SeedWordWithStageAsync(db, user.Id, "lowgradeword", WordLifecycleStage.PromptedUse);
+        var cGradeWord = await SeedWordWithStageAsync(db, user.Id, "cgradeword", WordLifecycleStage.PromptedUse);
+        var dGradeWord = await SeedWordWithStageAsync(db, user.Id, "dgradeword", WordLifecycleStage.PromptedUse);
+        var lowVocabWord = await SeedWordWithStageAsync(db, user.Id, "lowvocabword", WordLifecycleStage.PromptedUse);
 
         // 达标（A 档）自由表达中自发使用 → 毕业留痕（词 + FreeExpressionLog Id）
         // T-034：评分结果带本次毕业词列表（graduatedWords 响应口径）
@@ -181,13 +183,29 @@ public class WordLifecycleTests
         Assert.Equal(WordLifecycleStage.PromptedUse, absent.LifecycleStage);
         Assert.Null(absent.GraduatedFreeExpressionLogId);
 
-        // 评分不达标（C 档）即使出现也不毕业，graduatedWords 为空
-        var failing = new FreeExpressionService(db, new StubLlmFactory(new StaticRatingLlm(Grade("C"))), RatingOptions(), CreateScoreProfile(db));
-        var failingResult = await failing.RateAsync(user.Id, $"The {lowGradeWord.Lemma} appears here.", "A2", CancellationToken.None);
-        var lowGrade = await GetRelationshipAsync(db, user.Id, lowGradeWord.Id);
-        Assert.Equal(WordLifecycleStage.PromptedUse, lowGrade.LifecycleStage);
-        Assert.Null(lowGrade.GraduatedFreeExpressionLogId);
-        Assert.Empty(failingResult.GraduatedWords);
+        // T-044 口径变化：C 档且词汇维 ≥3 也达标（放宽前 C 档不毕业，qa-t039 菜鸟人设 12 篇全 C/D 判定从未执行）
+        var cGrade = new FreeExpressionService(db, new StubLlmFactory(new StaticRatingLlm(Grade("C"))), RatingOptions(), CreateScoreProfile(db));
+        var cGradeResult = await cGrade.RateAsync(user.Id, $"The {cGradeWord.Lemma} appears here.", "A2", CancellationToken.None);
+        var cGraduated = await GetRelationshipAsync(db, user.Id, cGradeWord.Id);
+        Assert.Equal(WordLifecycleStage.SpontaneousUse, cGraduated.LifecycleStage);
+        Assert.Equal(cGradeResult.Log.Id, cGraduated.GraduatedFreeExpressionLogId);
+        Assert.Equal([cGradeWord.Lemma], cGradeResult.GraduatedWords);
+
+        // 防烂底线不动：D 档即使含池词也不毕业
+        var dGrade = new FreeExpressionService(db, new StubLlmFactory(new StaticRatingLlm(Grade("D"))), RatingOptions(), CreateScoreProfile(db));
+        var dGradeResult = await dGrade.RateAsync(user.Id, $"The {dGradeWord.Lemma} appears here.", "A2", CancellationToken.None);
+        var dNotGraduated = await GetRelationshipAsync(db, user.Id, dGradeWord.Id);
+        Assert.Equal(WordLifecycleStage.PromptedUse, dNotGraduated.LifecycleStage);
+        Assert.Null(dNotGraduated.GraduatedFreeExpressionLogId);
+        Assert.Empty(dGradeResult.GraduatedWords);
+
+        // 防烂底线不动：C 档但词汇维 ≤2 也不毕业
+        var lowVocab = new FreeExpressionService(db, new StubLlmFactory(new StaticRatingLlm(Grade("C", vocabulary: 2))), RatingOptions(), CreateScoreProfile(db));
+        var lowVocabResult = await lowVocab.RateAsync(user.Id, $"The {lowVocabWord.Lemma} appears here.", "A2", CancellationToken.None);
+        var lowVocabNotGraduated = await GetRelationshipAsync(db, user.Id, lowVocabWord.Id);
+        Assert.Equal(WordLifecycleStage.PromptedUse, lowVocabNotGraduated.LifecycleStage);
+        Assert.Null(lowVocabNotGraduated.GraduatedFreeExpressionLogId);
+        Assert.Empty(lowVocabResult.GraduatedWords);
     }
 
     // ── T-040 多词短语命中：可确认、可毕业（真实 PG + 评分桩）─────────
