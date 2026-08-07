@@ -53,7 +53,7 @@ docker-compose.yml        postgres:16-alpine + redis:7-alpine + api（容器内 
 ### 5.1 每日选词与新词记忆（`/learn`）
 
 - `GET /api/words/daily?count=`：**优先执行当日 LearningPlan 词队列**（T-006，见 §5.15：带内词 + ≤20% 超带接触词，`fromPlan`/`isExposure` 标记）；无 Plan、Plan 过期（>7 天）或当日队列为空 → 回退既有逻辑——按用户 Vocabulary 分取 `[score, score+12]` 难度带单词 + `EstimatedKnownRate<0.4` 弱词，各占约一半（`DailyWordSelectionService`）。**T-014：返回词带生命周期阶段 `stage` 与考察模式 `quizMode`**（认识=recognition 看词知义，回忆及以后=recall 看义想词，新词默认认识模式）。**T-034：两条路径都保证 ≥40% 名额给「已成熟待推进」老词的回忆考察位**（`RecallExamQuotaRatio` 常量；池 = recalled 阶段 + 认识且 `RepeatCount≥2` 的残留词，`StageUpdatedAt` 最早优先，考察模式按阶段派生），不足时新词补位。
-- `POST /api/learning/submit`：提交作答（`mode`=recognition/recall，回忆模式需正确拼出词本身）→ SM-2 排程更新 + `EstimatedKnownRate`/`PersonalDifficulty`（EMA）+ 连胜天数 + **生命周期阶段推进（T-014，见 §5.17）**。**自评（Remembered/Forgot）只改 SM-2 排程参数，不再按自评加减掌握度**——`MasteryScore` 由阶段派生（25/50/75/100）。
+- `POST /api/learning/submit`：提交作答（`mode`=recognition/recall，回忆模式需正确拼出词本身）→ SM-2 排程更新 + `EstimatedKnownRate`/`PersonalDifficulty`（EMA）+ 连胜天数 + **生命周期阶段推进（T-014，见 §5.17）**。**自评（Remembered/Forgot）只改 SM-2 排程参数，不再按自评加减掌握度**——`MasteryScore` 由阶段派生（25/50/75/100）。**Vocabulary 小步回写（T-047）**：落库后经 `PracticeScoreWritebackService` 回写——observed = 考察词有效难度分（`EffectiveDifficultyCalculator` 0-100）× 表现系数（答对 1.0/答错 0.3，答错不是零——错在难词上有信息量），delta = clamp(round((observed − current) × 0.05), −1, +1)（背词高频，步长比 Writing 缓防刷），幂等键 `vocab-score:{WordLearningLogId}`。
 - SM-2 变体（`Sm2Service`）：EF 下限 1.3，间隔上限 3650 天；只管认识/回忆两阶段调度。
 - `POST /api/words` 新增单词时调用 LLM `RateDifficultyAsync` 自动定级（DifficultyLevel + CefrLevel + 0–100 IntrinsicScore 标注）。
 
@@ -79,7 +79,7 @@ docker-compose.yml        postgres:16-alpine + redis:7-alpine + api（容器内 
 - 阅读器：逐词渲染点词查义（`POST /api/reading/lookup`，先查 `ArticleVocabMappings` 文章级缓存，缺失再 LLM 并 upsert；返回音标 + 文中/其他场景双例句 + 熟悉度）。
 - `POST /api/articles/{id}/vocab-extract`：LLM 提取重点词汇（含音标 + 用法例句）并持久化；存量数据 lazy backfill。
 - 段落批注：`GET/POST /api/articles/{articleId}/comments`，可请求 AI 回复。
-- 阅读日志：`reading/start` → `reading-logs/{logId}/finish`（计时、查词数参与评分）。
+- 阅读日志：`reading/start` → `reading-logs/{logId}/finish`（计时、查词数参与评分）。**Reading 小步回写（T-047）**：finish 落库后经 `PracticeScoreWritebackService` 回写——observed = 文章难度分 × 查词修正系数（查词率 = 查词数/正文词数，≤5% → 1.0，每超 5% 减 0.1，下限 0.5——查词多是正常学习行为，只降权不惩罚），delta = clamp(round((observed − current) × 0.1), −2, +2)，幂等键 `reading-score:{ReadingLogId}`。
 - `POST /api/reading/agent`：阅读助手 Agent（`ReadingAssistantAgent` 组合 skills）。**前端暂未使用**。
 
 ### 5.5 首次水平测评（`/assessment`）— I2 T-004 重构
@@ -108,7 +108,7 @@ docker-compose.yml        postgres:16-alpine + redis:7-alpine + api（容器内 
 ### 5.7 Score 内核（v1）
 
 - **模型**：`UserProgress` 持有 Vocabulary/Reading/Writing 三个 0–100 分；总分 = 三者最小值（最短板，`ScoreMappingService.ComputeOverall`）；CEFR 分带在 `appsettings.json` 的 `ScoreMapping`（T-023 校准：A1 0–20 / A2 20–35 / B1 35–70 / B2 70–85 / C1 85–95 / C2 95–100，全局口径：测评定级、Profile CEFR 展示、计划水平带、挑战定档共用；`DifficultyBuckets` 不变）。
-- **写入**：`ScoreProfileService.ApplyUpdateAsync` 是唯一入口，支持 absolute/delta；`LearningEvents.IdempotencyKey` 幂等去重。写入点三处：测评完成（absolute 先验）、确认挑战通过（+UpgradeDelta）、日常造句/自由表达评分（T-022 小步 delta：observed = `MapSentenceToScore(四维均分)`，delta = clamp(round((observed − current) × 0.1), −2, +2)，幂等键 `sentence-score:{logId}` / `freeexpr-score:{logId}`；测评/挑战的 `SentenceService.RateAsync` 调用不触发该 delta）。
+- **写入**：`ScoreProfileService.ApplyUpdateAsync` 是唯一入口，支持 absolute/delta；`LearningEvents.IdempotencyKey` 幂等去重。写入点五处：测评完成（absolute 先验）、确认挑战通过（+UpgradeDelta）、日常练习小步 delta 三腿（统一走 `PracticeScoreWritebackService`）——造句/自由表达评分 → Writing（T-022：observed = `MapSentenceToScore(四维均分)`，delta = clamp(round((observed − current) × 0.1), −2, +2)，幂等键 `sentence-score:{logId}` / `freeexpr-score:{logId}`；测评/挑战的 `SentenceService.RateAsync` 调用不触发该 delta）、背词考察 → Vocabulary（T-047：observed = 考察词有效难度分 × 表现系数（对 1.0/错 0.3），delta = clamp(round((observed − current) × 0.05), −1, +1)，幂等键 `vocab-score:{WordLearningLogId}`）、阅读完成 → Reading（T-047：observed = 文章难度分 × 查词修正系数（查词率 ≤5% → 1.0，每超 5% 减 0.1，下限 0.5），delta = clamp(round((observed − current) × 0.1), −2, +2)，幂等键 `reading-score:{ReadingLogId}`）；拼写不回写（与背词高度相关，防双重计数）。
 - **快照**：`ProfileScoreSnapshotWorker` 每日写 `ProfileScoreSnapshots`，供 `GET /api/profile/scores/history?days=` 趋势图。
 - **cefrDisplay 下行迟滞（T-038）**：展示档与 raw 分数映射解耦，防 Overall 在分带边界附近波动时展示档来回跳——上行即时（raw 档高于当前展示档立即升档）；降档需当前 Overall 与近 3 天 `ProfileScoreSnapshots` 的 Overall 全部低于当前展示档下限（快照不足 3 天不降）。只影响 `CefrDisplay` 展示层，`OverallLevel` 升级规则与分数本身不动；测评定级写入是权威锚点（`ProfileUpdateCommand.BypassCefrDisplayHysteresis`，含 T-042 矫正传导的下调）不受迟滞约束。
 - **难度三层**：intrinsic（LLM 标注，持久化于 `WordDifficultyAnnotation`）→ personal（`EstimatedKnownRate`/`PersonalDifficulty` EMA）→ effective（`EffectiveDifficultyCalculator`，含学术语域加成）。
@@ -198,7 +198,7 @@ Worker 异常不拖垮宿主（`BackgroundServiceExceptionBehavior=Ignore`）。
 - **推进**：认识→回忆 = SM-2 调度内看词知义连续正确达成熟阈值（`RepeatCount≥2`，复用 repetitions/interval 口径）；回忆→造句使用 = 回忆模式考察通过（看义正确拼出词）→ 进产出候选池；造句使用→待自发 = 提示造句中正确使用（目标词命中 + A/B 档，`PromptedUseConfirmedAt` 留痕）；待自发→毕业 = 自由表达中自发出现且当次评分达标（同一命中口径做词级判定），留痕所在 `FreeExpressionLog` Id。**毕业评分口径（T-044 放宽，顾言裁定）**：整篇 C 及以上且词汇维 ≥3 即达标——D 档或词汇维 ≤2 仍不毕业（防烂底线不动），造句确认门槛（A/B）与命中口径不动；放宽前要求整篇 A/B，qa-t039 菜鸟人设 12 篇全 C/D 导致判定从未执行、毕业 0。
 - **命中口径（T-040，`TargetWordMatcher` 纯函数，Domain）**：所有生命周期命中判定（造句确认、使用错误回退、自发毕业）统一走这一个工具，不再各自分词副本——单词走词边界匹配（不误伤子串）；多词短语按词序列连续匹配（大小写不敏感、容忍标点/多余空白分隔，"up, in arms,"、"up  in  arms" 均命中；词序必须一致，乱序/中间插词不命中；不做词形变换，原样小写词序列匹配）。修复前词边界分词只产单词 token，多词 lemma（up in arms 等）恒判未命中——prompted_use 永不确认、永不毕业。瓶颈筛查的安全词信号仍用自己的内容词口径（T-033 `BottleneckScreeningService`），与本口径分开。
 - **回退**：仅造句使用阶段——产出证据显示不会用（句中含目标词但 D 档或词汇维 ≤2）→ 退回回忆阶段重进 SM-2 调度（RepeatCount/Interval 归零）；认识/回忆阶段不回退（SM-2 管遗忘调度）。
-- **自评职责收窄**：Remembered/Forgot 只改 SM-2 排程参数（interval/repetitions）与接触词排程输入（EstimatedKnownRate/PersonalDifficulty EMA），**不再参与掌握度与 Score**——`MasteryScore` 由阶段派生（25/50/75/100，recognized/recalled 只算「认识」、prompted_use 算「会用」、spontaneous_use 才算「毕业」）；Score 写入点不变（测评/挑战/后台造句评分三处，均不经自评路径）。
+- **自评职责收窄**：Remembered/Forgot 只改 SM-2 排程参数（interval/repetitions）与接触词排程输入（EstimatedKnownRate/PersonalDifficulty EMA），**不再参与掌握度与 Score**——`MasteryScore` 由阶段派生（25/50/75/100，recognized/recalled 只算「认识」、prompted_use 算「会用」、spontaneous_use 才算「毕业」）；Score 写入点均不经自评路径（见 §5.7）。
 - **Planner 编排**：产出候选池（prompted_use 未确认、带内、utility 非 low）优先编入每日造句目标（见 §5.15）；确认过或已毕业的词不再重复编排。**T-034 二级补位**：prompted_use 池空时接 Recalled 池（最早进阶段的优先），两级都空才落当日带内词。
 - **背词考察模式**：`/api/words/daily` 按阶段返回 `stage`/`quizMode`（认识=看词知义答释义，回忆及以后=看义想词答拼写）；`/api/learning/submit` 按 `mode` 判定正确性，响应带阶段与下次考察模式；前端 WordCard 随模式切换题面（看义想词模式隐藏单词、提交后揭示）并显示阶段徽标。**T-034 回忆考察位**：每日词队列 ≥40% 名额给成熟待推进老词（见 §5.1），解决「老词成熟后很少再被抽到」的曝光瓶颈。
 - **毕业时刻可见（T-034）**：自由表达评分响应带 `graduatedWords`（本次毕业词 lemma 列表），前端自由表达结果区弹毕业提示；`GET /api/words/graduated` 返回当前用户已毕业词列表（含毕业时间），Dashboard 计划卡下方显示本周毕业计数（无则不显示），词库（`/word-bank`）行内加「已毕业」标记。

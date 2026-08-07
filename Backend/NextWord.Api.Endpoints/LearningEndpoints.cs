@@ -2,6 +2,7 @@ using NextWord.Domain.Entities;
 using NextWord.Domain.Enums;
 using NextWord.Domain.Interfaces;
 using NextWord.Domain.Services;
+using NextWord.Infrastructure.Services;
 
 namespace NextWord.Api.Endpoints;
 
@@ -17,6 +18,7 @@ public static class LearningEndpoints
             IUserRepository users,
             IWordRepository words,
             ISm2Service sm2,
+            PracticeScoreWritebackService scoreWriteback,
             CancellationToken ct) =>
         {
             var user = await UserResolver.ResolveAsync(http, request.UserId, users, ct);
@@ -65,6 +67,10 @@ public static class LearningEndpoints
             }
 
             await users.SaveChangesAsync(ct);
+
+            // T-047：背词考察小步回写 Vocabulary 维（幂等键 vocab-score:{logId}，重放不重复加分）
+            await scoreWriteback.ApplyVocabularyAsync(user.Id, log, ct);
+
             return Results.Ok(new LearningResultDto(
                 isCorrect,
                 word.Meanings,

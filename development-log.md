@@ -21,6 +21,22 @@
 - 新增 `ChallengeOutcomeTests` 6 例（设计 §4 五条全覆盖）：点评最长/短板与画像对比、2/3 题 67 过阈值、1/3 题 33 不过、旧单题会话兼容、3 篇/3 题出题（考点词出自摘要正文）、通过计数 +1。
 - 出题测试播种选 C2 档（测评选带封顶 C1），避免污染共享测试库带内词池（首轮全量曾因此撞 `AdaptiveAssessmentServiceTests`，已修）。
 - `dotnet test` 全量、前端 `npm run build` 通过。
+## 2026-08-07 — I7 T-047：Vocabulary/Reading 维日常回写——背词考察与阅读完成小步 delta（程实）
+
+### 需求
+- T-046 定稿（[docs/DESIGN-vr-score-writeback.md](docs/DESIGN-vr-score-writeback.md)）：Score 三维只有 Writing 有日常数据源（T-022），V/R 只在测评/挑战时动——qa-t039 30 天仿真 V/R 死平线，总分 = 最短板 → Overall 也基本不动。
+
+### 实现
+- `PracticeScoreWritebackService` 扩展两条腿，沿用 T-022 模式（小步 delta + `LearningEvents` 幂等键 + `ApplyUpdateAsync` 唯一入口；delta=0 也落幂等记录防重放）：
+  - `ApplyVocabularyAsync` ← `POST /api/learning/submit` 落库后：observed = 考察词有效难度分（`EffectiveDifficultyCalculator` 0-100，词 + LlmAnnotation + 用户词关系由服务自查）× 表现系数（答对 1.0/答错 0.3），delta = clamp(round((observed − current) × 0.05), −1, +1)（背词高频，步长比 Writing 缓防刷），幂等键 `vocab-score:{WordLearningLogId}`，Source `VocabularyPractice`；
+  - `ApplyReadingAsync` ← `POST /api/reading-logs/{logId}/finish` 落库后：observed = 文章难度分（DifficultyLevel → 25/50/75）× 查词修正系数（查词率 = 查词数/正文词数，≤5% → 1.0，每超 5% 减 0.1，下限 0.5，只降权不惩罚），delta = clamp(round((observed − current) × 0.1), −2, +2)，幂等键 `reading-score:{ReadingLogId}`，Source `ReadingPractice`；
+  - 系数/步长全部留常量（`VocabStepFactor` / `WrongAnswerFactor` / `LookupFreeRate` 等），后续按仿真校准；拼写不回写（防与背词双重计数）；总分口径与测评/挑战 absolute 写入不动。
+- 两个端点响应 DTO 不变：前端无改动，分数变化在 Profile/月度时间轴自然可见。
+
+### 验证
+- 新增 `VrScoreWritebackTests`（真实 PG）：背词答对 +1 clamp / 答错缓降 / 大差距 −1 clamp / 同 log 重放幂等；阅读查词率三档（5% 满分 +2 clamp、15% 降权 0.8、30% 触下限 0.5）/ 同 log 重放幂等；`LookupCoefficient` 档位边界 Theory 9 例。
+- 既有 `PracticeScoreWritebackTests` 等 Score/挑战/测评测试零回归；`dotnet test` 236 单元 + 6 集成全绿。
+- 30 天仿真复跑（V/R 曲线非平线、方向合理）归 QA 验收。
 
 ## 2026-08-07 — I7 T-045：画像重生成 evidence 核验回退最近测评——修复重生成 findings 全灭（程实）
 

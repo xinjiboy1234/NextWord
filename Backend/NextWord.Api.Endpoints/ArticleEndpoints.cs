@@ -4,6 +4,7 @@ using NextWord.Domain.Enums;
 using NextWord.Domain.Interfaces;
 using NextWord.Domain.Models;
 using NextWord.Domain.Services;
+using NextWord.Infrastructure.Services;
 
 namespace NextWord.Api.Endpoints;
 
@@ -131,10 +132,18 @@ public static class ReadingLogEndpoints
             Guid logId,
             FinishReadingRequest request,
             IArticleService articles,
+            PracticeScoreWritebackService scoreWriteback,
             CancellationToken ct) =>
         {
             var log = await articles.FinishReadingAsync(logId, request.LookupCount, request.CommentsCount, ct);
-            return log is null ? Results.NotFound() : Results.Ok(ReadingLogDto.FromEntity(log));
+            if (log is null)
+            {
+                return Results.NotFound();
+            }
+
+            // T-047：阅读完成小步回写 Reading 维（幂等键 reading-score:{logId}，重放不重复加分）
+            await scoreWriteback.ApplyReadingAsync(log.UserId, log, ct);
+            return Results.Ok(ReadingLogDto.FromEntity(log));
         });
 
         group.MapPost("/{logId:guid}/lookup", async (Guid logId, IArticleService articles, CancellationToken ct) =>

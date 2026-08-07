@@ -1,0 +1,16 @@
+[1] 注册 qa-t047-f65daee3@example.com status=200 userId=9bffe451-ec69-4431-a5b8-04a996168c5b（token 不落盘）
+[2] 跳过初测 status=200 body={'skipped': True, 'defaultLevel': 'A2'}
+[3] 基线 scores: {"vocabulary": null, "reading": null, "writing": null, "spelling": null, "overall": 0, "difficultyBucket": "Basic", "cefrDisplay": "A1", "updatedAt": null}
+[4] daily 返回 10 词；首词字段: ['effectiveDifficulty', 'fromPlan', 'id', 'isExposure', 'isWeak', 'lemma', 'meanings', 'phonetics', 'quizMode', 'stage']
+[5.1] submit word=yeah right mode=recognition expect=对 isCorrect=True logId=None V: None -> 1
+[5.2] submit word=stand for mode=recognition expect=对 isCorrect=True logId=None V: 1 -> 2
+[5.3] submit word=pretty much mode=recognition expect=错 isCorrect=False logId=None V: 2 -> 3
+[5] 背词后 V: None -> 3（断言: 口径内变化，±1/次）R 不变: None -> None
+[6] 文章: id=d44cc3ca-a6e3-4a64-8bc0-83e549e6101d title=Climate Policy Challenges level=Advanced wordCount=97
+[7] finish status=200 logId=e23efaff-88c4-421b-b0e4-3e83ddf1019b
+[8] 阅读后 R: None -> 2（查词率 0% → 系数 1.0）V 不变: 3 -> 3
+[9] 重放 finish status=200，R: 2 -> 2（断言: 不重复加分）
+[10] spelling submit status=200 isCorrect=False
+[11] 拼写后 scores V/R/W: 3/2/None（断言: 无变化 3/2/None）
+USER_ID=9bffe451-ec69-4431-a5b8-04a996168c5b
+PROBE_DONE
