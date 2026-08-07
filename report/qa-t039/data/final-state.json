@@ -1,0 +1,508 @@
+{
+  "generatedAt": "2026-08-06T23:33:49",
+  "profile": {
+    "userId": "bb0c05c7-4d89-4e03-8601-97ff9b4d6045",
+    "email": "xiaocai.sim@example.com",
+    "displayName": "小菜",
+    "overallLevel": "B1",
+    "vocabLevel": "B1",
+    "spellingLevel": "A1",
+    "sentenceLevel": "B1",
+    "readingLevel": "B1",
+    "streakDays": 7,
+    "lastStudyDate": "2026-08-06",
+    "hasCompletedInitialAssessment": true,
+    "isUpgradeCandidate": false,
+    "totalLearned": 228,
+    "dueReviews": 204,
+    "pendingReviewCount": 0,
+    "totalLogs": 270,
+    "accuracyPercent": 77.8,
+    "recentHistory": [
+      {
+        "id": "b011a7f1-8dcf-4fbf-8326-2b497d831711",
+        "fromLevel": "A1",
+        "toLevel": "B1",
+        "reason": "Initial",
+        "changedAt": "2026-07-08T15:16:57.673064+00:00"
+      }
+    ],
+    "llmSettings": null
+  },
+  "profileScores": {
+    "vocabulary": 60,
+    "reading": 60,
+    "writing": 60,
+    "spelling": null,
+    "overall": 60,
+    "difficultyBucket": "Intermediate",
+    "cefrDisplay": "B1",
+    "updatedAt": "2026-08-06T15:33:28.190136+00:00"
+  },
+  "scoreHistory": [
+    {
+      "date": "2026-08-06",
+      "scoresJson": "{\"vocabulary\": 60, \"reading\": 60, \"writing\": 60, \"spelling\": null, \"overall\": 60, \"difficultyBucket\": \"Intermediate\", \"cefrDisplay\": \"B1\", \"updatedAt\": \"2026-08-06T00:00:00+00:00\"}"
+    },
+    {
+      "date": "2026-08-05",
+      "scoresJson": "{\"vocabulary\": 60, \"reading\": 60, \"writing\": 57, \"spelling\": null, \"overall\": 57, \"difficultyBucket\": \"Intermediate\", \"cefrDisplay\": \"B1\", \"updatedAt\": \"2026-08-05T00:00:00+00:00\"}"
+    },
+    {
+      "date": "2026-08-04",
+      "scoresJson": "{\"vocabulary\": 60, \"reading\": 60, \"writing\": 57, \"spelling\": null, \"overall\": 57, \"difficultyBucket\": \"Intermediate\", \"cefrDisplay\": \"B1\", \"updatedAt\": \"2026-08-04T00:00:00+00:00\"}"
+    },
+    {
+      "date": "2026-08-03",
+      "scoresJson": "{\"vocabulary\": 60, \"reading\": 60, \"writing\": 57, \"spelling\": null, \"overall\": 57, \"difficultyBucket\": \"Intermediate\", \"cefrDisplay\": \"B1\", \"updatedAt\": \"2026-08-03T00:00:00+00:00\"}"
+    },
+    {
+      "date": "2026-08-02",
+      "scoresJson": "{\"vocabulary\": 60, \"reading\": 60, \"writing\": 56, \"spelling\": null, \"overall\": 56, \"difficultyBucket\": \"Intermediate\", \"cefrDisplay\": \"B1\", \"updatedAt\": \"2026-08-02T00:00:00+00:00\"}"
+    },
+    {
+      "date": "2026-08-01",
+      "scoresJson": "{\"vocabulary\": 60, \"reading\": 60, \"writing\": 60, \"spelling\": null, \"overall\": 60, \"difficultyBucket\": \"Intermediate\", \"cefrDisplay\": \"B1\", \"updatedAt\": \"2026-08-01T00:00:00+00:00\"}"
+    },
+    {
+      "date": "2026-07-31",
+      "scoresJson": "{\"vocabulary\": 60, \"reading\": 60, \"writing\": 63, \"spelling\": null, \"overall\": 60, \"difficultyBucket\": \"Intermediate\", \"cefrDisplay\": \"B1\", \"updatedAt\": \"2026-07-31T00:00:00+00:00\"}"
+    },
+    {
+      "date": "2026-07-30",
+      "scoresJson": "{\"vocabulary\": 60, \"reading\": 60, \"writing\": 64, \"spelling\": null, \"overall\": 60, \"difficultyBucket\": \"Intermediate\", \"cefrDisplay\": \"B1\", \"updatedAt\": \"2026-07-30T00:00:00+00:00\"}"
+    },
+    {
+      "date": "2026-07-29",
+      "scoresJson": "{\"vocabulary\": 60, \"reading\": 60, \"writing\": 64, \"spelling\": null, \"overall\": 60, \"difficultyBucket\": \"Intermediate\", \"cefrDisplay\": \"B1\", \"updatedAt\": \"2026-07-29T00:00:00+00:00\"}"
+    },
+    {
+      "date": "2026-07-28",
+      "scoresJson": "{\"vocabulary\": 60, \"reading\": 60, \"writing\": 62, \"spelling\": null, \"overall\": 60, \"difficultyBucket\": \"Intermediate\", \"cefrDisplay\": \"B1\", \"updatedAt\": \"2026-07-28T00:00:00+00:00\"}"
+    },
+    {
+      "date": "2026-07-27",
+      "scoresJson": "{\"vocabulary\": 60, \"reading\": 60, \"writing\": 60, \"spelling\": null, \"overall\": 60, \"difficultyBucket\": \"Intermediate\", \"cefrDisplay\": \"B1\", \"updatedAt\": \"2026-07-27T00:00:00+00:00\"}"
+    },
+    {
+      "date": "2026-07-26",
+      "scoresJson": "{\"vocabulary\": 60, \"reading\": 60, \"writing\": 60, \"spelling\": null, \"overall\": 60, \"difficultyBucket\": \"Intermediate\", \"cefrDisplay\": \"B1\", \"updatedAt\": \"2026-07-26T00:00:00+00:00\"}"
+    },
+    {
+      "date": "2026-07-25",
+      "scoresJson": "{\"vocabulary\": 60, \"reading\": 60, \"writing\": 66, \"spelling\": null, \"overall\": 60, \"difficultyBucket\": \"Intermediate\", \"cefrDisplay\": \"B1\", \"updatedAt\": \"2026-07-25T00:00:00+00:00\"}"
+    },
+    {
+      "date": "2026-07-24",
+      "scoresJson": "{\"vocabulary\": 60, \"reading\": 60, \"writing\": 64, \"spelling\": null, \"overall\": 60, \"difficultyBucket\": \"Intermediate\", \"cefrDisplay\": \"B1\", \"updatedAt\": \"2026-07-24T00:00:00+00:00\"}"
+    },
+    {
+      "date": "2026-07-23",
+      "scoresJson": "{\"vocabulary\": 60, \"reading\": 60, \"writing\": 61, \"spelling\": null, \"overall\": 60, \"difficultyBucket\": \"Intermediate\", \"cefrDisplay\": \"B1\", \"updatedAt\": \"2026-07-23T00:00:00+00:00\"}"
+    },
+    {
+      "date": "2026-07-22",
+      "scoresJson": "{\"vocabulary\": 60, \"reading\": 60, \"writing\": 58, \"spelling\": null, \"overall\": 58, \"difficultyBucket\": \"Intermediate\", \"cefrDisplay\": \"B1\", \"updatedAt\": \"2026-07-22T00:00:00+00:00\"}"
+    },
+    {
+      "date": "2026-07-21",
+      "scoresJson": "{\"vocabulary\": 60, \"reading\": 60, \"writing\": 59, \"spelling\": null, \"overall\": 59, \"difficultyBucket\": \"Intermediate\", \"cefrDisplay\": \"B1\", \"updatedAt\": \"2026-07-21T00:00:00+00:00\"}"
+    },
+    {
+      "date": "2026-07-20",
+      "scoresJson": "{\"vocabulary\": 60, \"reading\": 60, \"writing\": 58, \"spelling\": null, \"overall\": 58, \"difficultyBucket\": \"Intermediate\", \"cefrDisplay\": \"B1\", \"updatedAt\": \"2026-07-20T00:00:00+00:00\"}"
+    },
+    {
+      "date": "2026-07-19",
+      "scoresJson": "{\"vocabulary\": 60, \"reading\": 60, \"writing\": 58, \"spelling\": null, \"overall\": 58, \"difficultyBucket\": \"Intermediate\", \"cefrDisplay\": \"B1\", \"updatedAt\": \"2026-07-19T00:00:00+00:00\"}"
+    },
+    {
+      "date": "2026-07-18",
+      "scoresJson": "{\"vocabulary\": 60, \"reading\": 60, \"writing\": 64, \"spelling\": null, \"overall\": 60, \"difficultyBucket\": \"Intermediate\", \"cefrDisplay\": \"B1\", \"updatedAt\": \"2026-07-18T00:00:00+00:00\"}"
+    },
+    {
+      "date": "2026-07-17",
+      "scoresJson": "{\"vocabulary\": 60, \"reading\": 60, \"writing\": 67, \"spelling\": null, \"overall\": 60, \"difficultyBucket\": \"Intermediate\", \"cefrDisplay\": \"B1\", \"updatedAt\": \"2026-07-17T00:00:00+00:00\"}"
+    },
+    {
+      "date": "2026-07-16",
+      "scoresJson": "{\"vocabulary\": 60, \"reading\": 60, \"writing\": 67, \"spelling\": null, \"overall\": 60, \"difficultyBucket\": \"Intermediate\", \"cefrDisplay\": \"B1\", \"updatedAt\": \"2026-07-16T00:00:00+00:00\"}"
+    },
+    {
+      "date": "2026-07-15",
+      "scoresJson": "{\"vocabulary\": 60, \"reading\": 60, \"writing\": 73, \"spelling\": null, \"overall\": 60, \"difficultyBucket\": \"Intermediate\", \"cefrDisplay\": \"B1\", \"updatedAt\": \"2026-07-15T00:00:00+00:00\"}"
+    },
+    {
+      "date": "2026-07-14",
+      "scoresJson": "{\"vocabulary\": 60, \"reading\": 60, \"writing\": 71, \"spelling\": null, \"overall\": 60, \"difficultyBucket\": \"Intermediate\", \"cefrDisplay\": \"B1\", \"updatedAt\": \"2026-07-14T00:00:00+00:00\"}"
+    },
+    {
+      "date": "2026-07-13",
+      "scoresJson": "{\"vocabulary\": 60, \"reading\": 60, \"writing\": 72, \"spelling\": null, \"overall\": 60, \"difficultyBucket\": \"Intermediate\", \"cefrDisplay\": \"B1\", \"updatedAt\": \"2026-07-13T00:00:00+00:00\"}"
+    },
+    {
+      "date": "2026-07-12",
+      "scoresJson": "{\"vocabulary\": 60, \"reading\": 60, \"writing\": 68, \"spelling\": null, \"overall\": 60, \"difficultyBucket\": \"Intermediate\", \"cefrDisplay\": \"B1\", \"updatedAt\": \"2026-07-12T00:00:00+00:00\"}"
+    },
+    {
+      "date": "2026-07-11",
+      "scoresJson": "{\"vocabulary\": 60, \"reading\": 60, \"writing\": 70, \"spelling\": null, \"overall\": 60, \"difficultyBucket\": \"Intermediate\", \"cefrDisplay\": \"B1\", \"updatedAt\": \"2026-07-11T00:00:00+00:00\"}"
+    },
+    {
+      "date": "2026-07-10",
+      "scoresJson": "{\"vocabulary\": 60, \"reading\": 60, \"writing\": 65, \"spelling\": null, \"overall\": 60, \"difficultyBucket\": \"Intermediate\", \"cefrDisplay\": \"B1\", \"updatedAt\": \"2026-07-10T00:00:00+00:00\"}"
+    },
+    {
+      "date": "2026-07-09",
+      "scoresJson": "{\"vocabulary\": 60, \"reading\": 60, \"writing\": 62, \"spelling\": null, \"overall\": 60, \"difficultyBucket\": \"Intermediate\", \"cefrDisplay\": \"B1\", \"updatedAt\": \"2026-07-09T00:00:00+00:00\"}"
+    },
+    {
+      "date": "2026-07-08",
+      "scoresJson": "{\"vocabulary\": 60, \"reading\": 60, \"writing\": 60, \"spelling\": null, \"overall\": 60, \"difficultyBucket\": \"Intermediate\", \"cefrDisplay\": \"B1\", \"updatedAt\": \"2026-07-08T00:00:00+00:00\"}"
+    }
+  ],
+  "weakness": {
+    "id": 2,
+    "assessmentId": null,
+    "createdAt": "2026-07-18T15:22:51.511+00:00",
+    "findings": [
+      {
+        "id": 5,
+        "dimension": "skill",
+        "dimensionKey": "grammar",
+        "polarity": "weakness",
+        "statement": "谓语动词缺失、时态错误和主谓一致问题高频出现，如缺少be动词、第三人称单数未加-s、过去式误用为原形。",
+        "confidence": "medium",
+        "verification": "questioned",
+        "verificationNote": "测评 FinalLevel 记录缺失，无法核验",
+        "evidence": [
+          {
+            "kind": "sentence_log",
+            "refId": "0b0e3ffa-aa1a-4cf9-ae03-882e9a6712cc",
+            "metric": "grammar",
+            "op": "<=",
+            "value": 2
+          },
+          {
+            "kind": "sentence_log",
+            "refId": "0d2476b7-961f-4b1d-b32b-d1e78cd23e91",
+            "metric": "grammar",
+            "op": "<=",
+            "value": 2
+          },
+          {
+            "kind": "assessment_dimension",
+            "refId": "final",
+            "metric": "grammar",
+            "op": "<=",
+            "value": 2.7
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "dimension": "skill",
+        "dimensionKey": "natural",
+        "polarity": "weakness",
+        "statement": "口语化表达衔接生硬，频繁滥用逗号连接独立分句，缺乏破折号、连接词或标点规范意识。",
+        "confidence": "medium",
+        "verification": "questioned",
+        "verificationNote": "测评 FinalLevel 记录缺失，无法核验",
+        "evidence": [
+          {
+            "kind": "sentence_log",
+            "refId": "2873da14-d834-4c9f-ae35-b0a606026e5f",
+            "metric": "natural",
+            "op": "<=",
+            "value": 3
+          },
+          {
+            "kind": "sentence_log",
+            "refId": "847904d5-b34c-43c0-9c19-4668a977fa31",
+            "metric": "natural",
+            "op": "<=",
+            "value": 3
+          },
+          {
+            "kind": "assessment_dimension",
+            "refId": "final",
+            "metric": "natural",
+            "op": "<=",
+            "value": 2.8
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "dimension": "skill",
+        "dimensionKey": "vocabulary",
+        "polarity": "weakness",
+        "statement": "基础冠词（a/the）使用严重不足，泛指与特指场景混淆，导致可数名词前频繁遗漏限定词。",
+        "confidence": "medium",
+        "verification": "questioned",
+        "verificationNote": "引用数值不属实：vocabulary 实际 3，声称 <= 2",
+        "evidence": [
+          {
+            "kind": "sentence_log",
+            "refId": "c1fa6f27-315f-4add-be0b-6b7826349c00",
+            "metric": "vocabulary",
+            "op": "<=",
+            "value": 2
+          },
+          {
+            "kind": "sentence_log",
+            "refId": "ba04f4d4-91a1-422c-8346-a83992357bc4",
+            "metric": "vocabulary",
+            "op": "<=",
+            "value": 4
+          },
+          {
+            "kind": "sentence_log",
+            "refId": "10bd5388-8fc1-4957-91ba-dff2f6a90473",
+            "metric": "vocabulary",
+            "op": "<=",
+            "value": 3
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "dimension": "scenario",
+        "dimensionKey": "future_plans",
+        "polarity": "weakness",
+        "statement": "未来计划场景中时态系统性错配，习惯性使用一般现在时描述将来意图，缺乏be going to/will等结构意识。",
+        "confidence": "medium",
+        "verification": "questioned",
+        "verificationNote": "引用数值不属实：relevance 实际 3，声称 = 5",
+        "evidence": [
+          {
+            "kind": "sentence_log",
+            "refId": "0b0e3ffa-aa1a-4cf9-ae03-882e9a6712cc",
+            "metric": "relevance",
+            "op": "=",
+            "value": 5
+          },
+          {
+            "kind": "word_stats",
+            "refId": "future_plans",
+            "metric": "coverage",
+            "op": "<=",
+            "value": 0.12
+          },
+          {
+            "kind": "word_stats",
+            "refId": "future_plans",
+            "metric": "avgmastery",
+            "op": "<=",
+            "value": 25
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "dimension": "scenario",
+        "dimensionKey": "agree_disagree",
+        "polarity": "strength",
+        "statement": "同意与反对场景中习语运用较成熟，'I take your point'、'not my thing'等表达自然准确且语境恰当。",
+        "confidence": "medium",
+        "verification": "questioned",
+        "verificationNote": "引用数值不属实：correctrate 实际 0.67，声称 >= 0.69",
+        "evidence": [
+          {
+            "kind": "sentence_log",
+            "refId": "a2af55de-f61c-4c13-9cf7-a75a8c008333",
+            "metric": "grammar",
+            "op": ">=",
+            "value": 5
+          },
+          {
+            "kind": "sentence_log",
+            "refId": "fbb39434-2342-4931-b8c3-63a01f95ec5e",
+            "metric": "natural",
+            "op": ">=",
+            "value": 5
+          },
+          {
+            "kind": "word_stats",
+            "refId": "agree_disagree",
+            "metric": "correctrate",
+            "op": ">=",
+            "value": 0.69
+          }
+        ]
+      },
+      {
+        "id": 10,
+        "dimension": "reading",
+        "dimensionKey": "reading",
+        "polarity": "weakness",
+        "statement": "查词频次偏高，平均每会话查词3.8次，反映词汇自主提取能力弱，依赖外部工具补足表达。",
+        "confidence": "low",
+        "verification": "verified",
+        "verificationNote": "",
+        "evidence": [
+          {
+            "kind": "reading_stats",
+            "refId": "reading",
+            "metric": "avglookupcount",
+            "op": ">=",
+            "value": 3.8
+          }
+        ]
+      }
+    ]
+  },
+  "evaluationLatest": {
+    "id": 1,
+    "userId": "bb0c05c7-4d89-4e03-8601-97ff9b4d6045",
+    "triggerType": "InitialAssessment",
+    "assessmentId": "b6933dfc-a560-404d-b145-b7a55e20239a",
+    "inputSnapshotJson": "{\"vocabulary\":60,\"reading\":60,\"writing\":60,\"spelling\":null,\"overall\":60,\"difficultyBucket\":\"Intermediate\",\"cefrDisplay\":\"B1\",\"updatedAt\":\"2026-08-06T15:16:57.6327101+00:00\"}",
+    "inputSnapshotHash": "eval:InitialAssessment:b6933dfc-a560-404d-b145-b7a55e20239a",
+    "contentJson": "{\"schemaVersion\":2,\"summary\":\"\\u4F60\\u7684\\u7EFC\\u5408\\u6C34\\u5E73\\u4E3A Overall 60\\uFF08B1\\uFF09\\u3002\\u4EE5\\u4E0B\\u4E3A\\u7ECF\\u4EA4\\u53C9\\u9A8C\\u8BC1\\u7684\\u80FD\\u529B\\u753B\\u50CF\\u3002\",\"strengths\":[],\"weaknesses\":[\"\\u4E3B\\u8C13\\u4E00\\u81F4\\u3001\\u8C13\\u8BED\\u7F3A\\u5931\\u548C\\u51A0\\u8BCD\\u8BEF\\u7528\\u9AD8\\u9891\\u51FA\\u73B0\\uFF0C\\u5982\\u7B2C\\u4E09\\u4EBA\\u79F0\\u5355\\u6570\\u52A8\\u8BCD\\u6F0F\\u52A0-s\\u3001\\u7247\\u6BB5\\u53E5\\u65E0\\u8C13\\u8BED\\u3001\\u0027on floor\\u0027\\u7F3A\\u5B9A\\u51A0\\u8BCD\\u3002\",\"\\u76EE\\u6807\\u8BCD\\u6C47\\u0027free expression\\u0027\\u5728\\u76F8\\u5173\\u4EFB\\u52A1\\u4E2D\\u5B8C\\u5168\\u672A\\u4F7F\\u7528\\uFF0C\\u4E14\\u7A0B\\u5EA6\\u526F\\u8BCD\\u9009\\u62E9\\u6A21\\u7CCA\\uFF08\\u5982\\u0027very much\\u0027\\uFF09\\uFF0C\\u672A\\u8FBEA2\\u5E38\\u7528\\u8868\\u8FBE\\u6807\\u51C6\\u3002\",\"\\u53E3\\u8BED\\u5316\\u8FFD\\u95EE\\u77ED\\u8BED\\u0027how so\\u0027\\u4F7F\\u7528\\u751F\\u786C\\uFF0C\\u9017\\u53F7\\u76F4\\u8FDE\\u524D\\u53E5\\uFF0C\\u672A\\u6309\\u6BCD\\u8BED\\u4E60\\u60EF\\u7528\\u7834\\u6298\\u53F7\\u6216\\u65B0\\u53E5\\u8854\\u63A5\\u3002\",\"\\u7EFC\\u5408\\u8868\\u8FBE\\u80FD\\u529B\\u8584\\u5F31\\uFF0C\\u6574\\u4F53\\u8868\\u8FBE\\u5F97\\u5206\\u4EC560\\u5206\\uFF0C\\u663E\\u8457\\u4F4E\\u4E8EB1\\u6C34\\u5E73\\u57FA\\u51C6\\u7EBF\\u3002\"],\"recommendations\":[{\"action\":\"\\u5B8C\\u6210\\u4ECA\\u65E5 10 \\u4E2A\\u65B0\\u8BCD\",\"module\":\"word-bank\"},{\"action\":\"\\u9605\\u8BFB 1 \\u7BC7\\u5339\\u914D\\u96BE\\u5EA6\\u6587\\u7AE0\",\"module\":\"reading\"},{\"action\":\"\\u590D\\u4E60\\u5F85\\u590D\\u4E60\\u8BCD\\u6C47\",\"module\":\"review\"}],\"findings\":[{\"dimension\":\"skill\",\"dimensionKey\":\"grammar\",\"polarity\":\"weakness\",\"statement\":\"\\u4E3B\\u8C13\\u4E00\\u81F4\\u3001\\u8C13\\u8BED\\u7F3A\\u5931\\u548C\\u51A0\\u8BCD\\u8BEF\\u7528\\u9AD8\\u9891\\u51FA\\u73B0\\uFF0C\\u5982\\u7B2C\\u4E09\\u4EBA\\u79F0\\u5355\\u6570\\u52A8\\u8BCD\\u6F0F\\u52A0-s\\u3001\\u7247\\u6BB5\\u53E5\\u65E0\\u8C13\\u8BED\\u3001\\u0027on floor\\u0027\\u7F3A\\u5B9A\\u51A0\\u8BCD\\u3002\",\"confidence\":\"medium\",\"evidence\":[{\"kind\":\"sentence_log\",\"refId\":\"039dacb9-efa9-4bcd-b2c5-1b8dc81885a8\",\"metric\":\"grammar\",\"op\":\"\\u003C=\",\"value\":2},{\"kind\":\"sentence_log\",\"refId\":\"c5a214f2-491d-4d15-91f8-a280d6388c30\",\"metric\":\"grammar\",\"op\":\"=\",\"value\":3}]},{\"dimension\":\"skill\",\"dimensionKey\":\"vocabulary\",\"polarity\":\"weakness\",\"statement\":\"\\u76EE\\u6807\\u8BCD\\u6C47\\u0027free expression\\u0027\\u5728\\u76F8\\u5173\\u4EFB\\u52A1\\u4E2D\\u5B8C\\u5168\\u672A\\u4F7F\\u7528\\uFF0C\\u4E14\\u7A0B\\u5EA6\\u526F\\u8BCD\\u9009\\u62E9\\u6A21\\u7CCA\\uFF08\\u5982\\u0027very much\\u0027\\uFF09\\uFF0C\\u672A\\u8FBEA2\\u5E38\\u7528\\u8868\\u8FBE\\u6807\\u51C6\\u3002\",\"confidence\":\"medium\",\"evidence\":[{\"kind\":\"sentence_log\",\"refId\":\"039dacb9-efa9-4bcd-b2c5-1b8dc81885a8\",\"metric\":\"relevance\",\"op\":\"=\",\"value\":0},{\"kind\":\"sentence_log\",\"refId\":\"0d1d72c4-40cd-482f-bcfc-7bb5931e1724\",\"metric\":\"relevance\",\"op\":\"=\",\"value\":2}]},{\"dimension\":\"skill\",\"dimensionKey\":\"natural\",\"polarity\":\"weakness\",\"statement\":\"\\u53E3\\u8BED\\u5316\\u8FFD\\u95EE\\u77ED\\u8BED\\u0027how so\\u0027\\u4F7F\\u7528\\u751F\\u786C\\uFF0C\\u9017\\u53F7\\u76F4\\u8FDE\\u524D\\u53E5\\uFF0C\\u672A\\u6309\\u6BCD\\u8BED\\u4E60\\u60EF\\u7528\\u7834\\u6298\\u53F7\\u6216\\u65B0\\u53E5\\u8854\\u63A5\\u3002\",\"confidence\":\"low\",\"evidence\":[{\"kind\":\"sentence_log\",\"refId\":\"da6c336a-99ca-4340-a3a7-951de18843bd\",\"metric\":\"natural\",\"op\":\"=\",\"value\":2}]},{\"dimension\":\"skill\",\"dimensionKey\":\"expressionScore\",\"polarity\":\"weakness\",\"statement\":\"\\u7EFC\\u5408\\u8868\\u8FBE\\u80FD\\u529B\\u8584\\u5F31\\uFF0C\\u6574\\u4F53\\u8868\\u8FBE\\u5F97\\u5206\\u4EC560\\u5206\\uFF0C\\u663E\\u8457\\u4F4E\\u4E8EB1\\u6C34\\u5E73\\u57FA\\u51C6\\u7EBF\\u3002\",\"confidence\":\"low\",\"evidence\":[{\"kind\":\"assessment_dimension\",\"refId\":\"final\",\"metric\":\"expressionscore\",\"op\":\"=\",\"value\":60}]}],\"profileSnapshot\":{\"vocabulary\":60,\"reading\":60,\"writing\":60,\"spelling\":null,\"overall\":60,\"difficultyBucket\":\"Intermediate\",\"cefrDisplay\":\"B1\",\"updatedAt\":\"2026-08-06T15:16:57.6327101+00:00\"}}",
+    "status": "Ready",
+    "idempotencyKey": "eval:InitialAssessment:b6933dfc-a560-404d-b145-b7a55e20239a",
+    "modelProfileId": "local-dev",
+    "createdAt": "2026-07-08T15:16:57.720178+00:00",
+    "user": null,
+    "assessment": null
+  },
+  "plannerCurrent": {
+    "active": true,
+    "startDate": "2026-08-01",
+    "dayIndex": 5,
+    "focusScenarios": [
+      "directions",
+      "study_talk"
+    ],
+    "sourceFindingIds": [],
+    "articleIds": [
+      "1e225de1-b158-4008-b149-7f7c4e37a60c",
+      "f3f627cc-bc2e-48c7-8a7a-9c500a4615da",
+      "c62e862e-e567-4d28-a5fa-a7a531dee625"
+    ],
+    "todayWordCount": 8,
+    "todayExposureCount": 2,
+    "todaySentenceTargets": [
+      "in no time",
+      "break in",
+      "to be fair"
+    ],
+    "exploration": {
+      "active": false,
+      "day": 0,
+      "totalDays": 0,
+      "evidenceCount": 0,
+      "remainingEvidence": 0,
+      "scenarioKey": null,
+      "scenarioName": null,
+      "prompt": null
+    }
+  },
+  "bottleneckLatest": {
+    "found": true,
+    "nature": "GrammarErrors",
+    "signals": "plateau,avoidance,safe_word",
+    "statement": "时态、主谓一致、介词、动词不定式等基础语法错误高频出现，如 'she speak'、'go school'、'give away' 未变过去式、'as soon as' 从句后缺连词和介词。",
+    "evidenceLogIds": [
+      "3a9b6ff6-6fd7-49e1-96fb-e589dec45251",
+      "f155bf59-8b2e-48dd-b9a5-bf58a50c2570",
+      "97cb30e4-d00f-4736-9ad6-a6e227c4ee6d",
+      "5816f11f-731e-408c-b88c-e30c63cd255b",
+      "3f51a869-2aa6-4b9f-94d0-649feca54cdc"
+    ],
+    "replanTriggered": false,
+    "createdAt": "2026-07-31T15:30:05.228935+00:00"
+  },
+  "levelHistory": [
+    {
+      "id": "b011a7f1-8dcf-4fbf-8326-2b497d831711",
+      "userId": "bb0c05c7-4d89-4e03-8601-97ff9b4d6045",
+      "fromLevel": "A1",
+      "toLevel": "B1",
+      "reason": "Initial",
+      "timestamp": "2026-07-08T15:16:57.673064+00:00",
+      "user": null
+    }
+  ],
+  "challengeRecent": [
+    {
+      "id": "a4f604eb-002b-4950-885f-d3a0475d1dea",
+      "userId": "bb0c05c7-4d89-4e03-8601-97ff9b4d6045",
+      "challengeType": "Daily",
+      "vocabularyScore": 100,
+      "sentenceScore": 4,
+      "readingScore": 0,
+      "totalScore": 60,
+      "passed": false,
+      "attemptedLevel": "B2",
+      "timestamp": "2026-08-04T15:32:45.114206+00:00",
+      "user": null
+    },
+    {
+      "id": "e4e47139-7104-44c0-8e2b-9a4815a71fb6",
+      "userId": "bb0c05c7-4d89-4e03-8601-97ff9b4d6045",
+      "challengeType": "Daily",
+      "vocabularyScore": 40,
+      "sentenceScore": 3,
+      "readingScore": 100,
+      "totalScore": 66.7,
+      "passed": false,
+      "attemptedLevel": "B2",
+      "timestamp": "2026-07-28T15:28:47.855199+00:00",
+      "user": null
+    },
+    {
+      "id": "29b69c2e-6869-4acc-9f03-62134e9d4eca",
+      "userId": "bb0c05c7-4d89-4e03-8601-97ff9b4d6045",
+      "challengeType": "Daily",
+      "vocabularyScore": 60,
+      "sentenceScore": 3,
+      "readingScore": 0,
+      "totalScore": 40,
+      "passed": false,
+      "attemptedLevel": "B2",
+      "timestamp": "2026-07-21T15:24:59.48697+00:00",
+      "user": null
+    },
+    {
+      "id": "95ddcded-bdea-4d50-ac1b-2a0af920d646",
+      "userId": "bb0c05c7-4d89-4e03-8601-97ff9b4d6045",
+      "challengeType": "Daily",
+      "vocabularyScore": 60,
+      "sentenceScore": 3.75,
+      "readingScore": 100,
+      "totalScore": 78.3,
+      "passed": true,
+      "attemptedLevel": "B2",
+      "timestamp": "2026-07-14T15:20:46.115285+00:00",
+      "user": null
+    }
+  ],
+  "sql": {
+    "lifecycle": {
+      "lifecycleDist": {
+        "PromptedUse": 15,
+        "Recalled": 1,
+        "Recognized": 212
+      },
+      "dueReviews": 204,
+      "masteryDist": {
+        "25": 212,
+        "50": 1,
+        "75": 15
+      },
+      "totalRelationships": 228
+    },
+    "logCounts": {
+      "wordLearningLogs": "270",
+      "sentenceLogs": "91",
+      "freeExpressionLogs": "12",
+      "spellingLogs": "135",
+      "readingLogs": "17",
+      "learningPlans": "5",
+      "bottleneckInsights": "3",
+      "snapshots": "30"
+    }
+  }
+}

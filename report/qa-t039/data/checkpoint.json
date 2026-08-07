@@ -1,0 +1,35 @@
+{
+  "nextDay": 30,
+  "assessmentDone": true,
+  "userId": "bb0c05c7-4d89-4e03-8601-97ff9b4d6045",
+  "assessment": {
+    "assessmentId": "b6933dfc-a560-404d-b145-b7a55e20239a",
+    "final": {
+      "overallLevel": "B1",
+      "expressionScore": 60,
+      "vocabularyReferenceScore": 100,
+      "readingReferenceScore": 50,
+      "vocabularyReferenceLevel": "C1",
+      "readingReferenceLevel": "B1",
+      "dimensions": {
+        "grammar": 2.7,
+        "natural": 2.8,
+        "vocabulary": 3,
+        "relevance": 3.7,
+        "topErrorTags": [
+          "缺少谓语动词：'clothes and books everywhere on floor' 是片段，不是完整句子；冠词缺失：'on floor' 应为 'on the floor'；标点不规范：逗号连接两个独立分句需用连词或分号/句号，此处建议用破折号或连接词",
+          "主语 'My brother' 是第三人称单数，谓语动词需加 -s，应为 'plays' 而不是 'play'。",
+          "句子结构松散，缺少连接词（如 'but' 前应有逗号或使用更自然的连贯结构）；'This is good idea' 缺少冠词，应为 'a good idea'；'don’t like it very much' 表达较模糊，A2 水平宜用更清晰、常用的程度副词如 'really'；未体现目标短语 'free expression'，偏离任务要求",
+          "'how so' 是一个固定短语，用于请求对方进一步解释某个已提及的观点或情况，通常不单独用逗号连接前句，而应以破折号、冒号或新句形式衔接，以体现其作为补充追问的语用功能；当前逗号连接显得生硬、不自然，不符合英语母语者口语习惯。",
+          "主句后缺少谓语动词，'it too tired' 不是完整句子，语法结构错误；'too tired' 缺少主语和谓语，应改为 'makes me too tired' 或 'I feel too tired'；标点不当，两个分句之间需连接词或适当标点（如破折号、逗号+and）"
+        ],
+        "comments": [
+          "表达力综合分 60/100：语法 2.7、自然度 2.8、词汇 3.0、相关度 3.7（各维度满分 5）。",
+          "主定级 B1 由表达力综合分决定；词汇识别 100、阅读 50 仅作参考，不影响定级。"
+        ]
+      },
+      "evaluationReportId": 1,
+      "originalLevelBeforeGuard": null
+    }
+  }
+}

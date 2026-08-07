@@ -1,0 +1,35 @@
+{
+  "nextDay": 30,
+  "assessmentDone": true,
+  "userId": "9df789c3-e719-434a-97db-5eb8a7be6002",
+  "assessment": {
+    "assessmentId": "0b2b3fb6-ffb2-4d68-9b65-b918d307de36",
+    "final": {
+      "overallLevel": "B2",
+      "expressionScore": 71,
+      "vocabularyReferenceScore": 67,
+      "readingReferenceScore": 67,
+      "vocabularyReferenceLevel": "B2",
+      "readingReferenceLevel": "B2",
+      "dimensions": {
+        "grammar": 3.9,
+        "natural": 3.8,
+        "vocabulary": 3,
+        "relevance": 3.3,
+        "topErrorTags": [
+          "缺少定冠词 'the'：'vacuum cleaner' 是特指日常使用的那台，需加 'the'；'floor' 是可数名词单数，前面也应加 'the' 表示泛指整个地面；A2 学习者应掌握基本冠词用法。",
+          "动词时态错误：A2 学习者应使用一般过去时描述已发生的动作，'notice' 应为 'noticed'；",
+          "宾语从句结构不当：'the cat sit' 应改为非谓语形式 'the cat sitting' 或用 that 从句（但 A2 不要求 that 从句）；",
+          "并列动词形式不一致：'sit' 和 'eat' 均需保持 -ing 形式以匹配感官动词 notice 的用法（notice + sb/sth doing sth）",
+          "目标词 'free expression' 完全未在句子中出现；该短语意为‘自由表达’，通常指思想、情感或艺术上的无拘束表达，与‘求助与致谢’场景无直接关联；A2学习者应聚焦基础功能表达，而非强行套用不相关高级短语。"
+        ],
+        "comments": [
+          "表达力综合分 71/100：语法 3.9、自然度 3.8、词汇 3.0、相关度 3.3（各维度满分 5）。",
+          "主定级 B2 由表达力综合分决定；词汇识别 67、阅读 67 仅作参考，不影响定级。"
+        ]
+      },
+      "evaluationReportId": 1,
+      "originalLevelBeforeGuard": null
+    }
+  }
+}

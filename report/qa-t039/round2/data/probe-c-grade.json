@@ -1,0 +1,12 @@
+[
+  {
+    "word": "therefore",
+    "text": "Yesterday I miss the bus, therefore I was late for work. My boss he was angry. I say sorry but he no listen. Next time I will get up more early.",
+    "grade": "C",
+    "aiScore": 60,
+    "graduatedWords": [
+      "therefore"
+    ],
+    "logId": "af23ea6d-6384-4a23-8cdb-8b638de61b7d"
+  }
+]
