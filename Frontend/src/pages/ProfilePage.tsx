@@ -4,6 +4,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { api } from '../api/client'
 import { endpoints } from '../api/endpoints'
 import { LevelPanel } from '../components/LevelPanel'
+import { MonthlyTimelinePanel } from '../components/MonthlyTimelinePanel'
 import { ProgressDetail } from '../components/ProgressDetail'
 import { Badge } from '../components/ui/Badge'
 import { Switch } from '../components/ui/Switch'
@@ -82,6 +83,11 @@ export function ProfilePage() {
         <h2>等级</h2>
       </div>
       <LevelPanel />
+
+      <div className="section-header" style={{ marginTop: 'var(--space-8)' }}>
+        <h2>我的这个月</h2>
+      </div>
+      <MonthlyTimelinePanel />
 
       <div id="profile-progress" className="section-header" style={{ marginTop: 'var(--space-8)' }}>
         <h2>学习进度</h2>

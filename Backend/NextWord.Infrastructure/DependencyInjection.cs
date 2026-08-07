@@ -89,6 +89,7 @@ public static class DependencyInjection
         services.AddScoped<IAssessmentService, AssessmentService>();
         services.AddScoped<IChallengeService, ChallengeService>();
         services.AddScoped<LevelDashboardService>();
+        services.AddScoped<MonthlyTimelineService>();
         services.AddSingleton<ISm2Service, Sm2Service>();
         RegisterCache(services, configuration);
         services.AddSingleton<IModelProfileResolver, ModelProfileResolver>();

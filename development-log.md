@@ -2,6 +2,22 @@
 
 按时间倒序记录需求、决策、实现与验收。
 
+## 2026-08-07 — I7 T-036：「我的这个月」月度时间轴——分数趋势 + 里程碑 + 画像变化 + 洞察回放（程实）
+
+### 需求
+- 用户坚持一个月看不到「走了多远」：Score 快照、毕业事件、画像历史都在库里没有展示。设计定稿 `docs/DESIGN-monthly-timeline.md`（顾言，2026-07-30）：`/profile` 增加「我的这个月」区块，全部消费只读数据，空数据态每段有文案，趋势图视觉权重 ≤ 里程碑与画像变化（分数是外壳）。
+
+### 实现（按设计 §2/§3）
+- **聚合端点**：新增 `GET /api/profile/monthly-timeline?days=30`（`ProfileTimelineEndpoints` + `MonthlyTimelineService`，只读零 LLM）——里程碑四类事件：词毕业（`UserWordRelationships.GraduatedFreeExpressionLogId` 非空 + `StageUpdatedAt` 落窗，Join Words 取词形）、挑战首过（按 `AttemptedLevel` 取最早一次通过，落窗才算，与 LevelDashboard 口径一致）、定级/升级（LevelHistories 落窗）、画像生成（WeaknessProfiles 落窗）；固定 ≤7 次 SQL 往返，无 N+1。
+- **画像变化**：`ProfileChangeDiffer`（Domain 纯规则）——当前 vs 上一份 WeaknessProfile（存疑条目不参与）：上一份同维度位不是强项的当前强项 →「新增强项」；上一份弱点当前不再是弱点 →「好转弱点」（当前同位有结论用当前的）；只有一份画像时返回当前 Finding 摘要（`hasComparison=false`）。
+- **洞察回放**：最近 3 条 BottleneckInsight 并入 monthly-timeline 响应（设计 §2-4 取实现简单者）。
+- **前端**：`/profile` 新增 `MonthlyTimelinePanel`（LevelPanel 之后）——分数趋势接 `scores/history?days=30`，三维折线轻量 SVG 自绘（不引库，细线低饱和压低视觉权重），<7 天显示「坚持 7 天后出曲线」；里程碑/画像变化/洞察回放各带空态文案；洞察性质中文名复用 T-019 `NATURE_META`（从 hook 导出共享）。
+- 无实体/schema 变更，不新增迁移；不写任何状态。
+
+### 验证
+- 新增 `MonthlyTimelineTests` 6 个（真实 PG）：四类事件齐 + 窗外过滤（毕业/首过/定级/画像）、首过口径（窗内再通过不算）、画像 diff（弱转强双向归类、存疑条目剔除、结论取用规则）、单份画像摘要、空用户空态、查询数 ≤8 与事件量无关（20 毕业词 + 20 挑战 + 20 定级下命令计数拦截断言）。
+- `dotnet test` 全绿：单元 231 + 集成 6；`npm run build` 通过；改动文件 eslint 干净。
+
 ## 2026-08-07 — I7 T-035：挑战有结果化——通过点评与计数 + 候选强引导 + 阅读 3 题降方差（程实）
 
 ### 需求

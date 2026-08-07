@@ -13,6 +13,7 @@ public static class EndpointRouteBuilderExtensions
         LearningEndpoints.Map(app);
         ProgressEndpoints.Map(app);
         ProfileScoreEndpoints.Map(app);
+        ProfileTimelineEndpoints.Map(app);
         LlmEndpoints.Map(app);
         SentenceEndpoints.Map(app);
         FreeExpressionEndpoints.Map(app);

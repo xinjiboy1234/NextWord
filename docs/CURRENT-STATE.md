@@ -125,6 +125,7 @@ docker-compose.yml        postgres:16-alpine + redis:7-alpine + api（容器内 
 - BYOK：`GET /api/profile/llm/presets`（OpenAI/DeepSeek/Qwen 预设）+ `PUT /api/profile/llm` 存用户自己的 OpenAI 兼容 API（`UserLlmSettings`，API key 脱敏返回）；`UserLlmProviderFactory` 按用户构建 provider。
 - `GET /api/evaluation/latest|{id}` 查看评估报告（测评触发的报告内容为已验证 Finding 画像，见 §5.14；其余触发为模板文案——T-030 起模板摘要不再带英文「Overall」，且词汇/阅读同分时不评强弱，只写「表现相当」）。
 - `GET /api/profile/weakness`：最新 WeaknessProfile（含每条 Finding 的核查状态与存疑原因）。
+- **「我的这个月」月度时间轴（T-036）**：`/profile` 区块四段——分数趋势（前端接 `scores/history?days=30`，轻量 SVG 自绘，<7 天出空态）、本月里程碑（新只读聚合端点 `GET /api/profile/monthly-timeline?days=`：词毕业/挑战首过/定级升级/画像生成，`MonthlyTimelineService` 固定 ≤7 次查询无 N+1）、画像变化（当前 vs 上一份 WeaknessProfile 的规则 diff——`ProfileChangeDiffer` 零 LLM：新增强项/好转弱点；单份画像显示 Finding 摘要）、洞察回放（最近 3 条 BottleneckInsight）；每段有空态文案，趋势图视觉权重压低（分数是外壳）。
 - `POST /api/feedback`：释义错误 / 标记已知 / 排除单词（触发 ReAnnotation 后台任务）。
 
 ### 5.10 后台 Worker（Infrastructure/Background，共 5 个 HostedService）
@@ -253,6 +254,7 @@ Worker 异常不拖垮宿主（`BackgroundServiceExceptionBehavior=Ignore`）。
 - `GET /api/profile`、`PUT /api/profile`
 - `GET /api/profile/llm/presets`、`PUT /api/profile/llm`
 - `GET /api/profile/scores`、`GET /api/profile/scores/history?days=`
+- `GET /api/profile/monthly-timeline?days=`（T-036 只读聚合：里程碑事件 + 画像变化 diff + 洞察回放）
 - `GET /api/profile/weakness`（最新 WeaknessProfile + Finding 核查状态）
 - `GET /api/evaluation/latest`、`GET /api/evaluation/{id}`
 - `POST /api/feedback`
@@ -297,12 +299,12 @@ Users、UserLlmSettings、Words、WordScenarios、WordDifficultyAnnotations、Di
 | `/challenge` | ChallengeMode | 三阶段挑战（阅读 3 题）+ 通过点评/计数 + 候选确认挑战引导条 + 近期挑战列表（满分参照） |
 | `/review` | ReviewQueue | 翻转卡片复习 + 活动统计 + 最近记录 |
 | `/word-bank` | Home | 全量词条表格 + 搜索 + 详情 |
-| `/profile` | ProfilePage | 用户信息、LevelPanel、ProgressDetail、CEFR 开关、管理入口 |
+| `/profile` | ProfilePage | 用户信息、LevelPanel、「我的这个月」月度时间轴（T-036：分数趋势/里程碑/画像变化/洞察回放）、ProgressDetail、CEFR 开关、管理入口 |
 | `/manage` | ManagePage | LLM 设置抽屉、测评/挑战/词库/学习数据入口 |
 | `/level`、`/progress` | — | 重定向到 `/profile` 锚点 |
 
 - 底部主导航实际只有「首页 / 我的」两个 Tab；其余功能经 Dashboard 卡片进入。
-- 定义了但前端未调用的 API：`/api/reading/agent`、`/api/llm/rate-difficulty`、`/api/profile/scores/history`、`/api/level/history`、`/api/articles/{id}/lookup`。
+- 定义了但前端未调用的 API：`/api/reading/agent`、`/api/llm/rate-difficulty`、`/api/level/history`、`/api/articles/{id}/lookup`。
 
 ## 9. 启动与配置
 

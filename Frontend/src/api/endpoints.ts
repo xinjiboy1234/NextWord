@@ -5,6 +5,7 @@ export const endpoints = {
   profile: '/api/profile',
   profileScores: '/api/profile/scores',
   profileScoresHistory: '/api/profile/scores/history',
+  profileMonthlyTimeline: '/api/profile/monthly-timeline',
   readingLookup: '/api/reading/lookup',
   evaluationLatest: '/api/evaluation/latest',
   feedback: '/api/feedback',

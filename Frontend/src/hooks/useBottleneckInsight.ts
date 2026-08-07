@@ -15,8 +15,8 @@ export interface BottleneckInsightView {
   replanTriggered: boolean
 }
 
-/** 瓶颈性质枚举名 → 中文名 + 一句人话解释（与后端 BottleneckNature XML 注释对应） */
-const NATURE_META: Record<string, { name: string; hint: string }> = {
+/** 瓶颈性质枚举名 → 中文名 + 一句人话解释（与后端 BottleneckNature XML 注释对应；T-036 洞察回放复用） */
+export const NATURE_META: Record<string, { name: string; hint: string }> = {
   VocabularyInsufficient: { name: '词汇量不足', hint: '认识的词不够用，表达时容易卡壳' },
   CannotOrganizeSentences: { name: '组句困难', hint: '单词都认识，但组织不成通顺的句子' },
   GrammarErrors: { name: '语法错误偏多', hint: '句子结构错误较多，影响表达的准确性' },
