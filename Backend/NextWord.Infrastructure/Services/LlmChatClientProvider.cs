@@ -27,6 +27,7 @@ public sealed class LlmChatClientProvider(IChatClient chatClient, LlmMockProvide
         }
         catch
         {
+            // T-049：真实 LLM 失败静默回退 Mock；Mock 释义自带 IsFallback 标记（不缓存、降级可见）
             return await fallback.GetDefinitionAsync(request, cancellationToken);
         }
     }

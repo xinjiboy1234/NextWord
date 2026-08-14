@@ -43,7 +43,7 @@ public class LearningPlanTests
         Assert.Contains(skillId, content.SourceFindingIds);
         Assert.DoesNotContain(questionedId, content.SourceFindingIds);
 
-        // 7 日计划：每天接触词 ≤20%（10 × 0.2 = 2）且全部超带；词队列只来自主攻场景或 core 桶
+        // 7 日计划：每天接触词 ≤20%（T-050 起 15 × 0.2 = 3）且全部超带；词队列只来自主攻场景或 core 桶
         Assert.Equal(7, content.Days.Count);
         var queuedIds = content.Days.SelectMany(day => day.WordIds.Concat(day.ExposureWordIds)).ToList();
         var queuedWords = await db.Words.AsNoTracking()
@@ -53,7 +53,7 @@ public class LearningPlanTests
         var byId = queuedWords.ToDictionary(word => word.Id);
         foreach (var day in content.Days)
         {
-            Assert.True(day.ExposureWordIds.Count <= 2, $"接触词超限量：{day.ExposureWordIds.Count}");
+            Assert.True(day.ExposureWordIds.Count <= 3, $"接触词超限量：{day.ExposureWordIds.Count}");
             Assert.All(day.ExposureWordIds, id => Assert.True(byId[id].CefrLevel > UserBand, "接触词必须超带"));
             Assert.All(day.WordIds.Concat(day.ExposureWordIds), id =>
                 Assert.True(byId[id].Scenarios.Count == 0
@@ -125,12 +125,14 @@ public class LearningPlanTests
         await planService.GenerateAsync(user.Id, CancellationToken.None);
 
         var daily = new DailyWordSelectionService(db, CreateScoreProfile(db), planService);
-        var items = await daily.GetDailyAsync(user.Id, 10, CancellationToken.None);
+        // T-050 新口径：默认每日 15 词 = 带内 12 + 接触 3
+        var items = await daily.GetDailyAsync(user.Id, 15, CancellationToken.None);
 
-        Assert.NotEmpty(items);
+        Assert.Equal(15, items.Count);
         Assert.All(items, item => Assert.True(item.FromPlan, "有当日 Plan 时每日词应来自计划"));
         var exposure = items.Where(item => item.IsExposure).ToList();
-        Assert.True(exposure.Count <= 2, $"接触词占比应 ≤20%，实际 {exposure.Count}/10");
+        Assert.Equal(3, exposure.Count);
+        Assert.Equal(12, items.Count(item => !item.IsExposure));
         // 接触词全部超带
         var exposureIds = exposure.Select(item => item.Id).ToList();
         var words = await db.Words.AsNoTracking().Where(word => exposureIds.Contains(word.Id)).ToListAsync();

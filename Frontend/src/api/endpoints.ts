@@ -39,6 +39,8 @@ export const endpoints = {
   assessmentSkip: '/api/assessment/initial/skip',
   assessmentNextBlock: (id: string) => `/api/assessment/${id}/next-block`,
   assessmentSubmitBlock: (id: string, blockIndex: number) => `/api/assessment/${id}/blocks/${blockIndex}/submit`,
+  assessments: '/api/assessments',
+  assessmentDetail: (id: string) => `/api/assessment/${id}`,
   challengeStart: '/api/challenge/start',
   challengeSubmit: '/api/challenge/submit',
   challengeRecent: '/api/challenge/recent',

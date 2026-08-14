@@ -1,0 +1,34 @@
+{
+  "nextDay": 30,
+  "assessmentDone": true,
+  "userId": "6829d06c-5c30-49b8-a990-0eb330a2dd3e",
+  "assessment": {
+    "assessmentId": "c64a7691-1df5-4464-80c6-5ca0820b6c24",
+    "final": {
+      "overallLevel": "B2",
+      "expressionScore": 64,
+      "vocabularyReferenceScore": 100,
+      "readingReferenceScore": 50,
+      "vocabularyReferenceLevel": "C1",
+      "readingReferenceLevel": "B1",
+      "dimensions": {
+        "grammar": 3.2,
+        "natural": 2.8,
+        "vocabulary": 3.2,
+        "relevance": 3.8,
+        "topErrorTags": [
+          "句子语法正确，用词恰当，符合A2水平；'bring'使用准确（表示‘把某物从说话人所在地带到另一地点’），语境清晰（带书去学校）；祈使句结构自然，附加'okay?'增强礼貌性和互动性，适合初级学习者。",
+          "缺少冠词：'shortcut' 是可数名词单数，需加不定冠词 'a'；主谓不一致：'it save' 应为 'it saves'；标点不当：两个独立分句不能仅用逗号连接，应改用破折号、分号或句号",
+          "未使用目标词 'free expression'；句子虽语法正确，但属于基础请求与感谢，缺乏个人情感、观点或创造性表达，不符合 'free expression' 的要求。",
+          "动词 'afford' 后需接不定式（to buy），不能直接跟动词原形；缺少冠词 'a'，'new phone' 是可数名词单数，需加不定冠词。",
+          "'add on' 是及物动词短语，通常后接名词表示‘额外添加某物’（如 add on a feature），但不用于具体物质（如 sugar）；此处应使用 'add'；介词应用 'to' 而非 'in'，因 'add X to Y' 是固定搭配。"
+        ],
+        "comments": [
+          "表达力综合分 64/100：语法 3.2、自然度 2.8、词汇 3.2、相关度 3.8（各维度满分 5）。",
+          "主定级 B2 由表达力综合分决定；词汇识别 100、阅读 50 仅作参考，不影响定级。"
+        ]
+      },
+      "evaluationReportId": 1
+    }
+  }
+}

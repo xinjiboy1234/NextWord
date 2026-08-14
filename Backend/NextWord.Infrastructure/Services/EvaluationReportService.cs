@@ -5,6 +5,7 @@ using NextWord.Domain.Entities;
 using NextWord.Domain.Enums;
 using NextWord.Domain.Interfaces;
 using NextWord.Domain.Models;
+using NextWord.Domain.Services;
 using NextWord.Infrastructure.Data;
 
 namespace NextWord.Infrastructure.Services;
@@ -15,6 +16,7 @@ public sealed class EvaluationReportService(
     IBackgroundJobService backgroundJobs,
     EvaluationDataAssembler assembler,
     IWeaknessProfileService weaknessProfiles,
+    IAssessmentScoringService scoring,
     ILogger<EvaluationReportService> logger) : IEvaluationReportService
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
@@ -61,6 +63,9 @@ public sealed class EvaluationReportService(
         // 报告内容切换为已验证 Finding 列表；画像失败或全存疑时回退模板文案
         IReadOnlyList<ProfileFinding>? verifiedFindings = null;
         string? guardNote = null;
+        // T-059：测评触发时取 FinalResult 的表达综合分，供 summary 前缀按表达带取标签（与测评 rubric 一致）；
+        // 防伪闸矫正场景档案分已 clamp 到矫正后档，只有 FinalResult 保留矫正前表达表现
+        int? expressionScore = null;
         if (report.AssessmentId.HasValue)
         {
             // T-042：识别防伪闸矫正留痕进报告摘要（原定级 → 矫正后定级，用户可读）
@@ -68,11 +73,14 @@ public sealed class EvaluationReportService(
                 .Where(item => item.AssessmentId == report.AssessmentId.Value && item.Step == AssessmentStepType.FinalLevel)
                 .FirstOrDefaultAsync(cancellationToken);
             if (finalRecord is not null
-                && JsonSerializer.Deserialize<AssessmentFinalResult>(finalRecord.ScoresJson, JsonOptions) is { } finalResult
-                && finalResult.OriginalLevelBeforeGuard is { } originalLevel
-                && originalLevel != finalResult.OverallLevel)
+                && JsonSerializer.Deserialize<AssessmentFinalResult>(finalRecord.ScoresJson, JsonOptions) is { } finalResult)
             {
-                guardNote = $"表达表现 {originalLevel}，综合词汇掌握情况调整为 {finalResult.OverallLevel}。";
+                expressionScore = finalResult.ExpressionScore;
+                if (finalResult.OriginalLevelBeforeGuard is { } originalLevel
+                    && originalLevel != finalResult.OverallLevel)
+                {
+                    guardNote = $"表达表现 {originalLevel}，综合词汇掌握情况调整为 {finalResult.OverallLevel}。";
+                }
             }
 
             try
@@ -119,14 +127,14 @@ public sealed class EvaluationReportService(
 
         if (verifiedFindings is not null)
         {
-            report.ContentJson = JsonSerializer.Serialize(BuildProfileContent(verifiedFindings, scores, guardNote), JsonOptions);
+            report.ContentJson = JsonSerializer.Serialize(BuildProfileContent(verifiedFindings, scores, guardNote, expressionScore), JsonOptions);
         }
         else
         {
             var content = new
             {
                 schemaVersion = 1,
-                summary = $"你的综合水平为 {scores.Overall} 分（{scores.CefrDisplay ?? scores.DifficultyBucket}）。{guardNote}",
+                summary = $"{BuildRubricPrefix(scores, expressionScore)}你的综合水平为 {scores.Overall} 分（{scores.CefrDisplay ?? scores.DifficultyBucket}）。{guardNote}",
                 strengths,
                 weaknesses,
                 recommendations = new[]
@@ -165,12 +173,12 @@ public sealed class EvaluationReportService(
     /// schemaVersion 2 报告内容（T-005）：已验证 Finding 列表为主体；
     /// strengths/weaknesses 由 Finding 派生，兼容旧前端展示。
     /// </summary>
-    private static object BuildProfileContent(IReadOnlyList<ProfileFinding> findings, UserProfileScores scores, string? guardNote)
+    private object BuildProfileContent(IReadOnlyList<ProfileFinding> findings, UserProfileScores scores, string? guardNote, int? expressionScore)
     {
         return new
         {
             schemaVersion = 2,
-            summary = $"你的综合水平为 {scores.Overall} 分（{scores.CefrDisplay ?? scores.DifficultyBucket}）。以下为经交叉验证的能力画像。{guardNote}",
+            summary = $"{BuildRubricPrefix(scores, expressionScore)}你的综合水平为 {scores.Overall} 分（{scores.CefrDisplay ?? scores.DifficultyBucket}）。以下为经交叉验证的能力画像。{guardNote}",
             strengths = findings.Where(finding => finding.Polarity == FindingPolarity.Strength).Select(finding => finding.Statement).ToList(),
             weaknesses = findings.Where(finding => finding.Polarity == FindingPolarity.Weakness).Select(finding => finding.Statement).ToList(),
             recommendations = new[]
@@ -190,6 +198,26 @@ public sealed class EvaluationReportService(
             }).ToList(),
             profileSnapshot = scores
         };
+    }
+
+    /// <summary>
+    /// T-055 报告 summary 头部的人话总体标签（DESIGN-assessment-visibility §3.1）：
+    /// 表达带 → rubric 标签，与测评 rubric 同口径（T-059 裁定）——表达综合分经
+    /// MapExpressionScore 分带（ScoreMapping:CefrBands 单一数据源），不按矫正后 CefrDisplay
+    /// （防伪闸只调等级外壳，不改变表达表现本身）。ContentJson 为持久化快照，仅对新报告生效，旧报告不动。
+    /// 表达分来源：测评触发报告取 FinalResult.ExpressionScore（矫正前表达表现），其余报告回退档案写作分；
+    /// 两者都缺失时不加前缀。
+    /// </summary>
+    private string BuildRubricPrefix(UserProfileScores scores, int? expressionScore)
+    {
+        var score = expressionScore ?? scores.Writing;
+        if (score is not { } value)
+        {
+            return string.Empty;
+        }
+
+        var rubric = ProficiencyRubric.DescribeOverall(scoring.MapExpressionScore(value));
+        return $"总体评价：{rubric.Label}——{rubric.Description}。";
     }
 
     private static int CountArray(object value)

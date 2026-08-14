@@ -4,6 +4,7 @@ using NextWord.Domain.Enums;
 using NextWord.Domain.Interfaces;
 using NextWord.Domain.Models;
 using NextWord.Domain.Scenarios;
+using NextWord.Domain.Services;
 using NextWord.Infrastructure.Data;
 using System.Text.Json;
 
@@ -136,7 +137,11 @@ public sealed class AssessmentService(
                 ? await sentences.RateAsync(assessment.UserId, null, "free expression", text, item.ScenarioKey ?? "life", payload.Band.ToString(), cancellationToken)
                 : await sentences.RateAsync(assessment.UserId, item.WordId, item.TargetWord ?? string.Empty, text, "assessment", payload.Band.ToString(), cancellationToken);
             var score = scoring.ScoreProductionDimensions(log.GrammarScore, log.NaturalScore, log.VocabularyScore, log.RelevanceScore);
-            productionScores.Add(new ProductionScore(item.Id, score, log.GrammarScore, log.NaturalScore, log.VocabularyScore, log.RelevanceScore, log.ErrorTags));
+            // T-054：逐题 AI 评语/改写随测评记录持久化（旧记录无此字段，反序列化为 null）
+            productionScores.Add(new ProductionScore(
+                item.Id, score, log.GrammarScore, log.NaturalScore, log.VocabularyScore, log.RelevanceScore, log.ErrorTags,
+                string.IsNullOrWhiteSpace(log.Suggestion) ? null : log.Suggestion,
+                string.IsNullOrWhiteSpace(log.AiRevision) ? null : log.AiRevision));
         }
 
         // 识别题：只作参考信号，不进主定级；未作答（跳过）不计入样本（T-042：全跳过 = 样本缺失，防伪闸不矫正）
@@ -177,6 +182,32 @@ public sealed class AssessmentService(
             .AsNoTracking()
             .Include(item => item.Records)
             .FirstOrDefaultAsync(item => item.Id == assessmentId, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<AssessmentListItem>> ListForUserAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        var assessments = await db.Assessments
+            .AsNoTracking()
+            .Include(item => item.Records.Where(record => record.Step == AssessmentStepType.FinalLevel))
+            .Where(item => item.UserId == userId)
+            .OrderByDescending(item => item.StartAt)
+            .ToListAsync(cancellationToken);
+
+        return assessments.Select(item =>
+        {
+            var final = item.Records.Count == 0
+                ? null
+                : JsonSerializer.Deserialize<AssessmentFinalResult>(item.Records[0].ScoresJson, JsonOptions);
+            return new AssessmentListItem(
+                item.Id,
+                item.Type,
+                item.Status,
+                item.StartAt,
+                item.EndAt,
+                item.FinalLevel,
+                final?.ExpressionScore,
+                final?.OriginalLevelBeforeGuard is not null);
+        }).ToList();
     }
 
     public async Task SkipInitialAsync(Guid userId, CancellationToken cancellationToken)
@@ -404,6 +435,20 @@ public sealed class AssessmentService(
             Math.Round(grammar, 1), Math.Round(natural, 1), Math.Round(vocabDim, 1), Math.Round(relevance, 1),
             topErrorTags, comments);
 
+        // T-055 人话 rubric（DESIGN-assessment-visibility §3.1）：总体标签按表达综合分分带
+        // （expressionLevel 已复用 ScoreMapping:CefrBands 派生；防伪闸矫正只调等级外壳，不改变表达表现本身），
+        // 四维按 0–5 三档给人话特征描述，随定级结果持久化（旧记录无此字段，前端降级不显示）
+        var overallRubric = ProficiencyRubric.DescribeOverall(expressionLevel);
+        var rubric = new ProficiencyRubricView(
+            overallRubric.Label,
+            overallRubric.Description,
+            [
+                new RubricDimensionView(ProficiencyRubric.DimensionName(RubricDimension.Grammar), Math.Round(grammar, 1), ProficiencyRubric.DescribeDimension(RubricDimension.Grammar, grammar)),
+                new RubricDimensionView(ProficiencyRubric.DimensionName(RubricDimension.Natural), Math.Round(natural, 1), ProficiencyRubric.DescribeDimension(RubricDimension.Natural, natural)),
+                new RubricDimensionView(ProficiencyRubric.DimensionName(RubricDimension.Vocabulary), Math.Round(vocabDim, 1), ProficiencyRubric.DescribeDimension(RubricDimension.Vocabulary, vocabDim)),
+                new RubricDimensionView(ProficiencyRubric.DimensionName(RubricDimension.Relevance), Math.Round(relevance, 1), ProficiencyRubric.DescribeDimension(RubricDimension.Relevance, relevance))
+            ]);
+
         var final = new AssessmentFinalResult(
             overall,
             expressionScore,
@@ -413,7 +458,8 @@ public sealed class AssessmentService(
             readingReferenceLevel,
             dimensions,
             null,
-            guardAdjusted ? expressionLevel : null);
+            guardAdjusted ? expressionLevel : null,
+            rubric);
 
         assessment.Status = AssessmentStatus.Completed;
         assessment.EndAt = DateTimeOffset.UtcNow;
@@ -559,7 +605,17 @@ public sealed class AssessmentService(
         BandMove Decision,
         CefrLevel NextBand);
 
-    private sealed record ProductionScore(string Id, double Score, int Grammar, int Natural, int Vocabulary, int Relevance, List<string> ErrorTags);
+    /// <summary>T-054 起新增可空 Suggestion/AiRevision（逐题 AI 评语）；旧记录 JSON 无此属性，反序列化为 null。</summary>
+    private sealed record ProductionScore(
+        string Id,
+        double Score,
+        int Grammar,
+        int Natural,
+        int Vocabulary,
+        int Relevance,
+        List<string> ErrorTags,
+        string? Suggestion = null,
+        string? AiRevision = null);
 
     private sealed record VocabScore(string Id, bool Correct);
 

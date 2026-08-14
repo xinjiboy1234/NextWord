@@ -52,14 +52,14 @@ docker-compose.yml        postgres:16-alpine + redis:7-alpine + api（容器内 
 
 ### 5.1 每日选词与新词记忆（`/learn`）
 
-- `GET /api/words/daily?count=`：**优先执行当日 LearningPlan 词队列**（T-006，见 §5.15：带内词 + ≤20% 超带接触词，`fromPlan`/`isExposure` 标记）；无 Plan、Plan 过期（>7 天）或当日队列为空 → 回退既有逻辑——按用户 Vocabulary 分取 `[score, score+12]` 难度带单词 + `EstimatedKnownRate<0.4` 弱词，各占约一半（`DailyWordSelectionService`）。**T-014：返回词带生命周期阶段 `stage` 与考察模式 `quizMode`**（认识=recognition 看词知义，回忆及以后=recall 看义想词，新词默认认识模式）。**T-034：两条路径都保证 ≥40% 名额给「已成熟待推进」老词的回忆考察位**（`RecallExamQuotaRatio` 常量；池 = recalled 阶段 + 认识且 `RepeatCount≥2` 的残留词，`StageUpdatedAt` 最早优先，考察模式按阶段派生），不足时新词补位。
+- `GET /api/words/daily?count=`：**优先执行当日 LearningPlan 词队列**（T-006，见 §5.15：带内词 + ≤20% 超带接触词，`fromPlan`/`isExposure` 标记）；无 Plan、Plan 过期（>7 天）或当日队列为空 → 回退既有逻辑——按用户 Vocabulary 分取 `[score, score+12]` 难度带单词 + `EstimatedKnownRate<0.4` 弱词，各占约一半（`DailyWordSelectionService`）。**T-014：返回词带生命周期阶段 `stage` 与考察模式 `quizMode`**（认识=recognition 看词知义，回忆及以后=recall 看义想词，新词默认认识模式）。**T-034：两条路径都保证 ≥40% 名额给「已成熟待推进」老词的回忆考察位**（`RecallExamQuotaRatio` 常量；池 = recalled 阶段 + 认识且 `RepeatCount≥2` 的残留词，`StageUpdatedAt` 最早优先，考察模式按阶段派生），不足时新词补位。**T-050：count 默认 10→15（上限 20 不变），前端 `/learn` 未作答前可选 10/15/20（默认 15，localStorage `nextword.settings.dailyWordCount` 持久化，改量即重载队列）；背词进度口径 = 已作答数（按词 id 去重）/ 本次队列总数——prev 回退不倒退，末词提交后显示 100%，再点「完成」进完成页；Dashboard 首页新词计数同步按 15 预览。**
 - `POST /api/learning/submit`：提交作答（`mode`=recognition/recall，回忆模式需正确拼出词本身）→ SM-2 排程更新 + `EstimatedKnownRate`/`PersonalDifficulty`（EMA）+ 连胜天数 + **生命周期阶段推进（T-014，见 §5.17）**。**自评（Remembered/Forgot）只改 SM-2 排程参数，不再按自评加减掌握度**——`MasteryScore` 由阶段派生（25/50/75/100）。**Vocabulary 小步回写（T-047）**：落库后经 `PracticeScoreWritebackService` 回写——observed = 考察词有效难度分（`EffectiveDifficultyCalculator` 0-100）× 表现系数（答对 1.0/答错 0.3，答错不是零——错在难词上有信息量），delta = clamp(round((observed − current) × 0.05), −1, +1)（背词高频，步长比 Writing 缓防刷），幂等键 `vocab-score:{WordLearningLogId}`。
 - SM-2 变体（`Sm2Service`）：EF 下限 1.3，间隔上限 3650 天；只管认识/回忆两阶段调度。
 - `POST /api/words` 新增单词时调用 LLM `RateDifficultyAsync` 自动定级（DifficultyLevel + CefrLevel + 0–100 IntrinsicScore 标注）。
 
 ### 5.2 拼写（`/spelling`）
 
-- `GET /api/spelling/queue`：到期复习队列，无到期词时回退每日词。
+- `GET /api/spelling/queue`：**T-052：新增 `mode=review|new|mixed`（默认 mixed，非法值回退 mixed）。队列组装下沉 `SpellingService.GetQueueAsync`：review=只到期复习词；new=只带内新词；mixed=新词 30%、复习 70%（3:7 AwayFromZero 取整，count=12 → 新 4 复习 8），复习不足新词补位、新词不足复习补位，两者皆空返回空队列（前端空态「太棒了，当前没有可拼写的词」）。新词不再按 DifficultyLevel+字母序从词表头拿，改为与每日词回退一致的带内口径（内在难度分落 [vocabScore, vocabScore+12] 的未学词随机取）。响应项带 `isReview` 标记，前端题面显示「复习/新词」徽标；`/spelling` 未作答前可选模式（复习/新词/混合，默认混合，localStorage `nextword.settings.spellingMode` 持久化，切换即重载队列）。** T-051：count 默认 8→12（上限 20 不变），前端 `/spelling` 未作答前可选 8/12/16/20（默认 12，localStorage `nextword.settings.spellingCount` 持久化，改量即重载队列）；进度口径与 /learn 一致 = 已作答数（按词 id 去重）/ 本次队列总数——百分比进度条 + 「第 x/y 个」，prev 回退不倒退；末词提交后点「完成」进完成页（本次正确数 + 错词回顾），修复了原 next() 钳制在末词永远到不了完成态的问题；Dashboard 首页拼写计数同步按 12 预览。
 - `POST /api/spelling/submit`：含逐字母错误位置标注；前端发音播放 + 错误高亮。
 
 ### 5.3 造句工作室（`/sentence`）
@@ -76,7 +76,7 @@ docker-compose.yml        postgres:16-alpine + redis:7-alpine + api（容器内 
 
 - 短文库按难度/CEFR 筛选分组；种子含 21 篇分级短文。
 - `GET /api/articles/recommended`（T-006）：有当日 Plan 按主攻场景选文（TopicTag/场景匹配 + 难度就近，`fromPlan=true`）；无 Plan/过期按难度就近回退。前端短文库顶部展示「今日推荐」。
-- 阅读器：逐词渲染点词查义（`POST /api/reading/lookup`，先查 `ArticleVocabMappings` 文章级缓存，缺失再 LLM 并 upsert；返回音标 + 文中/其他场景双例句 + 熟悉度）。
+- 阅读器：逐词渲染点词查义（`POST /api/reading/lookup`，先查 `ArticleVocabMappings` 文章级缓存，缺失再 LLM 并 upsert；返回音标 + 文中/其他场景双例句 + 熟悉度）。**查词降级口径（T-049）**：Mock 占位释义与真实 LLM 失败后的回退内容带 `DefinitionResponse.IsFallback` 标记——不写入 `ArticleVocabMappings` 永久缓存（防占位套话被反复 FromCache 复用），响应 `Offline=true`，前端弹层显示「离线释义，可能不准确」提示；弹层文中语境例句（contextual）及中文解释默认展开，其余例句折叠。存量已被占位内容污染的缓存行未清理（见 T-056）。
 - `POST /api/articles/{id}/vocab-extract`：LLM 提取重点词汇（含音标 + 用法例句）并持久化；存量数据 lazy backfill。
 - 段落批注：`GET/POST /api/articles/{articleId}/comments`，可请求 AI 回复。
 - 阅读日志：`reading/start` → `reading-logs/{logId}/finish`（计时、查词数参与评分）。**Reading 小步回写（T-047）**：finish 落库后经 `PracticeScoreWritebackService` 回写——observed = 文章难度分 × 查词修正系数（查词率 = 查词数/正文词数，≤5% → 1.0，每超 5% 减 0.1，下限 0.5——查词多是正常学习行为，只降权不惩罚），delta = clamp(round((observed − current) × 0.1), −2, +2)，幂等键 `reading-score:{ReadingLogId}`。
@@ -94,6 +94,8 @@ docker-compose.yml        postgres:16-alpine + redis:7-alpine + api（容器内 
 - 端点：`GET /api/assessment/{id}/next-block`（幂等，未提交的块重发原题）→ `POST /api/assessment/{id}/blocks/{n}/submit`（同步 LLM 评分，收敛时直接定级并入队 `EvaluationReport`）。
 - **老用户文案（T-030）**：`hasCompletedInitialAssessment=true` 的用户进入 `/assessment` 显示「重新水平测评」+「本次结果将覆盖现有定级」提示，不再显示「首次水平测评」。
 - **造句评分 prompt（T-030）**：`LlmPromptFactory.BuildSentenceRatingPrompt` 的 Scene 字段改传场景中文名（`ScenarioTaxonomy.Find(key)?.ZhName`，未收录回退原 key），避免 LLM 反馈文案复述内部场景 key 且与计划卡口径一致。
+- **测评记录可视化（T-054，DESIGN-assessment-visibility R1/R2）**：`GET /api/assessments` 列出本人历次测评（开始时间倒序，只读无分页；表达综合分与「是否识别矫正」从 FinalLevel 记录的 `AssessmentFinalResult` JSON 投影）；`GET /api/assessment/{id}` 补归属校验（仅本人，他人 id 404），返回 `AssessmentDetailView` DTO 投影（Assessment + Records，不含导航回引用——直接返回实体会因 `AssessmentRecord.Assessment` 循环引用致 JSON 序列化截断，qa D1 修复）。块评分 `ProductionScore` 新增可空 `Suggestion`/`AiRevision`——新测评起逐题 AI 评语随测评记录持久化（旧记录 JSON 无此属性反序列化为 null，前端只显示四维分 + 错误标签优雅降级）；`SentenceLog` 留痕链路不动。前端新页面 `/assessments`（列表 + 按块按题详情：题目/作答原文/四维分/总评档/AI 评语与改写/错误标签，复用练习流 ScoreCard/ErrorAnalysis/AiRevision），入口在 `/profile` 等级历史区与 `/manage` 测评记录卡片；空态引导「定期重测追踪进步」。
+- **人话水平 rubric（T-055，DESIGN-assessment-visibility R3）**：Domain 纯函数 `ProficiencyRubric`（规则映射、零 LLM，文案常量集中一处）——总体标签按表达综合分经 ScoreMapping:CefrBands 分带（复用 `AssessmentScoringService.MapExpressionScore`，单一数据源）映射五档（起步/粗糙/凑合/还不错/很溜，C1/C2 同档）；grammar/natural/vocabulary/relevance 四维按 0–5 三档（≤2 弱 / 3 中 / ≥4 强）映射人话特征描述。rubric 视图随 `AssessmentFinalResult.Rubric` 持久化（旧记录无此字段降级不显示）；测评结果页与 `/assessments` 详情头部结论先行展示（标签居首、分数靠后），结果页另列 TopErrorTags「常见问题」（错误标签本身是 LLM 按解释语言 zh-CN 生成的中文自由文本，直接展示，无 key 映射表）；评估报告 summary 头部加「总体评价」一行（T-059 起与测评 rubric 同口径：表达综合分表达带 → 标签——测评触发报告取 `FinalResult.ExpressionScore`，其余报告回退档案写作分，不按矫正后 CefrDisplay；ContentJson 为快照仅对新报告生效）。前端展示组件 `ProficiencyRubric` 只渲染后端装配好的中文文案，不做映射。
 
 ### 5.6 综合挑战（`/challenge`）
 
@@ -177,7 +179,7 @@ Worker 异常不拖垮宿主（`BackgroundServiceExceptionBehavior=Ignore`）。
 ### 5.15 LearningPlan + PlannerWorker（I3 T-006）
 
 - **计划结构**：`LearningPlans` 表（`(UserId, StartDate)` 唯一 → 同日幂等；枚举-free，内容明细存 `ContentJson`）：7 日计划 = 主攻场景（1–2 个子场景）+ 每日词队列（带内词 + ≤20% 超带接触词）+ 阅读推荐（3 篇）+ 每日造句目标（3 词）+ 生成依据 Finding id 列表；设计见 `docs/DESIGN-planner-worker.md`。
-- **生成（`LearningPlanService`）**：主攻场景只取自最新画像的 **Verified 场景 weakness Finding**（存疑不进规划），画像不足按场景词覆盖率最低者兜底；`sourceFindingIds` 来源标记诚实反映计划消费的 Verified Finding——场景维 weakness（主攻场景依据）+ 技能维 weakness（T-032 修复：技能画像也让计划对消费者即「个性化」，顾言口径 = 基于任何 Verified Finding），存疑条目始终不计；水平带用 **CEFR**（`CefrDisplay`，与测评词池口径一致——词库词多数无 IntrinsicScore 标注，intrinsic 带会落空），带池过薄向下一带补充、绝不超带；接触词 = CEFR 严格高于水平带的词，每天 ≤2 个（10 × 20%），只进背词识别队列；**每日造句目标优先取 T-014 产出候选池**（prompted_use 阶段且未确认的词，带内、utility 非 low，按进池时间 7 天顺次消耗），**T-034 二级补位 Recalled 池**（recalled 且带内、utility 非 low，`StageUpdatedAt` 最早优先），两级都空才取当日带内词。
+- **生成（`LearningPlanService`）**：主攻场景只取自最新画像的 **Verified 场景 weakness Finding**（存疑不进规划），画像不足按场景词覆盖率最低者兜底；`sourceFindingIds` 来源标记诚实反映计划消费的 Verified Finding——场景维 weakness（主攻场景依据）+ 技能维 weakness（T-032 修复：技能画像也让计划对消费者即「个性化」，顾言口径 = 基于任何 Verified Finding），存疑条目始终不计；水平带用 **CEFR**（`CefrDisplay`，与测评词池口径一致——词库词多数无 IntrinsicScore 标注，intrinsic 带会落空），带池过薄向下一带补充、绝不超带；接触词 = CEFR 严格高于水平带的词，每天 ≤3 个（T-050 起每日 15 词 × 20%，带内 12 + 接触 3），只进背词识别队列；**每日造句目标优先取 T-014 产出候选池**（prompted_use 阶段且未确认的词，带内、utility 非 low，按进池时间 7 天顺次消耗），**T-034 二级补位 Recalled 池**（recalled 且带内、utility 非 low，`StageUpdatedAt` 最早优先），两级都空才取当日带内词。
 - **触发（`PlannerWorker`，BackgroundJob 新任务类型）**：测评完成 → 评估报告任务处理时入队（幂等键 `planner:{userId}:{yyyyMMdd}`，同日重复触发复用同一 job 且不重复生成）；`POST /api/planner/jobs` 可手动触发当前用户当日任务；`GET /api/planner/current` 查当日有效 Plan。
 - **内容来源切换**：每日选词 / 阅读推荐 / 造句出题均优先执行当日 Plan（`GetActiveAsync`：StartDate 起 7 天内有效），无 Plan、过期（>7 天）或生成失败 → 回退既有逻辑（用户永远有内容可学）。前端以「来自今日计划」徽标标示（WordDisplay / SentenceCard / 短文库推荐区）。
 - **重规划（T-007）**：`GenerateAsync(force: true)` 同日已有 Plan 时原地重建内容（`(UserId, StartDate)` 唯一不破，`CreatedAt` 刷新）；由瓶颈性质变化（`planner:replan:{userId}:{yyyyMMdd}`）或每周兜底（`planner:weekly:{userId}:{ISO 周}`）触发。
@@ -246,7 +248,8 @@ Worker 异常不拖垮宿主（`BackgroundServiceExceptionBehavior=Ignore`）。
 - `POST /api/assessment/initial/start`、`POST /api/assessment/initial/skip`
 - `GET /api/assessment/{id}/next-block`（自适应块，幂等）
 - `POST /api/assessment/{id}/blocks/{blockIndex}/submit`（块提交，收敛时定级）
-- `GET /api/assessment/{id}`
+- `GET /api/assessment/{id}`（T-054 起归属校验：仅本人，他人 id 404；返回 AssessmentDetailView DTO 投影，非实体）
+- `GET /api/assessments`（T-054：本人测评历史列表，倒序，含表达综合分与识别矫正标记）
 - `POST /api/challenge/start`、`POST /api/challenge/submit`、`GET /api/challenge/recent`
 - `GET /api/level/dashboard`、`GET /api/level/history`
 
@@ -296,6 +299,7 @@ Users、UserLlmSettings、Words、WordScenarios、WordDifficultyAnnotations、Di
 | `/reading` | ArticleLibrary | 按难度筛选、难度/CEFR 分组 |
 | `/reading/:articleId` | ArticleReader | 点词查义弹层、词汇提取面板、评论线程、阅读计时 |
 | `/assessment` | InitialAssessment | 自适应分块测评（2–3 块，产出为主）+ 结果页 |
+| `/assessments` | AssessmentsPage | T-054 测评记录：历史列表 + 按块按题详情（四维分/AI 评语与改写/错误标签，复用练习流组件，旧记录降级） |
 | `/challenge` | ChallengeMode | 三阶段挑战（阅读 3 题）+ 通过点评/计数 + 候选确认挑战引导条 + 近期挑战列表（满分参照） |
 | `/review` | ReviewQueue | 翻转卡片复习 + 活动统计 + 最近记录 |
 | `/word-bank` | Home | 全量词条表格 + 搜索 + 详情 |

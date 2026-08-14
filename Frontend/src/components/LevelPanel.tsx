@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { api } from '../api/client'
 import { endpoints } from '../api/endpoints'
 import { Badge } from './ui/Badge'
@@ -182,8 +183,9 @@ export function LevelPanel() {
         </section>
       )}
 
-      <div className="section-header">
+      <div className="section-header row-between">
         <h3>等级历史</h3>
+        <Link to="/assessments" style={{ fontSize: 'var(--text-sm)' }}>测评记录 →</Link>
       </div>
       {dashboard.challengePassCount > 0 && (
         <p style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>

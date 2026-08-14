@@ -14,6 +14,7 @@ import { ManagePage } from './pages/ManagePage'
 import type { ProgressSummary } from './types/models'
 import { ArticleLibrary } from './pages/ArticleLibrary'
 import { ArticleReaderRoute } from './pages/ArticleReaderRoute'
+import { AssessmentsPage } from './pages/AssessmentsPage'
 import { ChallengeMode } from './pages/ChallengeMode'
 import { Dashboard } from './pages/Dashboard'
 import { Home } from './pages/Home'
@@ -91,6 +92,7 @@ function AuthenticatedApp() {
 
   const manageNavigate = useCallback((target: ManageView) => {
     if (target === 'assessment') navigate('/assessment')
+    else if (target === 'assessments') navigate('/assessments')
     else if (target === 'challenge') navigate('/challenge')
     else if (target === 'home') navigate('/word-bank')
     else navigate('/profile#profile-progress')
@@ -132,6 +134,7 @@ function AuthenticatedApp() {
         )}
       />
       <Route path="/challenge" element={<ChallengeMode />} />
+      <Route path="/assessments" element={<AssessmentsPage />} />
       <Route path="/level" element={<Navigate to="/profile#profile-level" replace />} />
       <Route path="/review" element={<ReviewQueue />} />
       <Route path="/word-bank" element={<Home onStart={() => navigate('/learn')} />} />

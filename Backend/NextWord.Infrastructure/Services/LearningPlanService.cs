@@ -19,7 +19,8 @@ public sealed class LearningPlanService(
     IScoreProfileService scoreProfile) : ILearningPlanService
 {
     public const int PlanDays = 7;
-    public const int DailyWordCount = 10;
+    /// <summary>每日词队列总量（T-050：10→15，带内 12 + 接触 3）。</summary>
+    public const int DailyWordCount = 15;
     /// <summary>接触词（超带词）占每日词队列的上限（VISION §4.3：≤20%，只进背词识别队列）。</summary>
     public const double MaxExposureRatio = 0.2;
     private const int DailySentenceTargets = 3;

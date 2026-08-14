@@ -51,8 +51,8 @@ export function useDashboardStats(progress: ProgressSummary | null) {
       setStats((current) => ({ ...current, loading: true }))
 
       const [dailyResult, spellingResult, sentenceResult] = await Promise.allSettled([
-        api.get<Word[]>(endpoints.dailyWords, { params: { count: 8 } }),
-        api.get<Word[]>(endpoints.spellingQueue, { params: { count: 8 } }),
+        api.get<Word[]>(endpoints.dailyWords, { params: { count: 15 } }),
+        api.get<Word[]>(endpoints.spellingQueue, { params: { count: 12 } }),
         api.get<SentencePrompt[]>(endpoints.sentencePrompts, { params: { count: 10 } }),
       ])
 

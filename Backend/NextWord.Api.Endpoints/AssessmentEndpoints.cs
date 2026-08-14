@@ -44,11 +44,23 @@ public static class AssessmentEndpoints
             return Results.Ok(result);
         });
 
-        group.MapGet("/{assessmentId:guid}", async (Guid assessmentId, IAssessmentService assessment, CancellationToken ct) =>
+        group.MapGet("/{assessmentId:guid}", async (HttpContext http, Guid assessmentId, IUserRepository users, IAssessmentService assessment, CancellationToken ct) =>
         {
+            // T-054：归属校验——只能查看本人测评，他人 id 一律 404
+            var user = await ResolveUserAsync(http, null, users, ct);
+            if (user is null) return Results.Unauthorized();
             var item = await assessment.GetAsync(assessmentId, ct);
-            return item is null ? Results.NotFound() : Results.Ok(item);
+            // D1 修复：返回 DTO 投影而非实体——实体的 Records 导航回引用会造成 JSON 循环
+            return item is null || item.UserId != user.Id ? Results.NotFound() : Results.Ok(AssessmentDetailView.FromEntity(item));
         });
+
+        // T-054：测评历史列表（仅本人，按开始时间倒序，只读无分页）
+        app.MapGet("/api/assessments", async (HttpContext http, IUserRepository users, IAssessmentService assessment, CancellationToken ct) =>
+        {
+            var user = await ResolveUserAsync(http, null, users, ct);
+            if (user is null) return Results.Unauthorized();
+            return Results.Ok(await assessment.ListForUserAsync(user.Id, ct));
+        }).WithTags("Assessment");
     }
 
     private static Task<Domain.Entities.User?> ResolveUserAsync(HttpContext http, Guid? userId, IUserRepository users, CancellationToken ct)

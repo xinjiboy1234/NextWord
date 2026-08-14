@@ -19,7 +19,7 @@ export function ReviewQueue() {
     setLoading(true)
     const [summaryResponse, wordsResponse, logsResponse] = await Promise.all([
       api.get<LogSummary>(endpoints.logSummary),
-      api.get<Word[]>(endpoints.spellingQueue, { params: { count: 10 } }),
+      api.get<Word[]>(endpoints.spellingQueue, { params: { count: 10, mode: 'review' } }),
       api.get<RecentLog[]>(endpoints.recentLogs, { params: { count: 10 } }),
     ])
     setSummary(summaryResponse.data)

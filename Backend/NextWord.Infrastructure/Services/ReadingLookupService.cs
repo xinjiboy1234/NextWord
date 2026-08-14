@@ -78,7 +78,8 @@ public sealed class ReadingLookupService(
             phonetic = string.IsNullOrWhiteSpace(definition.Phonetics) ? phonetic : definition.Phonetics;
             specialUsage = definition.SpecialUsage;
             examples = definition.Examples.Select(WordExampleDto.FromModel).ToList();
-            offline = string.IsNullOrWhiteSpace(definition.Meanings.FirstOrDefault()?.Definition);
+            // T-049：降级内容（Mock 占位 / LLM 失败回退）按离线处理，响应 Offline=true 让前端可见提示
+            offline = definition.IsFallback || string.IsNullOrWhiteSpace(definition.Meanings.FirstOrDefault()?.Definition);
         }
         catch
         {

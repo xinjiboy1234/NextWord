@@ -26,10 +26,11 @@ export type AppView =
   | 'progress'
   | 'profile'
   | 'manage'
+  | 'assessments'
 
 export type DashboardView = 'learn' | 'spelling' | 'sentence' | 'reading' | 'review'
 
-export type ManageView = 'assessment' | 'challenge' | 'home' | 'progress'
+export type ManageView = 'assessment' | 'assessments' | 'challenge' | 'home' | 'progress'
 
 interface NavItem {
   id: AppView
@@ -78,6 +79,7 @@ export const VIEW_TITLES: Partial<Record<AppView, string>> = {
   progress: '学习进度',
   profile: '我的',
   manage: '管理',
+  assessments: '测评记录',
 }
 
 export function isPracticeView(view: AppView): boolean {

@@ -83,6 +83,7 @@ export function ArticleReader({ articleId, onBack }: ArticleReaderProps) {
               loading={lookup.loading}
               knownRate={lookup.lookupMeta?.estimatedKnownRate}
               personalDifficulty={lookup.lookupMeta?.personalDifficulty}
+              offline={lookup.lookupMeta?.offline}
               onClose={lookup.clear}
             />
           </aside>

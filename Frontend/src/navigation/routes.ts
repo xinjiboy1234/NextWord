@@ -14,6 +14,7 @@ export const ROUTE_PATHS: Record<AppView, string> = {
   progress: '/progress',
   profile: '/profile',
   manage: '/manage',
+  assessments: '/assessments',
 }
 
 const PATH_TO_VIEW: Record<string, AppView> = Object.fromEntries(

@@ -93,6 +93,16 @@ public class AdaptiveAssessmentServiceTests
         // 产出题全部走 LLM 评分链路留痕：3 块 × 3 题 = 9 条 SentenceLog
         Assert.Equal(9, await db.SentenceLogs.CountAsync(item => item.UserId == user.Id));
 
+        // T-054：逐题 AI 评语/改写随块评分持久化（stub：suggestion 固定文案，aiRevision 回显作答）
+        var blockRecord = await db.AssessmentRecords
+            .SingleAsync(item => item.AssessmentId == assessment.Id && item.QuestionType == "block:1");
+        using var scoresDoc = JsonDocument.Parse(blockRecord.ScoresJson);
+        Assert.All(scoresDoc.RootElement.GetProperty("production").EnumerateArray(), item =>
+        {
+            Assert.Equal("stub suggestion", item.GetProperty("suggestion").GetString());
+            Assert.Equal("I wrote a long enough answer here.", item.GetProperty("aiRevision").GetString());
+        });
+
         var progress = await db.UserProgress.SingleAsync(item => item.UserId == user.Id);
         Assert.True(progress.HasCompletedInitialAssessment);
         Assert.Equal(CefrLevel.C1, progress.OverallLevel);
@@ -195,6 +205,14 @@ public class AdaptiveAssessmentServiceTests
         Assert.Equal(CefrLevel.B1, recorded.OverallLevel);
         Assert.Equal(CefrLevel.B2, recorded.OriginalLevelBeforeGuard);
 
+        // T-054：历史列表投影——表达综合分与识别矫正标记来自 FinalLevel 记录
+        var listItem = Assert.Single(await service.ListForUserAsync(user.Id, CancellationToken.None));
+        Assert.Equal(assessment.Id, listItem.Id);
+        Assert.Equal(AssessmentStatus.Completed, listItem.Status);
+        Assert.Equal(CefrLevel.B1, listItem.FinalLevel);
+        Assert.Equal(76, listItem.ExpressionScore);
+        Assert.True(listItem.GuardAdjusted);
+
         // 矫正传导（qa-t042 P1）：三维分数先验 clamp 到矫正后档内（B1 上限 69），CefrDisplay 取矫正后档
         var progress = await db.UserProgress.SingleAsync(item => item.UserId == user.Id);
         Assert.Equal(CefrLevel.B1, progress.OverallLevel);
@@ -271,6 +289,39 @@ public class AdaptiveAssessmentServiceTests
         }
 
         Assert.Contains(indices, index => index != 0);
+    }
+
+    /// <summary>T-054：历史列表只含本人测评、按开始时间倒序；无 FinalLevel 记录时表达分降级为 null。</summary>
+    [Fact]
+    public async Task List_history_returns_only_own_assessments_descending()
+    {
+        await using var db = await PostgresTestDatabase.CreateContextAsync();
+        var service = CreateService(db, new StubLlmProvider(3, 3, 3, 3));
+        var user = new User { DisplayName = "assessment-list" };
+        var other = new User { DisplayName = "assessment-list-other" };
+        db.Users.AddRange(user, other);
+        await db.SaveChangesAsync();
+
+        var first = await service.StartInitialAsync(user.Id, CancellationToken.None);
+        await service.SkipInitialAsync(user.Id, CancellationToken.None);
+        var second = await service.StartInitialAsync(user.Id, CancellationToken.None);
+        var otherAssessment = await service.StartInitialAsync(other.Id, CancellationToken.None);
+
+        var list = await service.ListForUserAsync(user.Id, CancellationToken.None);
+        Assert.Equal(2, list.Count);
+        Assert.Equal(second.Id, list[0].Id);
+        Assert.Equal(first.Id, list[1].Id);
+        Assert.DoesNotContain(list, item => item.Id == otherAssessment.Id);
+        Assert.True(list[0].StartAt >= list[1].StartAt);
+
+        // 跳过完成的测评无 FinalLevel 记录：表达综合分 null、未矫正
+        Assert.Equal(AssessmentStatus.Completed, list[1].Status);
+        Assert.Equal(CefrLevel.A2, list[1].FinalLevel);
+        Assert.Null(list[1].ExpressionScore);
+        Assert.False(list[1].GuardAdjusted);
+        // 进行中的测评同样降级
+        Assert.Equal(AssessmentStatus.InProgress, list[0].Status);
+        Assert.Null(list[0].ExpressionScore);
     }
 
     // ── 工具 ────────────────────────────────────────────────

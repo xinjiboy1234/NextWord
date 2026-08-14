@@ -14,6 +14,11 @@ export interface Word {
   isCore: boolean
 }
 
+/** T-052：拼写队列项，isReview 标记来源（true 到期复习 / false 带内新词），用于题面徽标 */
+export interface SpellingQueueWord extends Word {
+  isReview: boolean
+}
+
 /** T-034：已毕业词（spontaneous_use），graduatedAt 为毕业当刻（阶段流转时间） */
 export interface GraduatedWord {
   wordId: string

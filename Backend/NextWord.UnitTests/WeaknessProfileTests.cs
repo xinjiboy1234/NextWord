@@ -501,6 +501,7 @@ public class WeaknessProfileTests
             new StubBackgroundJobs(),
             assembler,
             CreateProfileService(db, llm),
+            new AssessmentScoringService(new ScoreMappingOptions()),
             NullLogger<EvaluationReportService>.Instance);
     }
 

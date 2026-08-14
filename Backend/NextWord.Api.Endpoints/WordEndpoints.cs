@@ -52,7 +52,8 @@ public static class WordEndpoints
                 return Results.Unauthorized();
             }
 
-            var result = await dailyWords.GetDailyAsync(user.Id, Math.Clamp(count ?? 10, 1, 20), ct);
+            // T-050：默认每日词量 10→15（上限 20 不变，前端可选 10/15/20）
+            var result = await dailyWords.GetDailyAsync(user.Id, Math.Clamp(count ?? 15, 1, 20), ct);
             return Results.Ok(result);
         });
 

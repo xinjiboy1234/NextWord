@@ -45,7 +45,9 @@ public sealed class LlmMockProvider(IModelProfileResolver modelProfileResolver) 
             BuildMockExamples(request.Word, request.Context, useChinese),
             useChinese ? "注意该词在上下文中的具体用法。" : "Note how this word is used in context.",
             rating.Difficulty,
-            rating.Cefr));
+            rating.Cefr,
+            // T-049：Mock 释义为占位内容，标记降级——不缓存、前端可见提示
+            IsFallback: true));
     }
 
     public Task<SentenceRatingResponse> RateSentenceAsync(SentenceRatingRequest request, CancellationToken cancellationToken)

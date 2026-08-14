@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { OptionTags } from '../components/OptionTags'
+import { ProficiencyRubric } from '../components/ProficiencyRubric'
 import { Progress } from '../components/ui/Progress'
 import { useAssessmentFlow } from '../hooks/useAssessmentFlow'
 import type { AssessmentAnswerItem } from '../types/assessment'
@@ -114,8 +115,24 @@ export function InitialAssessment({ autoStart = false, immersive = false, hasCom
       <section className={sectionClass}>
         <div className="alert alert-success">
           <h3 style={{ fontWeight: 540 }}>定级结果</h3>
+          {/* T-055：结论先行——人话总体标签 + 四维特征描述居首，等级/分数靠后 */}
+          {final.rubric && (
+            <div style={{ marginTop: 'var(--space-2)' }}>
+              <ProficiencyRubric rubric={final.rubric} />
+            </div>
+          )}
           <p style={{ marginTop: 'var(--space-2)', fontSize: 'var(--text-sm)' }}>总体等级：{final.overallLevel}</p>
           <p style={{ fontSize: 'var(--text-sm)' }}>表达力综合分：{final.expressionScore}/100</p>
+          {final.dimensions.topErrorTags.length > 0 && (
+            <div style={{ marginTop: 'var(--space-2)', fontSize: 'var(--text-sm)' }}>
+              <p style={{ fontWeight: 540 }}>常见问题</p>
+              <ul style={{ marginTop: 'var(--space-1)' }} className="stack stack-sm">
+                {final.dimensions.topErrorTags.map((tag, index) => (
+                  <li key={index}>{tag}</li>
+                ))}
+              </ul>
+            </div>
+          )}
           <ul style={{ marginTop: 'var(--space-2)', fontSize: 'var(--text-sm)' }} className="stack stack-sm">
             {final.dimensions.comments.map((comment, index) => (
               <li key={index}>{comment}</li>

@@ -47,6 +47,8 @@ public interface IAssessmentService
     Task<AssessmentBlockResponse> GetNextBlockAsync(Guid assessmentId, CancellationToken cancellationToken);
     Task<AssessmentBlockResult> SubmitBlockAsync(Guid assessmentId, int blockIndex, IReadOnlyList<AssessmentAnswerItem> answers, CancellationToken cancellationToken);
     Task<Assessment?> GetAsync(Guid assessmentId, CancellationToken cancellationToken);
+    /// <summary>T-054：当前用户测评历史列表（按开始时间倒序，只读无分页）。</summary>
+    Task<IReadOnlyList<AssessmentListItem>> ListForUserAsync(Guid userId, CancellationToken cancellationToken);
     Task SkipInitialAsync(Guid userId, CancellationToken cancellationToken);
 }
 

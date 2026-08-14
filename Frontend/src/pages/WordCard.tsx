@@ -5,13 +5,17 @@ import { FeedbackArea } from '../components/FeedbackArea'
 import { ProgressBar } from '../components/ProgressBar'
 import { StepNavigator } from '../components/StepNavigator'
 import { Badge } from '../components/ui/Badge'
+import { RadioGroup } from '../components/ui/RadioGroup'
 import { WordDisplay, stageLabel } from '../components/WordDisplay'
+import { useDailyWordCount, DAILY_WORD_COUNT_OPTIONS } from '../hooks/useDailyWordCount'
 import { useLearningLog } from '../hooks/useLearningLog'
 import { useWordSession } from '../hooks/useWordSession'
 import type { AssessmentResult } from '../types/models'
 
 export function WordCard() {
-  const session = useWordSession()
+  // T-050：每日词量可选 10/15/20（默认 15，localStorage 持久化），改量在未作答时生效并重载队列
+  const { dailyWordCount, setDailyWordCount } = useDailyWordCount()
+  const session = useWordSession(dailyWordCount)
   const learning = useLearningLog()
   const [answer, setAnswer] = useState('')
   const [submitted, setSubmitted] = useState(false)
@@ -50,6 +54,7 @@ export function WordCard() {
     const elapsed = Date.now() - startedAt.current
     const result = await learning.submit(session.currentWord.id, answer, rating, elapsed, quizMode)
     if (result) {
+      session.markAnswered(session.currentWord.id)
       setSubmitted(true)
     }
   }
@@ -59,6 +64,7 @@ export function WordCard() {
     const elapsed = Date.now() - startedAt.current
     const result = await learning.submit(session.currentWord.id, '', 'Forgot', elapsed, quizMode)
     if (result) {
+      session.markAnswered(session.currentWord.id)
       setSubmitted(true)
     }
   }
@@ -108,6 +114,17 @@ export function WordCard() {
           <span>{session.progress}%</span>
         </div>
         <ProgressBar value={session.progress} />
+        {session.answeredCount === 0 && (
+          <div className="row-between" style={{ marginTop: 'var(--space-3)', fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>
+            <span>每日词量</span>
+            <RadioGroup
+              name="daily-word-count"
+              value={String(dailyWordCount)}
+              onValueChange={(value) => setDailyWordCount(Number(value))}
+              options={DAILY_WORD_COUNT_OPTIONS.map((option) => ({ value: String(option), label: `${option} 词` }))}
+            />
+          </div>
+        )}
       </div>
 
       {quizMode === 'recall' ? (
@@ -151,8 +168,7 @@ export function WordCard() {
               onPrevious={session.prev}
               onNext={nextWord}
               canPrevious={session.index > 0}
-              canNext={session.index < session.total - 1}
-              nextLabel="下一个"
+              nextLabel={session.index < session.total - 1 ? '下一个' : '完成'}
             />
           </div>
         </>

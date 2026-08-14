@@ -2,6 +2,7 @@ import {
   BarChart3,
   ChevronRight,
   ClipboardCheck,
+  History,
   Layers,
   Settings,
   Trophy,
@@ -32,8 +33,14 @@ const MANAGE_SECTIONS = [
       {
         id: 'assessment' as const,
         title: '水平测评',
-        description: '5 步 CEFR 定级：词汇、拼写、造句、阅读',
+        description: '自适应分块定级：以造句与情境表达为主，2–3 块出结果',
         icon: ClipboardCheck,
+      },
+      {
+        id: 'assessments' as const,
+        title: '测评记录',
+        description: '历次测评结果与逐题 AI 评语',
+        icon: History,
       },
       {
         id: 'challenge' as const,

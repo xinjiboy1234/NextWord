@@ -20,7 +20,7 @@ function mapLookupToDefinition(result: ReadingLookupResult, context?: string): W
     meanings: [{ definition: result.contextDefinition, isContextual: true, context: context ?? '' }],
     collocations: [],
     examples: mapExamples(result.examples),
-    specialUsage: result.specialUsage ?? (result.offline ? '离线释义' : ''),
+    specialUsage: result.specialUsage ?? '',
     difficultyLevel: 'Intermediate',
     cefrLevel: 'B1',
   }

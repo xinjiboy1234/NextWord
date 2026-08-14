@@ -89,6 +89,56 @@ public sealed class ArticleVocabCacheTests
         Assert.NotNull(stored.ExamplesJson);
     }
 
+    [Fact]
+    public async Task GetOrCreateWordDetailAsync_DoesNotCacheFallbackDefinition()
+    {
+        await using var db = await PostgresTestDatabase.CreateContextAsync();
+        var articleId = await SeedArticleAsync(db);
+        var llm = new TrackingLlmProvider { IsFallback = true };
+        var service = CreateService(db, llm);
+
+        var first = await service.GetOrCreateWordDetailAsync(articleId, Guid.NewGuid(), "cart", "from a cart", CancellationToken.None);
+        var second = await service.GetOrCreateWordDetailAsync(articleId, Guid.NewGuid(), "cart", "from a cart", CancellationToken.None);
+
+        // T-049：降级内容不写入 ArticleVocabMappings，每次查词都重新调用 LLM
+        Assert.False(first.FromCache);
+        Assert.False(second.FromCache);
+        Assert.True(first.Definition.IsFallback);
+        Assert.Equal(2, llm.DefinitionCalls);
+        Assert.False(await db.ArticleVocabMappings.AnyAsync(
+            mapping => mapping.ArticleId == articleId && mapping.WordLemma == "cart"));
+    }
+
+    [Fact]
+    public async Task GetOrCreateWordDetailAsync_FallbackDoesNotOverwriteLegacyMapping()
+    {
+        await using var db = await PostgresTestDatabase.CreateContextAsync();
+        var articleId = await SeedArticleAsync(db);
+        db.ArticleVocabMappings.Add(new ArticleVocabMapping
+        {
+            ArticleId = articleId,
+            WordLemma = "cart",
+            ContextMeaning = "保留的文中含义",
+            SpecialUsage = "旧提示",
+            DifficultyInContext = DifficultyLevel.Basic,
+            IsKeyVocab = true
+        });
+        await db.SaveChangesAsync();
+
+        var llm = new TrackingLlmProvider { IsFallback = true };
+        var service = CreateService(db, llm);
+
+        var result = await service.GetOrCreateWordDetailAsync(articleId, Guid.NewGuid(), "cart", "from a cart", CancellationToken.None);
+
+        // T-049：降级内容不回填既有未丰富映射，保持原样等待真实 LLM 成功后再丰富
+        Assert.False(result.FromCache);
+        Assert.Equal(1, llm.DefinitionCalls);
+        var stored = await db.ArticleVocabMappings.SingleAsync(mapping => mapping.ArticleId == articleId);
+        Assert.Equal("保留的文中含义", stored.ContextMeaning);
+        Assert.True(string.IsNullOrWhiteSpace(stored.Phonetics));
+        Assert.Null(stored.ExamplesJson);
+    }
+
     private static async Task<Guid> SeedArticleAsync(ApplicationDbContext db)
     {
         var article = new Article
@@ -117,6 +167,9 @@ public sealed class ArticleVocabCacheTests
     {
         public int DefinitionCalls { get; private set; }
 
+        /// <summary>T-049：模拟降级内容（Mock 占位 / LLM 失败回退）。</summary>
+        public bool IsFallback { get; set; }
+
         public Task<DifficultyRating> RateDifficultyAsync(ItemRatingRequest request, CancellationToken cancellationToken)
             => throw new NotImplementedException();
 
@@ -131,7 +184,8 @@ public sealed class ArticleVocabCacheTests
                 [new WordExample(WordExampleKind.Contextual, "Mock sentence.", "mock explanation")],
                 "mock usage",
                 DifficultyLevel.Basic,
-                CefrLevel.A2));
+                CefrLevel.A2,
+                IsFallback: IsFallback));
         }
 
         public Task<SentenceRatingResponse> RateSentenceAsync(SentenceRatingRequest request, CancellationToken cancellationToken)

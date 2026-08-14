@@ -45,7 +45,9 @@ public sealed record DefinitionResponse(
     IReadOnlyList<WordExample> Examples,
     string SpecialUsage,
     DifficultyLevel DifficultyLevel,
-    CefrLevel CefrLevel);
+    CefrLevel CefrLevel,
+    /// <summary>T-049：降级内容标记（Mock 占位释义或真实 LLM 失败后的回退内容）。降级内容不写永久缓存，响应需对用户可见降级。</summary>
+    bool IsFallback = false);
 
 public sealed record Meaning(
     string Definition,

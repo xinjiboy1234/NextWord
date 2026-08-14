@@ -2,6 +2,67 @@
 
 按时间倒序记录需求、决策、实现与验收。
 
+## 2026-08-09 — I8 验收收口：六个任务全部 done（周密）
+
+### 验收结论
+- **T-049 阅读查词**：通过。Mock/降级内容不写 ArticleVocabMappings（实测查词两次零新增）、offline 标记与前端降级提示链路完整、文中例句默认展开；真实 LLM 路径留档待有 key 环境复核。
+- **T-050 背词 / T-051 拼写量与进度 / T-052 拼写三模式**：全部通过。默认 15/12 实测、Plan 12+3 口径、mixed 精确新 4 复习 8、补位与双空、新词逐个 SQL 核对带内、完成态链路。
+- **T-054 测评记录**：打回一次后复验通过。阻断缺陷 D1——详情端点返回含导航循环引用的实体致响应截断（旧端点潜伏 bug，本任务使其成为发布阻断）；修复为 `AssessmentDetailView` DTO 投影 + 集成测试补 body 可解析断言；复验在防伪闸矫正场景下全链路硬断言通过。
+- **T-055 人话 rubric**：通过。37 例单测审查属实；矫正场景实测报告前缀与测评 rubric 标签一致。
+- 顺带修复：**T-057**（/review 显式 mode=review）、**T-059**（报告前缀按表达带取标签，顾言裁定统一口径）。
+
+### 不足与遗留（已登记 tasks.csv）
+- T-056 存量 ArticleVocabMappings 占位污染缓存清理（P2）；T-058 ScenarioAnnotationWorkerTests flaky（P2）；T-060 测评列表 FinalLevel JSON 反序列化容错（P2）。
+- 观察：I8 六个任务改动混在工作区未提交，按「一个任务一次提交」纪律提交时需按任务拆分。
+
+## 2026-08-09 — I8 T-055：人话水平 rubric 实现（程实）
+
+### 需求
+- `docs/DESIGN-assessment-visibility.md` §3.1（R3）：把分数翻译成用户能懂的水平描述，规则映射零 LLM；落点为测评结果页、测评详情、评估报告 summary 头部。验收 §4 第 2/3 条。
+
+### 实现
+- **Domain 纯函数 `ProficiencyRubric`**（Services/，文案常量集中一处）：总体标签按 CEFR 带映射五档（起步/粗糙/凑合/还不错/很溜，C1/C2 同档）；分带派生复用 `AssessmentScoringService.MapExpressionScore`（ScoreMapping:CefrBands 单一数据源，不复制分带数字）。四维（语法/自然度/词汇/相关度）按 0–5 三档（≤2 弱 / 3 中 / ≥4 强，小数均分按区间落档）映射人话特征描述。
+- **持久化与展示**：`AssessmentFinalResult` 新增可空 `Rubric`（`ProficiencyRubricView`：总体标签 + 四维中文名/得分/描述），FinalizeAsync 装配（总体标签取防伪闸矫正前的表达档——矫正只调等级外壳，不改变表达表现本身），随 FinalLevel 记录 JSON 持久化；旧记录无此字段降级不显示。
+- **错误标签人话化核查结论**：TopErrorTags 是 LLM 按解释语言（默认 zh-CN）生成的中文自由文本，无固定英文 key 词表可映射，故不建映射表——结果页直接以「常见问题」列出。
+- **前端**：共享组件 `ProficiencyRubric` 只渲染后端装配的中文文案；测评结果页结论先行（标签+四维居首，等级/分数靠后）并补 TopErrorTags；`/assessments` 详情头部接入（T-054 预留注释位）。
+- **评估报告**：两处 summary（画像版 BuildProfileContent + 模板回退版）头部加「总体评价：标签——描述。」（CefrDisplay 分带 → 标签，不可解析时不加前缀）；ContentJson 为快照，仅对新报告生效。
+
+### 验证
+- 新增 `ProficiencyRubricTests`：五带 → 五标签断言；分带交界边界（19.9/20、34.9/35、69.9/70、84.9/85、100）走 MapExpressionScore 全链路；四维 2/3/4 边界各落对档 + 小数（2.5/3.9/4.0）落档。
+- `dotnet test` 全绿：单元 296 + 集成 9（基线 259+9）；`npm run build` 通过。
+- 文档同步：`docs/CURRENT-STATE.md` §5.5。
+
+## 2026-08-09 — I8 T-054：测评历史端点与测评记录页（程实）
+
+### 需求
+- `docs/DESIGN-assessment-visibility.md` §3.2/§3.3/§3.4（R1/R2）：用户测完测评就再也看不到记录；逐题 AI 评语落在 SentenceLog 未关联回测评。验收 §4 第 1/4/5 条。人话 rubric（R3）留 T-055。
+
+### 实现
+- **`GET /api/assessments`**（AssessmentEndpoints + `AssessmentService.ListForUserAsync`）：本人测评列表按 StartAt 倒序、只读无分页；`AssessmentListItem` 的 ExpressionScore/GuardAdjusted 从 FinalLevel 记录的 `AssessmentFinalResult` JSON 投影（进行中/跳过完成的测评降级为 null/false）。
+- **详情归属校验**：`GET /api/assessment/{id}` 补 JWT 用户解析，非本人一律 404（`GetAsync` 签名不动，校验在端点层，单测 4 处调用零改动）。
+- **评语存储演进**：`ProductionScore`（AssessmentService 内私有载荷记录）新增可空 `Suggestion`/`AiRevision`，块提交评分时从 `SentenceService.RateAsync` 返回的 SentenceLog 一并写入；旧记录 JSON 无此属性反序列化为 null；SentenceLog 留痕链路不动。
+- **前端 `/assessments`**（AssessmentsPage）：列表（时间/定级/表达综合分/矫正标记/进行中态）+ 详情（定级结果卡 + 按块按题：题目、作答原文、四维分 ScoreCard、总评档字母本地映射 A/B/C/D 与复习页图例一致、AiRevision、ErrorAnalysis 错误标签与建议；识别题显示正确答案与我的选择）；旧记录无评语字段自动只显示四维分 + 错误标签；旧版固定步骤测评显示「仅保留定级结果」。空态引导「定期重测追踪进步」。入口：`/profile` LevelPanel 等级历史区链接 + `/manage` 新增「测评记录」卡片；ManagePage 测评卡片过时文案「5 步 CEFR 定级」顺手修正为自适应分块口径（T-030 遗漏）。
+- 详情页头部留了 T-055 rubric 接入注释位，未过度设计。
+
+### 验证
+- 单测：`AdaptiveAssessmentServiceTests` 新增 `List_history_returns_only_own_assessments_descending`；评语持久化断言并入 Strong_user 用例、列表投影断言并入防伪闸用例。
+- 集成：新增 3 例（列表 401、只含本人且倒序、他人详情 404 本人 200）。
+- `dotnet test` 全绿：单元 259 + 集成 9（基线 258+6）；`npm run build` 通过。
+- 文档同步：`docs/CURRENT-STATE.md` §5.5/§6/§8。
+
+## 2026-08-08 — I8 用户体验反馈评估与任务登记（顾言）
+
+### 反馈与现状核查（5 条）
+1. **阅读查词没有翻译与例句解释**：字段链路是通的（`contextDefinition` 中文释义 + `examples[].explanation`），根因有三——Mock 占位释义被永久缓存进 `ArticleVocabMappings`、真实 LLM 失败静默回退 Mock 无降级提示、例句解释默认折叠在「查看例句」后。
+2. **新词背诵太少、进度不对**：`/learn` 写死 count=10，回忆考察位 ≥4 + 接触词 ≤2 后纯新词仅 4–6 个/天；进度 = index/本次队列长度，末词只显示 90%。
+3. **拼写太少、进度有问题**：写死 count=8；`next()` 钳制永远到不了完成态；无百分比进度条。
+4. **拼写无复习/新词之分**：后端「全复习或全新词」二元回退，无模式参数无混合配比，回退新词按字母序从词表头拿不按难度带。
+5. **测评记录不可见、无人话水平标准**：测评明细数据在库（`GET /api/assessment/{id}` 返回完整 Records）但无列表端点、前端零入口；逐题 AI 评语在 `SentenceLog` 未关联回测评；「粗糙/凑合/还不错/用词不当/表达过于简洁」类人话 rubric 全库不存在。
+
+### 决策与任务
+- 设计定稿 `docs/DESIGN-assessment-visibility.md`（反馈 5）：测评历史列表端点 + `/assessments` 记录页（复用 ScoreCard 等练习流组件）、逐题评语随 `ProductionScore` 持久化（新测评起，旧记录降级）、人话 rubric 规则映射零 LLM（总体五档「起步/粗糙/凑合/还不错/很溜」按 ScoreMapping 分带派生，四维三档特征描述含「用词不当」「表达过于简洁」口径）。
+- 任务登记 T-049~T-055（全部 P1，I8）：T-049 阅读查词修复（降级不缓存+降级可见+例句默认展开）、T-050 背词量 10→15 默认可选 10/15/20 + 进度口径修正、T-051 拼写题量与完成态进度条、T-052 拼写复习/新词/混合模式（默认混合 新:旧=3:7 新词按难度带取词）、T-053 设计（done）、T-054/T-055 测评记录页与 rubric 实现。
+
 ## 2026-08-07 — I7 T-036：「我的这个月」月度时间轴——分数趋势 + 里程碑 + 画像变化 + 洞察回放（程实）
 
 ### 需求

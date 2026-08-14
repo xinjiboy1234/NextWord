@@ -104,6 +104,13 @@ public sealed class ArticleVocabService(
             new LlmRequestOptions("reading-lookup", "reading_lookup"),
             explanationLanguage), cancellationToken);
 
+        // T-049：降级内容（Mock 占位 / 真实 LLM 失败回退）直接返回，不写入 ArticleVocabMappings 永久缓存，
+        // 避免占位套话被 IsEnriched 判定为已丰富而反复复用
+        if (definition.IsFallback)
+        {
+            return new ArticleWordDetailResult(definition, false);
+        }
+
         if (mapping is null)
         {
             var matchedWord = await db.Words.AsNoTracking()
