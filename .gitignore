@@ -29,4 +29,7 @@ Backend/Scripts/wordlist-work/
 # Report tooling
 report/.venv/
 ~$*.pptx
-report/__pycache__/
+
+# Python
+__pycache__/
+*.pyc
