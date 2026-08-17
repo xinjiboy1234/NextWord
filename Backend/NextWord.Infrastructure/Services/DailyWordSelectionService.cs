@@ -22,6 +22,10 @@ public sealed class DailyWordSelectionService(
     /// <summary>T-034（DESIGN-lifecycle-acceleration §2.1）：每日词队列回忆考察位比例（保底名额，留常量待仿真校准）。</summary>
     public const double RecallExamQuotaRatio = 0.4;
 
+    /// <summary>T-061：新用户（无 Vocabulary 分）默认带——A2 分带中点（ScoreMapping:CefrBands A2 20-35），
+    /// 与未测评用户按 A2 估计的口径一致（原 42 落在 B1 档，新用户会取到偏难词）。</summary>
+    public const int DefaultVocabScore = 27;
+
     public async Task<IReadOnlyList<DailyWordItem>> GetDailyAsync(Guid userId, int count, CancellationToken cancellationToken)
     {
         count = Math.Clamp(count, 1, 20);
@@ -86,7 +90,7 @@ public sealed class DailyWordSelectionService(
             word.Id,
             word.Lemma,
             word.Meanings,
-            word.LlmAnnotation?.IntrinsicScore ?? LegacyScoreHelper.FromDifficulty(word.DifficultyLevel),
+            BandWordSelector.IntrinsicScoreOf(word),
             false,
             word.Phonetics,
             true,
@@ -97,7 +101,7 @@ public sealed class DailyWordSelectionService(
     private async Task<IReadOnlyList<DailyWordItem>> GetBandFallbackAsync(Guid userId, int count, CancellationToken cancellationToken)
     {
         var scores = await scoreProfile.GetScoresAsync(userId, cancellationToken);
-        var vocabScore = scores.Vocabulary ?? 42;
+        var vocabScore = scores.Vocabulary ?? DefaultVocabScore;
         var min = vocabScore;
         var max = Math.Min(100, vocabScore + 12);
 
@@ -114,21 +118,7 @@ public sealed class DailyWordSelectionService(
             .Take(count / 2)
             .ToListAsync(cancellationToken);
 
-        var candidates = await db.Words.AsNoTracking()
-            .Include(word => word.LlmAnnotation)
-            .Where(word => !learnedIds.Contains(word.Id))
-            .ToListAsync(cancellationToken);
-
-        var bandWords = candidates
-            .Select(word =>
-            {
-                var intrinsic = word.LlmAnnotation?.IntrinsicScore ?? LegacyScoreHelper.FromDifficulty(word.DifficultyLevel);
-                return (word, intrinsic);
-            })
-            .Where(item => item.intrinsic >= min && item.intrinsic <= max)
-            .OrderBy(_ => Random.Shared.Next())
-            .Take(count)
-            .ToList();
+        var bandWords = await BandWordSelector.PickUnlearnedAsync(db, userId, vocabScore, count, cancellationToken);
 
         var merged = new List<DailyWordItem>();
         // T-034：已在薄弱复习位的成熟待推进词计入回忆考察配额
@@ -151,20 +141,22 @@ public sealed class DailyWordSelectionService(
             recallFilled++;
         }
 
-        foreach (var (word, intrinsic) in bandWords)
+        foreach (var word in bandWords)
         {
             if (merged.Any(item => item.Id == word.Id)) continue;
-            merged.Add(new DailyWordItem(word.Id, word.Lemma, word.Meanings, intrinsic, false, word.Phonetics));
+            merged.Add(new DailyWordItem(word.Id, word.Lemma, word.Meanings, BandWordSelector.IntrinsicScoreOf(word), false, word.Phonetics));
             if (merged.Count >= count) break;
         }
 
         if (merged.Count == 0)
         {
-            merged = candidates.Take(count).Select(word => new DailyWordItem(
+            // T-061：兜底任意未学词（BandWordSelector 已含相邻带扩展，此处为最后的双保险）
+            var anyUnlearned = await BandWordSelector.PickUnlearnedAsync(db, userId, vocabScore, count, cancellationToken);
+            merged = anyUnlearned.Select(word => new DailyWordItem(
                 word.Id,
                 word.Lemma,
                 word.Meanings,
-                LegacyScoreHelper.FromDifficulty(word.DifficultyLevel),
+                BandWordSelector.IntrinsicScoreOf(word),
                 false,
                 word.Phonetics)).ToList();
         }

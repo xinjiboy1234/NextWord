@@ -16,6 +16,64 @@ public static class LlmResponseParser
         return rating;
     }
 
+    /// <summary>
+    /// T-061：解析真实 LLM 的结构化难度标注（BuildDifficultyPrompt 的 JSON 输出）。
+    /// difficulty/cefr 无法识别时回退默认值；intrinsic_score 缺省为空（调用方回退 CEFR 映射）。
+    /// </summary>
+    public static DifficultyRating ParseDifficulty(string content, ItemType itemType, string modelProfileId = "difficulty-v1")
+    {
+        var json = ExtractJson(content);
+        var parsed = JsonSerializer.Deserialize<DifficultyRatingJson>(json, new JsonSerializerOptions(JsonSerializerDefaults.Web))
+            ?? throw new InvalidOperationException("LLM returned empty difficulty rating.");
+        var difficulty = ParseDifficultyLevel(parsed.DifficultyLevel);
+        var cefr = ParseCefr(parsed.CefrLevel);
+        var intrinsic = parsed.IntrinsicScore is int score
+            ? Math.Clamp(score, 0, 100)
+            : (int?)LegacyCefrIntrinsic(cefr);
+        return new DifficultyRating(
+            itemType,
+            difficulty,
+            cefr,
+            string.IsNullOrWhiteSpace(parsed.Reason) ? "LLM difficulty annotation." : parsed.Reason.Trim(),
+            RecommendedAction.ReviewLater,
+            Math.Clamp(parsed.Confidence, 0, 1),
+            modelProfileId,
+            intrinsic);
+    }
+
+    private static DifficultyLevel ParseDifficultyLevel(string value) =>
+        value.Trim().ToLowerInvariant() switch
+        {
+            "basic" => DifficultyLevel.Basic,
+            "intermediate" => DifficultyLevel.Intermediate,
+            "advanced" => DifficultyLevel.Advanced,
+            _ => DifficultyLevel.Intermediate
+        };
+
+    private static CefrLevel ParseCefr(string value) =>
+        Enum.TryParse<CefrLevel>(value.Trim(), ignoreCase: true, out var level) ? level : CefrLevel.B1;
+
+    /// <summary>T-061：CEFR 档到 0–100 内在难度分的兜底映射（与 LegacyScoreHelper.FromCefr 同口径，Domain 侧复制避免依赖 Infrastructure）。</summary>
+    private static int LegacyCefrIntrinsic(CefrLevel level) => level switch
+    {
+        CefrLevel.A1 => 10,
+        CefrLevel.A2 => 27,
+        CefrLevel.B1 => 52,
+        CefrLevel.B2 => 77,
+        CefrLevel.C1 => 90,
+        _ => 97
+    };
+
+    /// <summary>真实 LLM 难度标注 JSON 载荷（BuildDifficultyPrompt 契约）。</summary>
+    private sealed class DifficultyRatingJson
+    {
+        public string DifficultyLevel { get; set; } = "intermediate";
+        public string CefrLevel { get; set; } = "B1";
+        public int? IntrinsicScore { get; set; }
+        public string? Reason { get; set; }
+        public double Confidence { get; set; } = 0.5;
+    }
+
     public static SentenceRatingResponse ParseSentenceRating(string content)
     {
         var json = ExtractJson(content);

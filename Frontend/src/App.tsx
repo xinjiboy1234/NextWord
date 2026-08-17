@@ -38,6 +38,8 @@ function AuthenticatedApp() {
   const [skipDialogOpen, setSkipDialogOpen] = useState(false)
   const [skipping, setSkipping] = useState(false)
   const [assessmentStep, setAssessmentStep] = useState(1)
+  // T-066：首次测评完成后停留在结果+计划引导页，直到用户点「开始今日练习」
+  const [planGuideActive, setPlanGuideActive] = useState(false)
 
   const view = viewFromPathname(location.pathname)
 
@@ -62,13 +64,23 @@ function AuthenticatedApp() {
     }
   }, [progress, location.pathname, navigate])
 
-  const handleAssessmentComplete = useCallback(() => {
+  const handleAssessmentComplete = useCallback((firstTime = false) => {
     void loadProgress().then((data) => {
       if (data?.hasCompletedInitialAssessment) {
-        navigate('/dashboard', { replace: true })
+        if (firstTime) {
+          // T-066：首次完成 → 停留在结果页的计划引导，点「开始今日练习」再退出
+          setPlanGuideActive(true)
+        } else {
+          navigate('/dashboard', { replace: true })
+        }
       }
     })
   }, [loadProgress, navigate])
+
+  const handlePracticeStart = useCallback(() => {
+    setPlanGuideActive(false)
+    navigate('/learn', { replace: true })
+  }, [navigate])
 
   const handleSkipAssessment = useCallback(async () => {
     setSkipping(true)
@@ -153,13 +165,13 @@ function AuthenticatedApp() {
     )
   }
 
-  if (needsAssessment) {
+  if (needsAssessment || planGuideActive) {
     return (
       <>
         <OnboardingLayout
           step={assessmentStep}
           onSkip={() => setSkipDialogOpen(true)}
-          skipDisabled={skipping}
+          skipDisabled={skipping || planGuideActive}
         >
           <Routes>
             <Route
@@ -168,8 +180,9 @@ function AuthenticatedApp() {
                 <InitialAssessment
                   autoStart
                   immersive
-                  onComplete={handleAssessmentComplete}
+                  onComplete={() => handleAssessmentComplete(true)}
                   onStepChange={setAssessmentStep}
+                  onPractice={handlePracticeStart}
                 />
               )}
             />

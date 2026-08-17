@@ -7,9 +7,25 @@ namespace NextWord.Infrastructure.Services;
 
 public sealed class LlmChatClientProvider(IChatClient chatClient, LlmMockProvider fallback) : ILLMProvider
 {
-    public Task<DifficultyRating> RateDifficultyAsync(ItemRatingRequest request, CancellationToken cancellationToken)
+    public async Task<DifficultyRating> RateDifficultyAsync(ItemRatingRequest request, CancellationToken cancellationToken)
     {
-        return fallback.RateDifficultyAsync(request, cancellationToken);
+        // T-061：难度标注走真实 LLM（结构化 JSON，含 0–100 内在难度分）；失败回退 Mock（不破坏既有调用方）
+        try
+        {
+            var response = await chatClient.GetResponseAsync(
+                [
+                    new ChatMessage(ChatRole.System, "You are an English learning difficulty rater. Return compact, valid JSON."),
+                    new ChatMessage(ChatRole.User, LlmPromptFactory.BuildDifficultyPrompt(request))
+                ],
+                new ChatOptions { Temperature = 0.1f, MaxOutputTokens = 300 },
+                cancellationToken);
+            var rating = LlmResponseParser.ParseDifficulty(response.Text, request.ItemType);
+            return LlmResponseParser.EnsureValid(rating);
+        }
+        catch
+        {
+            return await fallback.RateDifficultyAsync(request, cancellationToken);
+        }
     }
 
     public async Task<DefinitionResponse> GetDefinitionAsync(DefinitionRequest request, CancellationToken cancellationToken)

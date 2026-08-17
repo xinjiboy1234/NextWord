@@ -1,5 +1,6 @@
 import { RotateCcw } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { AudioPlayer } from '../components/AudioPlayer'
 import { ErrorHighlight } from '../components/ErrorHighlight'
 import { ProgressBar } from '../components/ProgressBar'
@@ -12,6 +13,8 @@ import { useSpellingMode, SPELLING_MODE_OPTIONS } from '../hooks/useSpellingMode
 import { useSpellingSession } from '../hooks/useSpellingSession'
 
 export function SpellingMode() {
+  // T-062：空态「去学新词」引导跳转
+  const navigate = useNavigate()
   // T-051：每组题量可选 8/12/16/20（默认 12，localStorage 持久化），改量在未作答时生效并重载队列
   const { spellingCount, setSpellingCount } = useSpellingCount()
   // T-052：队列模式 复习/新词/混合（默认混合，localStorage 持久化），同样未作答时生效并重载队列
@@ -75,9 +78,29 @@ export function SpellingMode() {
     )
   }
 
-  // T-052：复习/新词双空时后端返回空队列，给空态文案
+  // T-052/T-062：队列为空时给行动引导（不再说「太棒了」误导）——先去学新词或换模式
   if (!session.currentWord) {
-    return <div className="card">太棒了，当前没有可拼写的词</div>
+    return (
+      <section className="stack stack-md" style={{ maxWidth: 720, margin: '0 auto', width: '100%' }}>
+        <div className="card" style={{ textAlign: 'center', padding: 'var(--space-8) var(--space-4)' }}>
+          <p style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-xl)', fontWeight: 700 }}>暂无拼写任务</p>
+          <p style={{ color: 'var(--muted)', fontSize: 'var(--text-sm)', marginTop: 'var(--space-2)' }}>
+            当前模式下没有可拼写的词：可能是新词还没开始学，或到期复习词都已完成。
+          </p>
+          <div className="stack stack-sm" style={{ marginTop: 'var(--space-5)', maxWidth: 320, marginLeft: 'auto', marginRight: 'auto' }}>
+            <button type="button" className="btn btn-primary" onClick={() => navigate('/learn')}>
+              去学新词
+            </button>
+            <button type="button" className="btn btn-secondary" onClick={session.reload}>
+              重新加载队列
+            </button>
+          </div>
+          <p style={{ color: 'var(--muted)', fontSize: 'var(--text-xs)', marginTop: 'var(--space-4)' }}>
+            也可以在上方把队列模式切换为「复习」或「新词」再试。
+          </p>
+        </div>
+      </section>
+    )
   }
 
   return (

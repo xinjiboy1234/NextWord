@@ -25,7 +25,8 @@ public sealed record ChallengePack(
 // ── 自适应分块测评（T-004，DESIGN-assessment-rework）────────────────────
 
 /// <summary>「取下一块」响应：未收敛时带 Block，收敛后带 Final。</summary>
-public sealed record AssessmentBlockResponse(bool Converged, AssessmentBlockView? Block, AssessmentFinalResult? Final);
+/// <summary>T-065：Evaluating=true 表示本块已提交答案、后台评分中（前端轮询该标记直到出题/收敛）。</summary>
+public sealed record AssessmentBlockResponse(bool Converged, AssessmentBlockView? Block, AssessmentFinalResult? Final, bool Evaluating = false);
 
 /// <summary>客户端块视图（不含正确答案）。产出题 ≥60%，识别题仅作参考。</summary>
 public sealed record AssessmentBlockView(

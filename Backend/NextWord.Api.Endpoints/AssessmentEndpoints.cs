@@ -40,8 +40,9 @@ public static class AssessmentEndpoints
             IAssessmentService assessment,
             CancellationToken ct) =>
         {
-            var result = await assessment.SubmitBlockAsync(assessmentId, blockIndex, request.Answers, ct);
-            return Results.Ok(result);
+            // T-065：先存答案立即返回，评分在后台任务进行（前端轮询 next-block 的 evaluating 标记）
+            await assessment.SubmitBlockForScoringAsync(assessmentId, blockIndex, request.Answers, ct);
+            return Results.Accepted(value: new { status = "evaluating", message = "答案已提交，评分进行中" });
         });
 
         group.MapGet("/{assessmentId:guid}", async (HttpContext http, Guid assessmentId, IUserRepository users, IAssessmentService assessment, CancellationToken ct) =>

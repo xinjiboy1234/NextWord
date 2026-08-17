@@ -7,7 +7,26 @@ public static class LlmPromptFactory
 {
     public static string BuildDifficultyPrompt(ItemRatingRequest request)
     {
-        return $"Rate the {request.ItemType} difficulty for: {request.Text}";
+        // T-061：结构化难度标注 prompt——产出 CEFR 档 + 难度档 + 0–100 内在难度分，
+        // 供词库批量难度标注（DifficultyAnnotationWorker）与新增词自动定级使用
+        return $$"""
+        Rate the English learning difficulty of the word/phrase: "{{request.Text}}".
+
+        Return only JSON:
+        {
+          "difficulty_level": "basic|intermediate|advanced",
+          "cefr_level": "A1|A2|B1|B2|C1|C2",
+          "intrinsic_score": 0-100,
+          "reason": "short justification",
+          "confidence": 0.0-1.0
+        }
+
+        Rules:
+        - cefr_level is the CEFR band for a learner (A1 easiest, C2 hardest).
+        - intrinsic_score is the word's intrinsic difficulty on a 0-100 scale aligned with CEFR bands
+          (A1 ~10, A2 ~27, B1 ~52, B2 ~77, C1 ~90, C2 ~97); use fractional judgment within reason.
+        - difficulty_level is a coarse bucket derived from cefr_level.
+        """;
     }
 
     public static string BuildSentenceRatingPrompt(SentenceRatingRequest request)

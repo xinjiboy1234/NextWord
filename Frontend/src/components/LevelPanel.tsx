@@ -136,7 +136,7 @@ export function LevelPanel() {
 
       {evaluation.content && (
         <section className="card stack stack-sm">
-          <h3>AI 评估报告</h3>
+          <h3>评估报告</h3>
           <p style={{ fontSize: 'var(--text-sm)' }}>{evaluation.content.summary}</p>
           {evaluation.content.findings && evaluation.content.findings.length > 0 ? (
             <div>

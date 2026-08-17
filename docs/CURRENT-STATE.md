@@ -52,14 +52,14 @@ docker-compose.yml        postgres:16-alpine + redis:7-alpine + api（容器内 
 
 ### 5.1 每日选词与新词记忆（`/learn`）
 
-- `GET /api/words/daily?count=`：**优先执行当日 LearningPlan 词队列**（T-006，见 §5.15：带内词 + ≤20% 超带接触词，`fromPlan`/`isExposure` 标记）；无 Plan、Plan 过期（>7 天）或当日队列为空 → 回退既有逻辑——按用户 Vocabulary 分取 `[score, score+12]` 难度带单词 + `EstimatedKnownRate<0.4` 弱词，各占约一半（`DailyWordSelectionService`）。**T-014：返回词带生命周期阶段 `stage` 与考察模式 `quizMode`**（认识=recognition 看词知义，回忆及以后=recall 看义想词，新词默认认识模式）。**T-034：两条路径都保证 ≥40% 名额给「已成熟待推进」老词的回忆考察位**（`RecallExamQuotaRatio` 常量；池 = recalled 阶段 + 认识且 `RepeatCount≥2` 的残留词，`StageUpdatedAt` 最早优先，考察模式按阶段派生），不足时新词补位。**T-050：count 默认 10→15（上限 20 不变），前端 `/learn` 未作答前可选 10/15/20（默认 15，localStorage `nextword.settings.dailyWordCount` 持久化，改量即重载队列）；背词进度口径 = 已作答数（按词 id 去重）/ 本次队列总数——prev 回退不倒退，末词提交后显示 100%，再点「完成」进完成页；Dashboard 首页新词计数同步按 15 预览。**
+- `GET /api/words/daily?count=`：**优先执行当日 LearningPlan 词队列**（T-006，见 §5.15：带内词 + ≤20% 超带接触词，`fromPlan`/`isExposure` 标记）；无 Plan、Plan 过期（>7 天）或当日队列为空 → 回退既有逻辑——按用户 Vocabulary 分取 `[score, score+12]` 难度带单词 + `EstimatedKnownRate<0.4` 弱词，各占约一半（`DailyWordSelectionService`）。**T-061：带内取词统一走 `BandWordSelector`（内在难度分 IntrinsicScore 优先、缺失回退 CEFR 六档映射；带内不足相邻带扩展、再不足任意未学词兜底）；新用户默认分 42→27（A2 分带中点，与未测评按 A2 估计一致，原 42 落在 B1 档会取偏难词）。****T-014：返回词带生命周期阶段 `stage` 与考察模式 `quizMode`**（认识=recognition 看词知义，回忆及以后=recall 看义想词，新词默认认识模式）。**T-034：两条路径都保证 ≥40% 名额给「已成熟待推进」老词的回忆考察位**（`RecallExamQuotaRatio` 常量；池 = recalled 阶段 + 认识且 `RepeatCount≥2` 的残留词，`StageUpdatedAt` 最早优先，考察模式按阶段派生），不足时新词补位。**T-050：count 默认 10→15（上限 20 不变），前端 `/learn` 未作答前可选 10/15/20（默认 15，localStorage `nextword.settings.dailyWordCount` 持久化，改量即重载队列）；背词进度口径 = 已作答数（按词 id 去重）/ 本次队列总数——prev 回退不倒退，末词提交后显示 100%，再点「完成」进完成页；Dashboard 首页新词计数同步按 15 预览。**
 - `POST /api/learning/submit`：提交作答（`mode`=recognition/recall，回忆模式需正确拼出词本身）→ SM-2 排程更新 + `EstimatedKnownRate`/`PersonalDifficulty`（EMA）+ 连胜天数 + **生命周期阶段推进（T-014，见 §5.17）**。**自评（Remembered/Forgot）只改 SM-2 排程参数，不再按自评加减掌握度**——`MasteryScore` 由阶段派生（25/50/75/100）。**Vocabulary 小步回写（T-047）**：落库后经 `PracticeScoreWritebackService` 回写——observed = 考察词有效难度分（`EffectiveDifficultyCalculator` 0-100）× 表现系数（答对 1.0/答错 0.3，答错不是零——错在难词上有信息量），delta = clamp(round((observed − current) × 0.05), −1, +1)（背词高频，步长比 Writing 缓防刷），幂等键 `vocab-score:{WordLearningLogId}`。
 - SM-2 变体（`Sm2Service`）：EF 下限 1.3，间隔上限 3650 天；只管认识/回忆两阶段调度。
 - `POST /api/words` 新增单词时调用 LLM `RateDifficultyAsync` 自动定级（DifficultyLevel + CefrLevel + 0–100 IntrinsicScore 标注）。
 
 ### 5.2 拼写（`/spelling`）
 
-- `GET /api/spelling/queue`：**T-052：新增 `mode=review|new|mixed`（默认 mixed，非法值回退 mixed）。队列组装下沉 `SpellingService.GetQueueAsync`：review=只到期复习词；new=只带内新词；mixed=新词 30%、复习 70%（3:7 AwayFromZero 取整，count=12 → 新 4 复习 8），复习不足新词补位、新词不足复习补位，两者皆空返回空队列（前端空态「太棒了，当前没有可拼写的词」）。新词不再按 DifficultyLevel+字母序从词表头拿，改为与每日词回退一致的带内口径（内在难度分落 [vocabScore, vocabScore+12] 的未学词随机取）。响应项带 `isReview` 标记，前端题面显示「复习/新词」徽标；`/spelling` 未作答前可选模式（复习/新词/混合，默认混合，localStorage `nextword.settings.spellingMode` 持久化，切换即重载队列）。** T-051：count 默认 8→12（上限 20 不变），前端 `/spelling` 未作答前可选 8/12/16/20（默认 12，localStorage `nextword.settings.spellingCount` 持久化，改量即重载队列）；进度口径与 /learn 一致 = 已作答数（按词 id 去重）/ 本次队列总数——百分比进度条 + 「第 x/y 个」，prev 回退不倒退；末词提交后点「完成」进完成页（本次正确数 + 错词回顾），修复了原 next() 钳制在末词永远到不了完成态的问题；Dashboard 首页拼写计数同步按 12 预览。
+- `GET /api/spelling/queue`：**T-052：新增 `mode=review|new|mixed`（默认 mixed，非法值回退 mixed）。队列组装下沉 `SpellingService.GetQueueAsync`：review=只到期复习词；new=只带内新词；**T-067：mixed=新词 40%、复习 60%（4:6 AwayFromZero 取整，count=12 → 新 5 复习 7）**，复习不足新词补位、新词不足复习补位，双空返回空队列。新词不再按 DifficultyLevel+字母序从词表头拿，改走 `BandWordSelector`（T-061）——内在难度分（IntrinsicScore 优先，缺失回退 CEFR 六档映射）落 [vocabScore, vocabScore+12] 带的未学词随机取，带内不足相邻带扩展、再不足任意未学词兜底（有未学词即不空队列）。响应项带 `isReview` 标记，前端题面显示「复习/新词」徽标；`/spelling` 未作答前可选模式（复习/新词/混合，默认混合，localStorage `nextword.settings.spellingMode` 持久化，切换即重载队列）；**T-062：空态改为行动引导「暂无拼写任务」+「去学新词」（跳 /learn）+「重新加载队列」+ 换模式提示，不再说「太棒了」误导。** T-051：count 默认 8→12（上限 20 不变），前端 `/spelling` 未作答前可选 8/12/16/20（默认 12，localStorage `nextword.settings.spellingCount` 持久化，改量即重载队列）；进度口径与 /learn 一致 = 已作答数（按词 id 去重）/ 本次队列总数——百分比进度条 + 「第 x/y 个」，prev 回退不倒退；末词提交后点「完成」进完成页（本次正确数 + 错词回顾），修复了原 next() 钳制在末词永远到不了完成态的问题；Dashboard 首页拼写计数同步按 12 预览。
 - `POST /api/spelling/submit`：含逐字母错误位置标注；前端发音播放 + 错误高亮。
 
 ### 5.3 造句工作室（`/sentence`）
@@ -91,7 +91,7 @@ docker-compose.yml        postgres:16-alpine + redis:7-alpine + api（容器内 
 - **矫正传导（qa-t042 P1 修复）**：矫正触发时三维分数先验逐维 clamp 到矫正后档上限以内（`GetBandScoreCeiling`，保持维度相对形状），`CefrDisplay` 与评估报告头部随之取矫正后档——Planner 词池/造句目标按矫正后定级取词；识别/阅读题未作答均不计样本（同口径）。
 - **词池纪律**：出题词只选水平带内且 `utility=high/medium`（顶端带词池过薄时向下一带补充，绝不超带）；情境场景取自 I1 taxonomy（优先词池已标注场景）。
 - **阅读题**：从库内文章按难度带就近选文，考点词取自正文中出现的库内词，正确答案位置随机（硬编码与 index-0 恒定已废除）。
-- 端点：`GET /api/assessment/{id}/next-block`（幂等，未提交的块重发原题）→ `POST /api/assessment/{id}/blocks/{n}/submit`（同步 LLM 评分，收敛时直接定级并入队 `EvaluationReport`）。
+- 端点：`GET /api/assessment/{id}/next-block`（幂等，未提交的块重发原题；**T-065：本块已提交、后台评分中时返回 `evaluating=true` 不重发题目**）→ `POST /api/assessment/{id}/blocks/{n}/submit`（**T-065 异步评分：先存答案 + 标记 pending-scoring + 入队 `AssessmentBlockScoring` 后台任务 → 202 立即返回，评分在后台进行（`ScoreBlockJobAsync`：评分核心 + 收敛 `FinalizeAsync` + 报告/计划入队），前端轮询 next-block 衔接**）。**T-064：首次测评（未完成过）前检查 `GET /api/llm/status`，mock 模式（用户未配 BYOK 且服务端未启用真实 LLM）强制先配置 API Key 才能开始（可跳过测评以 A2 起步）。** **T-066：首次测评完成后结果页下方展示「计划+练习安排」引导（`PlanGuidePanel` 轮询 `GET /api/planner/current`，计划就绪展示概览 +「开始今日练习」跳 /learn），不再直接丢回首页。**
 - **老用户文案（T-030）**：`hasCompletedInitialAssessment=true` 的用户进入 `/assessment` 显示「重新水平测评」+「本次结果将覆盖现有定级」提示，不再显示「首次水平测评」。
 - **造句评分 prompt（T-030）**：`LlmPromptFactory.BuildSentenceRatingPrompt` 的 Scene 字段改传场景中文名（`ScenarioTaxonomy.Find(key)?.ZhName`，未收录回退原 key），避免 LLM 反馈文案复述内部场景 key 且与计划卡口径一致。
 - **测评记录可视化（T-054，DESIGN-assessment-visibility R1/R2）**：`GET /api/assessments` 列出本人历次测评（开始时间倒序，只读无分页；表达综合分与「是否识别矫正」从 FinalLevel 记录的 `AssessmentFinalResult` JSON 投影）；`GET /api/assessment/{id}` 补归属校验（仅本人，他人 id 404），返回 `AssessmentDetailView` DTO 投影（Assessment + Records，不含导航回引用——直接返回实体会因 `AssessmentRecord.Assessment` 循环引用致 JSON 序列化截断，qa D1 修复）。块评分 `ProductionScore` 新增可空 `Suggestion`/`AiRevision`——新测评起逐题 AI 评语随测评记录持久化（旧记录 JSON 无此属性反序列化为 null，前端只显示四维分 + 错误标签优雅降级）；`SentenceLog` 留痕链路不动。前端新页面 `/assessments`（列表 + 按块按题详情：题目/作答原文/四维分/总评档/AI 评语与改写/错误标签，复用练习流 ScoreCard/ErrorAnalysis/AiRevision），入口在 `/profile` 等级历史区与 `/manage` 测评记录卡片；空态引导「定期重测追踪进步」。
@@ -144,7 +144,7 @@ Worker 异常不拖垮宿主（`BackgroundServiceExceptionBehavior=Ignore`）。
 
 ### 5.11 LLM 集成
 
-- 统一抽象 `ILLMProvider`（8 方法：难度标注 / 释义 / 造句评分 / 词汇提取 / 批注回复 / 场景标注 / 画像生成 / 瓶颈洞察）；Prompt 由 `LlmPromptFactory` 生成。
+- 统一抽象 `ILLMProvider`（8 方法：难度标注 / 释义 / 造句评分 / 词汇提取 / 批注回复 / 场景标注 / 画像生成 / 瓶颈洞察）；Prompt 由 `LlmPromptFactory` 生成。**T-061：真实 LLM 难度标注（`RateDifficultyAsync` 结构化 JSON，含 0–100 内在难度分；`DifficultyAnnotationWorker` 批量标注词库，Mock 结果不落库；`POST /api/words/annotate-difficulty` 手动触发，幂等按小时）。** **T-064：`GET /api/llm/status` 暴露 LLM 配置状态（llmMode=user-key|server|mock）供首次测评前配置引导。**
 - 默认 `LlmMockProvider`：内置词典启发式，零外部调用；**未知词难度一律回退 Basic/A1**（未启用真实 LLM 时 `POST /api/words` 自动定级基本无效）；**Mock 场景标注只按词性推 role、场景一律空（全落 core 桶）**，不代表真实标注质量。
 - `Llm:OpenAI:Enabled=true` 且有 key 时切 `LlmChatClientProvider`（OpenAI `ChatClient`，默认 `gpt-4o-mini`，Temperature 0.1，异常自动回退 Mock）；`Llm:OpenAI:BaseUrl` 可选，指向任意 OpenAI 兼容端点（如 DashScope compatible-mode）。
 - 装饰链：Inner → `LlmRetryProvider`（指数退避 3 次）→ `LlmTelemetryProvider`（记录耗时与 ModelProfileId）。
@@ -228,7 +228,8 @@ Worker 异常不拖垮宿主（`BackgroundServiceExceptionBehavior=Ignore`）。
 - `GET /api/words/graduated`（T-034：当前用户已毕业词列表，含毕业时间）
 - `POST /api/learning/submit`
 - `GET /api/progress`
-- `POST /api/llm/rate-difficulty`
+- `POST /api/llm/rate-difficulty`、`GET /api/llm/status`（T-064：LLM 配置状态）
+- `POST /api/words/annotate-difficulty?batchSize=`（T-061：批量 LLM 难度标注，幂等按小时）
 
 **拼写 / 造句 / 自由表达**
 - `GET /api/spelling/queue`、`POST /api/spelling/submit`
@@ -303,8 +304,8 @@ Users、UserLlmSettings、Words、WordScenarios、WordDifficultyAnnotations、Di
 | `/challenge` | ChallengeMode | 三阶段挑战（阅读 3 题）+ 通过点评/计数 + 候选确认挑战引导条 + 近期挑战列表（满分参照） |
 | `/review` | ReviewQueue | 翻转卡片复习 + 活动统计 + 最近记录 |
 | `/word-bank` | Home | 全量词条表格 + 搜索 + 详情 |
-| `/profile` | ProfilePage | 用户信息、LevelPanel、「我的这个月」月度时间轴（T-036：分数趋势/里程碑/画像变化/洞察回放）、ProgressDetail、CEFR 开关、管理入口 |
-| `/manage` | ManagePage | LLM 设置抽屉、测评/挑战/词库/学习数据入口 |
+| `/profile` | ProfilePage | 用户信息、快捷入口（T-063：测评记录/学习数据/系统设置 3 卡）、LevelPanel、「我的这个月」月度时间轴（T-036）、ProgressDetail、CEFR 开关 |
+| `/manage` | ManagePage | T-063 两区：学习工具（测评/测评记录/挑战/词库/学习数据）+ 系统设置（LLM 抽屉） |
 | `/level`、`/progress` | — | 重定向到 `/profile` 锚点 |
 
 - 底部主导航实际只有「首页 / 我的」两个 Tab；其余功能经 Dashboard 卡片进入。

@@ -52,38 +52,25 @@ public sealed class SpellingService(
         return queue;
     }
 
-    /// <summary>T-052 mixed 模式新词名额（新旧 3:7，AwayFromZero 取整：count=12 → 新 4 复习 8）。</summary>
-    private static int NewSlots(int count) => (int)Math.Round(count * 0.3, MidpointRounding.AwayFromZero);
+    /// <summary>T-052/T-067 mixed 模式新词名额（新旧 4:6，AwayFromZero 取整：count=12 → 新 5 复习 7，
+    /// 仍在顾言 T-052 认可的 3:7-4:6 区间，新词供给比 30% 提升到 40%）。</summary>
+    private static int NewSlots(int count) => (int)Math.Round(count * 0.4, MidpointRounding.AwayFromZero);
 
     /// <summary>
-    /// T-052 带内新词：与每日词回退口径（DailyWordSelectionService.GetBandFallbackAsync）一致——
-    /// 未学词按内在难度分（LLM 标注分，无标注回退难度档映射分）落在 [vocabScore, vocabScore+12] 带内，随机取。
+    /// T-052/T-061 带内新词：与每日词回退口径（BandWordSelector）一致——未学词按内在难度分
+    /// （LLM 标注分优先，无标注回退 CEFR 六档映射）落在 [vocabScore, vocabScore+12] 带内；
+    /// 带内不足向相邻带扩展、再不足任意未学词兜底（有未学词即不空队列）。默认分 A2 中点 27
+    /// （新用户未测评按 A2 估计，与 skip 默认一致）。
     /// </summary>
     private async Task<IReadOnlyList<Word>> GetBandNewWordsAsync(Guid userId, int count, CancellationToken cancellationToken)
     {
         var scores = await scoreProfile.GetScoresAsync(userId, cancellationToken);
-        var vocabScore = scores.Vocabulary ?? 42;
-        var min = vocabScore;
-        var max = Math.Min(100, vocabScore + 12);
-
-        var learnedIds = await db.UserWordRelationships
-            .Where(item => item.UserId == userId)
-            .Select(item => item.WordId)
-            .ToListAsync(cancellationToken);
-
-        var candidates = await db.Words.AsNoTracking()
-            .Include(word => word.LlmAnnotation)
-            .Where(word => !learnedIds.Contains(word.Id))
-            .ToListAsync(cancellationToken);
-
-        return candidates
-            .Select(word => (word, intrinsic: word.LlmAnnotation?.IntrinsicScore ?? LegacyScoreHelper.FromDifficulty(word.DifficultyLevel)))
-            .Where(item => item.intrinsic >= min && item.intrinsic <= max)
-            .OrderBy(_ => Random.Shared.Next())
-            .Take(count)
-            .Select(item => item.word)
-            .ToList();
+        var vocabScore = scores.Vocabulary ?? DefaultVocabScore;
+        return await BandWordSelector.PickUnlearnedAsync(db, userId, vocabScore, count, cancellationToken);
     }
+
+    /// <summary>新用户（无 Vocabulary 分）默认带：A2 分带中点（ScoreMapping:CefrBands A2 20-35）。</summary>
+    private const int DefaultVocabScore = 27;
 
     public async Task<SpellingLog> SubmitAsync(Guid userId, Guid wordId, string userSpelling, int attempts, CancellationToken cancellationToken)
     {

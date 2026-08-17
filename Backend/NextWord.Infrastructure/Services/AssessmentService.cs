@@ -22,10 +22,13 @@ public sealed class AssessmentService(
     ISentenceService sentences,
     IUserRepository users,
     IScoreProfileService scoreProfile,
-    IEvaluationReportService evaluationReports) : IAssessmentService
+    IEvaluationReportService evaluationReports,
+    IBackgroundJobService backgroundJobs) : IAssessmentService
 {
     private const int MaxBlocks = 3;
     private const string UnsubmittedMarker = "{}";
+    /// <summary>T-065：块已提交答案、后台评分中的标记（JSON 字符串字面量，与 UnsubmittedMarker 区分）。</summary>
+    private const string PendingScoringMarker = "\"pending-scoring\"";
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     public async Task<Assessment> StartInitialAsync(Guid userId, CancellationToken cancellationToken)
@@ -60,6 +63,16 @@ public sealed class AssessmentService(
             return new AssessmentBlockResponse(true, null, RebuildFinal(assessment));
         }
 
+        // T-065：本块已提交答案、后台评分中——返回 evaluating 标记，前端轮询（不重发题目）
+        var pendingScoring = assessment.Records
+            .Where(item => item.Step == AssessmentStepType.AdaptiveBlock && item.ScoresJson == PendingScoringMarker)
+            .OrderByDescending(item => item.Timestamp)
+            .FirstOrDefault();
+        if (pendingScoring is not null)
+        {
+            return new AssessmentBlockResponse(false, null, null, Evaluating: true);
+        }
+
         // GET 幂等：已生成但未提交的块直接重发，不重复出题
         var pending = assessment.Records
             .Where(item => item.Step == AssessmentStepType.AdaptiveBlock && item.ScoresJson == UnsubmittedMarker)
@@ -92,6 +105,7 @@ public sealed class AssessmentService(
         return new AssessmentBlockResponse(false, ToView(payload), null);
     }
 
+    /// <summary>同步评分路径（测试/内部直调）：评分、收敛、定级一次完成。</summary>
     public async Task<AssessmentBlockResult> SubmitBlockAsync(
         Guid assessmentId,
         int blockIndex,
@@ -111,17 +125,90 @@ public sealed class AssessmentService(
         // 幂等重提交：直接回显已评分结果
         if (record.ScoresJson != UnsubmittedMarker)
         {
-            var existingScores = JsonSerializer.Deserialize<BlockScores>(record.ScoresJson, JsonOptions)!;
-            var converged = assessment.Status == AssessmentStatus.Completed;
-            return new AssessmentBlockResult(
-                converged,
-                blockIndex,
-                payload.Band,
-                converged ? null : existingScores.NextBand,
-                existingScores.BlockExpressionScore,
-                converged ? RebuildFinal(assessment) : null);
+            return BuildReplayResult(assessment, blockIndex, payload, record);
         }
 
+        var (shouldConverge, result) = await ScoreBlockCoreAsync(assessment, record, payload, answers, cancellationToken);
+        var final = shouldConverge ? await FinalizeAsync(assessment, cancellationToken) : null;
+        await db.SaveChangesAsync(cancellationToken);
+        return result with { Final = final };
+    }
+
+    /// <summary>
+    /// T-065 异步评分——提交：先存答案并标记 pending-scoring、入队后台评分任务，立即返回（不阻塞等 LLM）。
+    /// 幂等：同块重复提交不重复入队；已评分块的重复提交直接回显。
+    /// </summary>
+    public async Task SubmitBlockForScoringAsync(
+        Guid assessmentId,
+        int blockIndex,
+        IReadOnlyList<AssessmentAnswerItem> answers,
+        CancellationToken cancellationToken)
+    {
+        var assessment = await db.Assessments
+            .Include(item => item.Records)
+            .FirstOrDefaultAsync(item => item.Id == assessmentId, cancellationToken)
+            ?? throw new InvalidOperationException("Assessment not found.");
+
+        var record = assessment.Records.FirstOrDefault(item =>
+            item.Step == AssessmentStepType.AdaptiveBlock && item.QuestionType == $"block:{blockIndex}")
+            ?? throw new InvalidOperationException("Block not found.");
+
+        // 已评分：幂等回显（不重复入队）；评分中：同样幂等（任务已在队列）
+        if (record.ScoresJson != UnsubmittedMarker)
+        {
+            return;
+        }
+
+        record.AnswersJson = JsonSerializer.Serialize(answers, JsonOptions);
+        record.ScoresJson = PendingScoringMarker;
+        await db.SaveChangesAsync(cancellationToken);
+
+        await backgroundJobs.EnqueueAsync(
+            "AssessmentBlockScoring",
+            JsonSerializer.Serialize(new { assessmentId, blockIndex }, JsonOptions),
+            $"assessment-scoring:{assessmentId}:block:{blockIndex}",
+            cancellationToken);
+    }
+
+    /// <summary>T-065 异步评分——后台任务执行：读答案 → 评分核心 → 收敛定级（FinalizeAsync）。</summary>
+    public async Task ScoreBlockJobAsync(Guid assessmentId, int blockIndex, CancellationToken cancellationToken)
+    {
+        var assessment = await db.Assessments
+            .Include(item => item.Records)
+            .FirstOrDefaultAsync(item => item.Id == assessmentId, cancellationToken)
+            ?? throw new InvalidOperationException("Assessment not found.");
+
+        var record = assessment.Records.FirstOrDefault(item =>
+            item.Step == AssessmentStepType.AdaptiveBlock && item.QuestionType == $"block:{blockIndex}")
+            ?? throw new InvalidOperationException("Block not found.");
+        if (record.ScoresJson != PendingScoringMarker)
+        {
+            return;
+        }
+
+        var payload = JsonSerializer.Deserialize<BlockPayload>(record.QuestionsJson, JsonOptions)!;
+        var answers = JsonSerializer.Deserialize<IReadOnlyList<AssessmentAnswerItem>>(record.AnswersJson, JsonOptions)
+            ?? [];
+        var (shouldConverge, _) = await ScoreBlockCoreAsync(assessment, record, payload, answers, cancellationToken);
+        if (shouldConverge)
+        {
+            await FinalizeAsync(assessment, cancellationToken);
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// 评分核心（同步/异步共用）：产出题 LLM 四维评分 + 识别题参考 + 块得分/升降带决策，
+    /// 写 AnswersJson/ScoresJson 到 record；不调 FinalizeAsync、不 SaveChanges（由调用方收尾）。
+    /// </summary>
+    private async Task<(bool ShouldConverge, AssessmentBlockResult Result)> ScoreBlockCoreAsync(
+        Assessment assessment,
+        AssessmentRecord record,
+        BlockPayload payload,
+        IReadOnlyList<AssessmentAnswerItem> answers,
+        CancellationToken cancellationToken)
+    {
         // 产出题：全部走 LLM 四维真实评分（复用 SentenceService 链路），空作答记 0 不浪费调用
         var productionScores = new List<ProductionScore>();
         foreach (var item in payload.Production)
@@ -168,12 +255,24 @@ public sealed class AssessmentService(
         record.ScoresJson = JsonSerializer.Serialize(
             new BlockScores(true, blockExpression, productionScores, vocabScores, readingScore, decision, nextBand), JsonOptions);
 
-        var completedBlocks = assessment.Records.Count(item => item.Step == AssessmentStepType.AdaptiveBlock && item.ScoresJson != UnsubmittedMarker);
+        var completedBlocks = assessment.Records.Count(item => item.Step == AssessmentStepType.AdaptiveBlock && item.ScoresJson != UnsubmittedMarker && item.ScoresJson != PendingScoringMarker);
         var shouldConverge = scoring.ShouldConverge(completedBlocks, decision);
-        var final = shouldConverge ? await FinalizeAsync(assessment, cancellationToken) : null;
+        var result = new AssessmentBlockResult(shouldConverge, payload.BlockIndex, payload.Band, shouldConverge ? null : nextBand, blockExpression, null);
+        return (shouldConverge, result);
+    }
 
-        await db.SaveChangesAsync(cancellationToken);
-        return new AssessmentBlockResult(shouldConverge, blockIndex, payload.Band, shouldConverge ? null : nextBand, blockExpression, final);
+    /// <summary>幂等重提交回显（已评分块）。</summary>
+    private AssessmentBlockResult BuildReplayResult(Assessment assessment, int blockIndex, BlockPayload payload, AssessmentRecord record)
+    {
+        var existingScores = JsonSerializer.Deserialize<BlockScores>(record.ScoresJson, JsonOptions)!;
+        var converged = assessment.Status == AssessmentStatus.Completed;
+        return new AssessmentBlockResult(
+            converged,
+            blockIndex,
+            payload.Band,
+            converged ? null : existingScores.NextBand,
+            existingScores.BlockExpressionScore,
+            converged ? RebuildFinal(assessment) : null);
     }
 
     public Task<Assessment?> GetAsync(Guid assessmentId, CancellationToken cancellationToken)
@@ -558,7 +657,7 @@ public sealed class AssessmentService(
     }
 
     private static int Intrinsic(Word word) =>
-        word.LlmAnnotation?.IntrinsicScore ?? LegacyScoreHelper.FromDifficulty(word.DifficultyLevel);
+        word.LlmAnnotation?.IntrinsicScore ?? LegacyScoreHelper.FromCefr(word.CefrLevel);
 
     private static CefrLevel ApplyMove(CefrLevel band, BandMove move) => ClampBand((CefrLevel)((int)band + (int)move));
 

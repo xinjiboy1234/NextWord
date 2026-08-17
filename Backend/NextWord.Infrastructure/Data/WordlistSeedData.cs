@@ -44,7 +44,16 @@ public static class WordlistSeedData
             },
             IsCore = true,
             Utility = Enum.TryParse<WordUtility>(entry.Utility, ignoreCase: true, out var utility) ? utility : WordUtility.Medium,
-            Role = Enum.TryParse<ExpressionRole>(entry.Role, ignoreCase: true, out var role) ? role : ExpressionRole.SceneNoun,
+            // T-061：词表 JSON 的 role 是 snake_case（core_verb/connector/...），Enum.TryParse 不识别下划线——
+            // 直接映射枚举名，避免种子全落 SceneNoun 的潜藏 bug
+            Role = entry.Role.Trim().ToLowerInvariant() switch
+            {
+                "core_verb" => ExpressionRole.CoreVerb,
+                "connector" => ExpressionRole.Connector,
+                "scene_noun" => ExpressionRole.SceneNoun,
+                "phrase_pattern" => ExpressionRole.PhrasePattern,
+                _ => ExpressionRole.SceneNoun
+            },
             ScenarioAnnotationVersion = Services.ScenarioAnnotationWorker.CurrentVersion
         };
 

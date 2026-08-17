@@ -10,7 +10,7 @@ using NextWord.Infrastructure.Services;
 namespace NextWord.UnitTests;
 
 /// <summary>
-/// T-052 拼写队列组装：review/new/mixed 三模式、mixed 新旧 3:7、一侧不足另一侧补位、
+/// T-052/T-067 拼写队列组装：review/new/mixed 三模式、mixed 新旧 4:6（T-067 由 3:7 提升）、一侧不足另一侧补位、
 /// 新词按 [vocabScore, vocabScore+12] 难度带内口径取词、双空返回空队列。
 /// 共享库纪律：种子词 ScenarioAnnotationVersion 置为当前版本（不被 ScenarioAnnotationWorker 当未标注词捞走，
 /// 参照 ScenarioAnnotationWorkerTests 的污染教训），且每例结束清理用户/关系/词；断言不依赖全局词池洁净
@@ -42,7 +42,7 @@ public class SpellingQueueTests
         return user;
     }
 
-    private static async Task<Word> SeedWordAsync(ApplicationDbContext db, DifficultyLevel level, List<Guid> seededWordIds)
+    private static async Task<Word> SeedWordAsync(ApplicationDbContext db, DifficultyLevel level, List<Guid> seededWordIds, CefrLevel cefr = CefrLevel.A1)
     {
         var word = new Word
         {
@@ -50,6 +50,8 @@ public class SpellingQueueTests
             PartOfSpeech = "v",
             Meanings = ["测试词义"],
             DifficultyLevel = level,
+            // T-061：带内选词按 CEFR 六档映射内在难度分，种子词显式带 CEFR 才可测带内/带外
+            CefrLevel = cefr,
             // 共享库纪律：标记为已标注，避免被 ScenarioAnnotationWorker 批次捞走
             ScenarioAnnotationVersion = ScenarioAnnotationWorker.CurrentVersion,
         };
@@ -145,10 +147,10 @@ public class SpellingQueueTests
 
             var queue = await service.GetQueueAsync(user.Id, 12, SpellingQueueMode.Mixed, CancellationToken.None);
 
-            // count=12 → 新 4（3:7 AwayFromZero 取整）、复习 8
+            // count=12 → 新 5（4:6 AwayFromZero 取整，T-067）、复习 7
             Assert.Equal(12, queue.Count);
-            Assert.Equal(8, queue.Count(item => item.IsReview));
-            Assert.Equal(4, queue.Count(item => !item.IsReview));
+            Assert.Equal(7, queue.Count(item => item.IsReview));
+            Assert.Equal(5, queue.Count(item => !item.IsReview));
         }
         finally
         {
@@ -189,19 +191,24 @@ public class SpellingQueueTests
     {
         var (db, service) = await CreateServiceAsync();
         await using var _ = db;
+        // 无分数 → vocab 默认 A2 中点 27 → 难度带 [27,39]：A2（映射 27）带内，A1（10）/B1（52）/B2（77）带外
         var user = await SeedUserAsync(db);
         var seededWordIds = new List<Guid>();
         try
         {
-            // 无分数 → vocab 默认 42 → 难度带 [42,54]：Intermediate（映射 50）带内，Basic（25）/Advanced（75）带外
-            var below = await SeedWordAsync(db, DifficultyLevel.Basic, seededWordIds);
-            var above = await SeedWordAsync(db, DifficultyLevel.Advanced, seededWordIds);
-            await SeedWordAsync(db, DifficultyLevel.Intermediate, seededWordIds);
+            var outOfBand = new List<Guid>();
+            for (var i = 0; i < 25; i++) await SeedWordAsync(db, DifficultyLevel.Intermediate, seededWordIds, CefrLevel.A2);
+            outOfBand.Add((await SeedWordAsync(db, DifficultyLevel.Basic, seededWordIds, CefrLevel.A1)).Id);
+            outOfBand.Add((await SeedWordAsync(db, DifficultyLevel.Intermediate, seededWordIds, CefrLevel.B1)).Id);
+            outOfBand.Add((await SeedWordAsync(db, DifficultyLevel.Advanced, seededWordIds, CefrLevel.B2)).Id);
 
             var queue = await service.GetQueueAsync(user.Id, 20, SpellingQueueMode.New, CancellationToken.None);
 
-            Assert.NotEmpty(queue);
-            Assert.DoesNotContain(queue, item => item.Word.Id == below.Id || item.Word.Id == above.Id);
+            // 带内 A2 词足够（25 ≥ 20），不触发相邻带扩展，带外词不进队列
+            Assert.Equal(20, queue.Count);
+            Assert.All(queue, item => Assert.False(item.IsReview));
+            Assert.DoesNotContain(queue, item => outOfBand.Contains(item.Word.Id));
+            Assert.All(queue, item => Assert.Equal(CefrLevel.A2, item.Word.CefrLevel));
         }
         finally
         {
@@ -210,22 +217,60 @@ public class SpellingQueueTests
     }
 
     [Fact]
-    public async Task GetQueue_returns_empty_when_no_reviews_and_no_band_words()
+    public async Task GetQueue_band_expansion_serves_adjacent_bands_when_band_empty()
     {
         var (db, service) = await CreateServiceAsync();
         await using var _ = db;
-        // vocab=100 → 难度带 [100,100]，全局词池无内在分 100 的词；无复习关系 → 双空
+        // T-061：vocab=100 → 难度带 [100,100] 空 → 相邻带扩展 [76,100] 覆盖 B2（77）——有未学词即不空队列
         var user = await SeedUserAsync(db, vocabulary: 100);
         var seededWordIds = new List<Guid>();
         try
         {
+            for (var i = 0; i < 5; i++) await SeedWordAsync(db, DifficultyLevel.Intermediate, seededWordIds, CefrLevel.B2);
+
+            var queue = await service.GetQueueAsync(user.Id, 12, SpellingQueueMode.Mixed, CancellationToken.None);
+
+            Assert.NotEmpty(queue);
+            Assert.All(queue, item => Assert.False(item.IsReview));
+        }
+        finally
+        {
+            await CleanupAsync(db, user.Id, seededWordIds);
+        }
+    }
+
+    [Fact]
+    public async Task GetQueue_returns_empty_only_when_all_words_learned()
+    {
+        // T-061：带内扩展 + 全量兜底后，只有「全部未学词都已学」才返回空队列。
+        // 用一次性隔离库避免共享测试库（类间并行）被其他测试并发造词导致断言不确定。
+        await using var db = await PostgresTestDatabase.CreateIsolatedContextAsync();
+        var service = new SpellingService(
+            db,
+            new Sm2Service(),
+            new ScoreProfileService(db, new ScoreMappingService(new ScoreMappingOptions())),
+            new ReviewQueueService(db));
+        var user = await SeedUserAsync(db, vocabulary: 100);
+        var seededWordIds = new List<Guid>();
+        try
+        {
+            for (var i = 0; i < 3; i++) await SeedWordAsync(db, DifficultyLevel.Intermediate, seededWordIds, CefrLevel.B2);
+            // 学掉库里所有词，使未学池为空
+            var allWordIds = await db.Words.AsNoTracking().Select(word => word.Id).ToListAsync();
+            db.UserWordRelationships.AddRange(allWordIds.Select(wordId => new UserWordRelationship
+            {
+                UserId = user.Id,
+                WordId = wordId
+            }));
+            await db.SaveChangesAsync();
+
             var queue = await service.GetQueueAsync(user.Id, 12, SpellingQueueMode.Mixed, CancellationToken.None);
 
             Assert.Empty(queue);
         }
         finally
         {
-            await CleanupAsync(db, user.Id, seededWordIds);
+            await db.Database.EnsureDeletedAsync();
         }
     }
 }

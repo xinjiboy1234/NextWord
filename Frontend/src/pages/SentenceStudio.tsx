@@ -26,7 +26,7 @@ export function SentenceStudio({ userLevel = 'A2' }: SentenceStudioProps) {
     <div className="stack stack-md">
       <div className="section-header">
         <h2>造句训练</h2>
-        <p>指定词造句与自由表达，AI 多维度评分。</p>
+        <p>指定词造句与自由表达，多维度反馈。</p>
       </div>
       <Tabs
         value={mode}

@@ -42,7 +42,7 @@ export function FreeExpression({ userLevel = 'A2' }: FreeExpressionProps) {
         <div>
           <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-xl)', fontWeight: 700 }}>自由表达</h2>
           <p style={{ marginTop: 'var(--space-1)', fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>
-            写一段 2–5 句英文，系统会给出整体反馈。
+            写一段 2–5 句英文，完成后查看整体反馈。
           </p>
         </div>
         {exploration?.active && exploration.prompt && (

@@ -59,7 +59,7 @@ public sealed class PracticeScoreWritebackService(
 
         var effective = EffectiveDifficultyCalculator.Compute(
             word?.LlmAnnotation?.IntrinsicScore,
-            word is null ? null : LegacyScoreHelper.FromDifficulty(word.DifficultyLevel),
+            word is null ? null : LegacyScoreHelper.FromCefr(word.CefrLevel),
             relationship,
             null);
         var observed = effective.Score * (log.IsCorrect ? 1.0 : WrongAnswerFactor);

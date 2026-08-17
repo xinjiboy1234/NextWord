@@ -59,7 +59,7 @@ export function Dashboard({ progress, onNavigate }: DashboardProps) {
     {
       id: 'sentence',
       label: '造句',
-      description: 'AI 辅助造句，多维度评分反馈',
+      description: '造句练习，多维度评分反馈',
       icon: PenLine,
       badge: stats.sentence,
     },
@@ -166,7 +166,7 @@ export function Dashboard({ progress, onNavigate }: DashboardProps) {
                 </div>
               ) : (
                 <p className="dashboard-info-empty">
-                  完成初始测评后，AI 将为你生成个性化学习计划。
+                  完成初始测评后，将为你生成个性化学习计划。
                 </p>
               )}
               {/* T-034：本周毕业计数（无毕业不显示） */}

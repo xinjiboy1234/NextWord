@@ -15,20 +15,11 @@ interface ManagePageProps {
   onNavigate: (view: ManageView) => void
 }
 
+// T-063：管理页重组为「学习工具」+「系统设置」两区——测评/挑战/词库等学习活动与
+// LLM 系统配置不再混排，标题与描述按用户语义重写
 const MANAGE_SECTIONS = [
   {
-    label: '系统',
-    items: [
-      {
-        id: 'settings' as const,
-        title: '系统设置',
-        description: 'LLM 提供商、API Key、模型配置',
-        icon: Settings,
-      },
-    ],
-  },
-  {
-    label: '测评与挑战',
+    label: '学习工具',
     items: [
       {
         id: 'assessment' as const,
@@ -39,7 +30,7 @@ const MANAGE_SECTIONS = [
       {
         id: 'assessments' as const,
         title: '测评记录',
-        description: '历次测评结果与逐题 AI 评语',
+        description: '历次测评结果与逐题评语',
         icon: History,
       },
       {
@@ -48,11 +39,6 @@ const MANAGE_SECTIONS = [
         description: '词汇、造句、阅读三阶段综合测试',
         icon: Trophy,
       },
-    ],
-  },
-  {
-    label: '数据',
-    items: [
       {
         id: 'home' as const,
         title: '词库',
@@ -64,6 +50,17 @@ const MANAGE_SECTIONS = [
         title: '学习数据',
         description: '进度统计、连续打卡与学习记录',
         icon: BarChart3,
+      },
+    ],
+  },
+  {
+    label: '系统设置',
+    items: [
+      {
+        id: 'settings' as const,
+        title: '模型服务配置',
+        description: '模型提供商、API Key、模型配置（影响测评与评分质量）',
+        icon: Settings,
       },
     ],
   },
@@ -84,7 +81,7 @@ export function ManagePage({ onNavigate }: ManagePageProps) {
     <>
       <div className="section-header">
         <h2>管理</h2>
-        <p>系统配置、水平测评、挑战与词库数据。</p>
+        <p>学习工具与系统配置分开管理：测评/挑战/词库在学习工具区，模型服务在系统设置区。</p>
       </div>
 
       {MANAGE_SECTIONS.map((section) => (

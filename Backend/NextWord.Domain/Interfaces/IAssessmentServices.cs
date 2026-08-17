@@ -46,6 +46,10 @@ public interface IAssessmentService
     Task<Assessment> StartInitialAsync(Guid userId, CancellationToken cancellationToken);
     Task<AssessmentBlockResponse> GetNextBlockAsync(Guid assessmentId, CancellationToken cancellationToken);
     Task<AssessmentBlockResult> SubmitBlockAsync(Guid assessmentId, int blockIndex, IReadOnlyList<AssessmentAnswerItem> answers, CancellationToken cancellationToken);
+    /// <summary>T-065：异步评分——提交答案立即返回（入队后台评分任务）。</summary>
+    Task SubmitBlockForScoringAsync(Guid assessmentId, int blockIndex, IReadOnlyList<AssessmentAnswerItem> answers, CancellationToken cancellationToken);
+    /// <summary>T-065：后台评分任务执行（评分核心 + 收敛定级）。</summary>
+    Task ScoreBlockJobAsync(Guid assessmentId, int blockIndex, CancellationToken cancellationToken);
     Task<Assessment?> GetAsync(Guid assessmentId, CancellationToken cancellationToken);
     /// <summary>T-054：当前用户测评历史列表（按开始时间倒序，只读无分页）。</summary>
     Task<IReadOnlyList<AssessmentListItem>> ListForUserAsync(Guid userId, CancellationToken cancellationToken);

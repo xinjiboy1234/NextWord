@@ -42,6 +42,8 @@ export interface AssessmentBlockResponse {
   converged: boolean
   block?: AssessmentBlock | null
   final?: AssessmentFinalResult | null
+  /** T-065：本块已提交答案、后台评分中（前端轮询直到出题/收敛） */
+  evaluating?: boolean
 }
 
 export interface AssessmentBlockResult {

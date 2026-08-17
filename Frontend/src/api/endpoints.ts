@@ -17,6 +17,7 @@ export const endpoints = {
   learningSubmit: '/api/learning/submit',
   progress: '/api/progress',
   llmRateDifficulty: '/api/llm/rate-difficulty',
+  llmStatus: '/api/llm/status',
   sentencePrompts: '/api/sentences/prompts',
   sentenceRate: '/api/sentences/rate',
   freeExpressionRate: '/api/free-expression/rate',

@@ -730,6 +730,7 @@ p { text-wrap: pretty; }
 .alert-error { background: var(--danger-soft); color: var(--danger); }
 .alert-success { background: var(--success-soft); color: var(--success); }
 .alert-info { background: var(--info-soft); color: var(--info); }
+.alert-warning { background: var(--warning-soft, #fff7e6); color: var(--warning, #b45309); }
 
 /* ─── Stats Grid ──────────────────────────────────────── */
 .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--space-4); }

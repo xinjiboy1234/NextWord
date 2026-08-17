@@ -52,13 +52,8 @@ public sealed class ReAnnotationWorker(
             RecommendedAction = RecommendedAction.ReviewLater,
             Confidence = Math.Max(0.3, (word.LlmAnnotation?.Confidence ?? 0.5) - 0.1),
             ModelProfileId = "reannotation-v1",
-            IntrinsicScore = rating.DifficultyLevel switch
-            {
-                DifficultyLevel.Basic => 25,
-                DifficultyLevel.Intermediate => 50,
-                DifficultyLevel.Advanced => 75,
-                _ => 40
-            },
+            // T-061：内在难度分按 CEFR 六档映射（比 legacy 三档更细，与带内选词口径一致）
+            IntrinsicScore = LegacyScoreHelper.FromCefr(rating.CefrLevel),
             Version = (word.LlmAnnotation?.Version ?? 0) + 1,
             IsCurrent = true,
             PromptVersion = "feedback-reannotation",

@@ -1,6 +1,6 @@
-import { LogOut, Settings } from 'lucide-react'
+import { BarChart3, ChevronRight, ClipboardCheck, LogOut, Settings } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
 import { endpoints } from '../api/endpoints'
 import { LevelPanel } from '../components/LevelPanel'
@@ -16,6 +16,7 @@ export function ProfilePage() {
   const { logout, user } = useAuth()
   const { showCefr, setShowCefr } = useDisplaySettings()
   const location = useLocation()
+  const navigate = useNavigate()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -45,6 +46,11 @@ export function ProfilePage() {
     }, 100)
     return () => window.clearTimeout(timer)
   }, [location.hash, loading])
+
+
+  function scrollToProgress() {
+    document.getElementById('profile-progress')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
   if (loading) {
     return <p className="text-sm" style={{ color: 'var(--muted)' }}>正在加载个人主页...</p>
@@ -111,17 +117,35 @@ export function ProfilePage() {
         </p>
       </div>
 
+      {/* T-063：快捷入口区（替代孤立「高级→管理后台」链接）——测评记录 / 学习数据 / 系统设置 */}
       <div className="section-header" style={{ marginTop: 'var(--space-8)' }}>
-        <h2>高级</h2>
+        <h2>快捷入口</h2>
       </div>
-      <div className="card">
-        <Link to="/manage" className="profile-manage-link row-between">
-          <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-            <Settings size={18} aria-hidden="true" />
-            管理后台
-          </span>
-          <span style={{ color: 'var(--muted)', fontSize: 'var(--text-sm)' }}>LLM 设置、词库等</span>
-        </Link>
+      <div className="manage-card-grid">
+        <button type="button" className="manage-card" onClick={() => navigate('/assessments')}>
+          <div className="manage-card-icon"><ClipboardCheck size={22} aria-hidden="true" /></div>
+          <div className="manage-card-info">
+            <h3>测评记录</h3>
+            <p>历次测评结果与逐题评语</p>
+          </div>
+          <span className="manage-card-chevron"><ChevronRight size={18} aria-hidden="true" /></span>
+        </button>
+        <button type="button" className="manage-card" onClick={() => scrollToProgress()}>
+          <div className="manage-card-icon"><BarChart3 size={22} aria-hidden="true" /></div>
+          <div className="manage-card-info">
+            <h3>学习数据</h3>
+            <p>进度统计、连续打卡与学习记录</p>
+          </div>
+          <span className="manage-card-chevron"><ChevronRight size={18} aria-hidden="true" /></span>
+        </button>
+        <button type="button" className="manage-card" onClick={() => navigate('/manage')}>
+          <div className="manage-card-icon"><Settings size={22} aria-hidden="true" /></div>
+          <div className="manage-card-info">
+            <h3>系统设置</h3>
+            <p>模型提供商、API Key、模型配置</p>
+          </div>
+          <span className="manage-card-chevron"><ChevronRight size={18} aria-hidden="true" /></span>
+        </button>
       </div>
     </div>
   )

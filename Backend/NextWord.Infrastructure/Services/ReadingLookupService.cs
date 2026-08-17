@@ -27,12 +27,12 @@ public sealed class ReadingLookupService(
                 .FirstOrDefaultAsync(item => item.UserId == userId && item.WordId == word.Id, cancellationToken);
 
         var annotation = word?.LlmAnnotation;
-        var intrinsic = annotation?.IntrinsicScore ?? LegacyScoreHelper.FromDifficulty(word?.DifficultyLevel ?? DifficultyLevel.Intermediate);
+        var intrinsic = annotation?.IntrinsicScore ?? (word is null ? LegacyScoreHelper.FromDifficulty(DifficultyLevel.Intermediate) : LegacyScoreHelper.FromCefr(word.CefrLevel));
         var confidence = annotation?.Confidence ?? 0.5;
 
         var effective = EffectiveDifficultyCalculator.Compute(
             intrinsic,
-            LegacyScoreHelper.FromDifficulty(word?.DifficultyLevel ?? DifficultyLevel.Intermediate),
+            word is null ? LegacyScoreHelper.FromDifficulty(DifficultyLevel.Intermediate) : LegacyScoreHelper.FromCefr(word.CefrLevel),
             relationship,
             new ReadingDifficultyContext(null));
 
@@ -116,5 +116,19 @@ internal static class LegacyScoreHelper
         DifficultyLevel.Intermediate => 50,
         DifficultyLevel.Advanced => 75,
         _ => 40
+    };
+
+    /// <summary>T-061：词表词 CEFR 等级到内在难度分（0–100）的映射——按 ScoreMapping:CefrBands
+    /// 分带中点取值（A1 0-20 / A2 20-35 / B1 35-70 / B2 70-85 / C1 85-95 / C2 95-100），
+    /// 六档粒度替代 legacy 三档（25/50/75），使带内选词池显著变宽（词库 IntrinsicScore 全 0 时
+    /// 不再只剩 Intermediate 一档）。</summary>
+    public static int FromCefr(CefrLevel level) => level switch
+    {
+        CefrLevel.A1 => 10,
+        CefrLevel.A2 => 27,
+        CefrLevel.B1 => 52,
+        CefrLevel.B2 => 77,
+        CefrLevel.C1 => 90,
+        _ => 97
     };
 }

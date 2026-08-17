@@ -28,6 +28,25 @@ internal static class PostgresTestDatabase
         return new ApplicationDbContext(options);
     }
 
+    /// <summary>
+    /// T-061：创建一次性隔离数据库（唯一库名 + EnsureCreated），用于依赖「库内无其他词」的确定性断言
+    /// （共享库 nextword_unit_test 在 xUnit 类间并行下会被其他测试类并发造词，无法构造「全部词已学」场景）。
+    /// 用完须调用 <see cref="ApplicationDbContext.Database"/>.EnsureDeletedAsync() 清理。
+    /// </summary>
+    public static async Task<ApplicationDbContext> CreateIsolatedContextAsync(CancellationToken cancellationToken = default)
+    {
+        var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
+        {
+            Database = $"nextword_unit_iso_{Guid.NewGuid():N}"
+        };
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseNpgsql(builder.ConnectionString)
+            .Options;
+        var db = new ApplicationDbContext(options);
+        await db.Database.EnsureCreatedAsync(cancellationToken);
+        return db;
+    }
+
     private static async Task EnsureInitializedAsync(CancellationToken cancellationToken)
     {
         if (_initialized)

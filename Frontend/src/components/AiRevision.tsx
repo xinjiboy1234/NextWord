@@ -7,7 +7,7 @@ export function AiRevision({ value }: AiRevisionProps) {
 
   return (
     <div className="side-panel">
-      <h4 className="side-panel-title">AI 改写</h4>
+      <h4 className="side-panel-title">参考表达</h4>
       <p style={{ fontSize: 'var(--text-sm)', lineHeight: 1.6, padding: 'var(--space-3)', background: 'var(--brand-soft)', borderRadius: 'var(--radius-md)' }}>
         {value}
       </p>

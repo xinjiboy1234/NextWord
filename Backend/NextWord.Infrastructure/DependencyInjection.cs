@@ -69,6 +69,7 @@ public static class DependencyInjection
         services.AddScoped<BottleneckInsightWorker>();
         services.AddScoped<ReAnnotationWorker>();
         services.AddScoped<ScenarioAnnotationWorker>();
+        services.AddScoped<DifficultyAnnotationWorker>();
         services.AddScoped<PracticeScoreWritebackService>();
         services.AddScoped<IReadingLookupService, ReadingLookupService>();
         services.AddScoped<IDailyWordSelectionService, DailyWordSelectionService>();
@@ -105,6 +106,8 @@ public static class DependencyInjection
         };
         openAiOptions.ApiKey ??= configuration[openAiOptions.ApiKeyEnvironmentVariable];
         openAiOptions.ApiKey ??= Environment.GetEnvironmentVariable(openAiOptions.ApiKeyEnvironmentVariable);
+        // T-064：暴露服务端 LLM 配置状态（前端首次测评前判断是否需要配置 API Key）
+        services.AddSingleton(openAiOptions);
         if (openAiOptions.Enabled && !string.IsNullOrWhiteSpace(openAiOptions.ApiKey))
         {
             services.AddSingleton<IChatClient>(_ => string.IsNullOrWhiteSpace(openAiOptions.BaseUrl)

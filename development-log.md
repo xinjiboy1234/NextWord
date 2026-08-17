@@ -1,3 +1,36 @@
+## 2026-08-17 — I10 T-068：界面去「AI」化文案调整（程实）
+
+### 需求
+界面不再显示「AI」字样，弱化「由 AI 评分」「模拟评分结果不可信」「系统会给出整体反馈」等机器评价感表述，降低用户面对机器的敷衍感与信任顾虑；仅改文字显示，不动功能与逻辑。
+
+### 实现
+- 全部界面文案去除「AI」前缀：AI 改写→参考表达、AI 评估报告→评估报告、AI 生成→动态生成、AI 服务配置→模型服务配置、AI 辅助造句→造句练习、AI 多维度评分→多维度反馈、逐题 AI 评语→逐题评语、AI 可解释/请求 AI 回复→可请求解读参考/请求解读参考、AI 正在逐题评分→正在逐题评分、先配置 AI 服务→先配置模型服务、AI 将为你生成个性化学习计划→将为你生成个性化学习计划。
+- 弱化机器感表述：测评配置门「测评的造句与情境表达题由 AI 评分，未配置 API Key 时只能使用模拟评分，结果不可信」→「测评的造句与情境表达题将逐题获得详细反馈；配置 API Key 后反馈更精准、定级更可靠，未配置时使用简化评分」；自由表达「写一段 2–5 句英文，系统会给出整体反馈」→「写一段 2–5 句英文，完成后查看整体反馈」；「LLM 提供商」→「模型提供商」。
+- 保留厂商品牌名（OpenAI/DeepSeek/Qwen 预设与表单默认值）不动——属配置必要信息，非产品「AI」自称。
+
+### 验证
+- npm run build 通过；全仓界面文案 grep 无「AI/LLM」残留（仅代码注释/标识符与厂商名）。
+- 本提交同时收口 I9 验收通过后一直未提交的 T-061~T-067 工作区改动（用户确认合并为一次提交）。
+
+## 2026-08-10 — I9 用户体验整改：新词供给/拼写空态/管理入口/测评配置门/异步评分/计划引导（程实）
+
+### 需求
+用户反馈 6 条：①新词练习过少；②拼写进去就说没有可练习；③我的界面管理混乱；④首次测评前应先配置 API Key；⑤测评应先答题后评价（不要同步等待）；⑥首次评价完成后应立即进入计划+练习安排。顾言补充定位根因：词库 1523 词 IntrinsicScore 全 0、难度带全退 legacy 三档（Basic 25/Intermediate 50/Advanced 75）[42，54] 带只剩 Intermediate 词致新词池窄、拼写队列易空。任务 T-061~T-067 全部实施（用户确认强制 API Key 配置、计划生成引导页形态）。
+
+### 实现（按任务）
+- **T-061 词库难度标注回填 + 带内选词相邻带扩展**：①LegacyScoreHelper.FromCefr 六档映射（A1 10/A2 27/B1 52/B2 77/C1 90/C2 97，按 ScoreMapping:CefrBands 分带中点）替代 legacy 三档作为 IntrinsicScore 缺失兜底——DailyWordSelection/Spelling/Assessment 词池/ReAnnotation/ReadingLookup/PracticeScoreWriteback 六处统一；②新助手 BandWordSelector.PickUnlearnedAsync：首选 [score，score+12] 带、不足相邻带上下各扩 12 两轮（覆盖 [score-24，score+36]）、再不足按距离取任意未学词兜底（拼写/每日词口径对齐，有未学词即不空队列）；③新用户默认分 42→27（A2 中点，与未测评按 A2 估计一致，原 42 落在 B1 档取偏难词）；④真实 LLM 难度标注链路：DifficultyRating 增 IntrinsicScore、BuildDifficultyPrompt 结构化 JSON、LlmResponseParser.ParseDifficulty、LlmChatClientProvider.RateDifficultyAsync 真实调用（失败回退 Mock）、DifficultyAnnotationWorker（JobType=DifficultyAnnotation、幂等按版本、Mock 结果 ModelProfileId=local-dev 不落库防污染）、POST /api/words/annotate-difficulty?batchSize=（幂等按小时）。
+- **T-067 拼写新词名额**：mixed 新旧 3:7→4:6（NewSlots 0.3→0.4，count=12 新 4→5，仍在顾言 T-052 认可的 3:7-4:6 区间）。
+- **T-062 拼写空态引导**：空态不再说「太棒了」，改为「暂无拼写任务」+ 原因说明 +「去学新词」（跳 /learn）+「重新加载队列」+ 换模式提示。
+- **T-063 我的页信息架构重组**：/profile 删孤立「高级→管理后台」链接，个人卡下加快捷入口区（测评记录/学习数据锚点/系统设置 3 卡）；/manage 重组为「学习工具」（水平测评/测评记录/综合挑战/词库/学习数据）与「系统设置」（LLM 抽屉）两区，描述重写。
+- **T-064 首次测评强制配置 API Key**：新增 GET /api/llm/status（llmMode=user-key|server|mock，LlmOpenAiOptions 注册单例供端点读服务端配置）；首次测评（hasCompleted=false）mock 模式开始界面改警示卡「先配置 AI 服务才能开始测评」+「配置 API Key」（复用 LlmSettingsDrawer，保存后刷新状态）+ 跳过测评可用（默认 A2）；autoStart 在 mock 模式不触发；状态检查失败 fail-open 不阻断。
+- **T-065 测评块异步评分**：SubmitBlockAsync 评分逻辑提取 ScoreBlockCoreAsync（同步/异步共用，测试兼容）；端点改 SubmitBlockForScoringAsync——存答案 + ScoresJson 标记 pending-scoring + 入队 AssessmentBlockScoring 后台任务 → 202 立即返回；ScoreBlockJobAsync 后台评分 + 收敛 FinalizeAsync；GetNextBlockAsync 遇 pending-scoring 返回 Evaluating=true（不重发题目）；前端 useAssessmentFlow 提交后轮询 next-block（2s），「评分中…」提示替代同步干等。
+- **T-066 测评完成计划引导页**：新组件 PlanGuidePanel——首次测评结果页下方轮询 planner/current（3s×最多 60s），计划就绪展示概览（主攻场景/今日词队列/造句目标）或探索任务 +「开始今日练习」（跳 /learn）/「去写今日表达」；超时降级「计划后台生成，先去学今天的新词」；App.tsx 首次完成停留在 onboarding 壳（planGuideActive）直到用户点开始练习，不再直接丢回首页随意安排。
+
+### 验证
+- 新增/更新测试：SpellingQueueTests 改造 7 例（带内/扩展/兜底/隔离库全学空）、DifficultyAnnotationWorkerTests 3 例（隔离库）、AdaptiveAssessmentServiceTests 新增异步评分路径 1 例；PostgresTestDatabase.CreateIsolatedContextAsync 一次性隔离库解决共享库类间并行的确定性断言。
+- dotnet test 全绿：单元 301 + 集成 9（基线 296+9）；npm run build 通过；E2E assessment.spec 适配 T-063/T-064（快捷入口 + 假 key 过配置门）。
+- 待周密验收（QA 视角自验已覆盖：拼写三模式配比/带内扩展/空态引导、测评异步链路、计划引导轮询、管理页结构）。
+- **环境词库标注回填（发现并修复）**：docker 库 1523 词 Utility/Role/Scenarios/ScenarioAnnotationVersion 全空（旧镜像种子缺标注）——导致测评块退化为 1 题（BuildBlockAsync 要求 Utility High/Medium）、Planner 场景驱动失效。新增可复用脚本 Backend/Scripts/backfill-wordlist-annotations.py（从内置词表 JSON 按 lemma 回填 utility/role/cefr/scenarios，幂等；枚举字符串按 EF Enum.Parse 大小写敏感存 PascalCase），已对 dev 库执行（1520 词 + 2383 场景关联）；顺手修复 WordlistSeedData.ToWord 的潜藏 bug——词表 JSON 的 snake_case role（core_verb 等）Enum.TryParse 不识别下划线恒落 SceneNoun，改显式映射。修复后测评块恢复 3 产出+1 识别+1 阅读、拼写/每日词正常。
 # NextWord 开发日志
 
 按时间倒序记录需求、决策、实现与验收。

@@ -331,7 +331,7 @@ public class AdaptiveAssessmentServiceTests
         var users = new UserRepository(db);
         var scoreProfile = new ScoreProfileService(db, new ScoreMappingService(new ScoreMappingOptions()));
         var sentences = new SentenceService(db, new StubLlmFactory(llm), Options.Create(new LlmSentenceRatingOptions()), new LearningPlanService(db, scoreProfile), scoreProfile);
-        return new AssessmentService(db, new AssessmentScoringService(new ScoreMappingOptions()), sentences, users, scoreProfile, new StubEvaluationReports());
+        return new AssessmentService(db, new AssessmentScoringService(new ScoreMappingOptions()), sentences, users, scoreProfile, new StubEvaluationReports(), new RecordingBackgroundJobs());
     }
 
     private static async Task<User> SeedPoolAsync(ApplicationDbContext db)
@@ -421,6 +421,76 @@ public class AdaptiveAssessmentServiceTests
         }
 
         return answers;
+    }
+
+    /// <summary>T-065：异步评分路径——提交立即返回（块标记 pending-scoring、评分任务入队），
+    /// 后台任务评分后收敛定级；轮询 next-block 在评分中返回 Evaluating=true、完成后返回下一块。</summary>
+    [Fact]
+    public async Task Submit_block_accepted_then_worker_scores_async()
+    {
+        await using var db = await PostgresTestDatabase.CreateContextAsync();
+        var backgroundJobs = new RecordingBackgroundJobs();
+        var llm = new StubLlmProvider(5, 5, 5, 5);
+        var service = new AssessmentService(
+            db,
+            new AssessmentScoringService(new ScoreMappingOptions()),
+            new SentenceService(db, new StubLlmFactory(llm), Options.Create(new LlmSentenceRatingOptions()), new LearningPlanService(db, new ScoreProfileService(db, new ScoreMappingService(new ScoreMappingOptions()))), new ScoreProfileService(db, new ScoreMappingService(new ScoreMappingOptions()))),
+            new UserRepository(db),
+            new ScoreProfileService(db, new ScoreMappingService(new ScoreMappingOptions())),
+            new StubEvaluationReports(),
+            backgroundJobs);
+        var user = await SeedPoolAsync(db);
+        var assessment = await service.StartInitialAsync(user.Id, CancellationToken.None);
+
+        var block1 = (await service.GetNextBlockAsync(assessment.Id, CancellationToken.None)).Block!;
+        var answers1 = await AnswersAsync(service, assessment.Id, 1, recognitionCorrect: true);
+
+        // 提交：立即返回（不阻塞评分），块标记 pending-scoring、评分任务入队
+        await service.SubmitBlockForScoringAsync(assessment.Id, 1, answers1, CancellationToken.None);
+        var stored = await service.GetAsync(assessment.Id, CancellationToken.None);
+        var blockRecord = stored!.Records.Single(item => item.QuestionType == "block:1");
+        Assert.Equal("\"pending-scoring\"", blockRecord.ScoresJson);
+        Assert.Contains(backgroundJobs.Enqueued, job => job.JobType == "AssessmentBlockScoring" && job.Payload.Contains("\"assessmentId\""));
+
+        // 评分中：next-block 返回 Evaluating=true（不重发题目）
+        var evaluating = await service.GetNextBlockAsync(assessment.Id, CancellationToken.None);
+        Assert.True(evaluating.Evaluating);
+        Assert.Null(evaluating.Block);
+
+        // 后台任务评分：满分 → 升带不收敛，返回下一块
+        await service.ScoreBlockJobAsync(assessment.Id, 1, CancellationToken.None);
+        var next = await service.GetNextBlockAsync(assessment.Id, CancellationToken.None);
+        Assert.False(next.Evaluating);
+        Assert.False(next.Converged);
+        Assert.Equal(2, next.Block!.BlockIndex);
+
+        // 块 2 同样异步提交 + 后台评分 → 满 3 块收敛出定级
+        var answers2 = await AnswersAsync(service, assessment.Id, 2, recognitionCorrect: true);
+        await service.SubmitBlockForScoringAsync(assessment.Id, 2, answers2, CancellationToken.None);
+        await service.ScoreBlockJobAsync(assessment.Id, 2, CancellationToken.None);
+        var block3 = (await service.GetNextBlockAsync(assessment.Id, CancellationToken.None)).Block!;
+        var answers3 = await AnswersAsync(service, assessment.Id, 3, recognitionCorrect: true);
+        await service.SubmitBlockForScoringAsync(assessment.Id, 3, answers3, CancellationToken.None);
+        await service.ScoreBlockJobAsync(assessment.Id, 3, CancellationToken.None);
+
+        var done = await service.GetNextBlockAsync(assessment.Id, CancellationToken.None);
+        Assert.True(done.Converged);
+        Assert.NotNull(done.Final);
+        Assert.Equal(CefrLevel.C1, done.Final!.OverallLevel);
+        Assert.Equal(AssessmentStatus.Completed, (await service.GetAsync(assessment.Id, CancellationToken.None))!.Status);
+    }
+
+    /// <summary>T-065：记录入队的后台任务（AssessmentBlockScoring 断言用）。</summary>
+    private sealed class RecordingBackgroundJobs : IBackgroundJobService
+    {
+        public List<(string JobType, string Payload, string Key)> Enqueued { get; } = [];
+        public Task<long> EnqueueAsync(string jobType, string payloadJson, string idempotencyKey, CancellationToken cancellationToken)
+        {
+            Enqueued.Add((jobType, payloadJson, idempotencyKey));
+            return Task.FromResult((long)Enqueued.Count);
+        }
+
+        public Task ProcessPendingAsync(CancellationToken cancellationToken) => Task.CompletedTask;
     }
 
     private sealed class StubLlmProvider(int grammar, int natural, int vocabulary, int relevance) : ILLMProvider

@@ -38,7 +38,7 @@ export function CommentThread({ articleId, comments, onAdded }: CommentThreadPro
       <div>
         <h2 style={{ fontWeight: 540, fontSize: 'var(--text-base)' }}>段落评论</h2>
         <p style={{ marginTop: 'var(--space-1)', fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>
-          点击文中单词后可在此评论该段，AI 可解释（可选）。
+          点击文中单词后可在此评论该段，可请求解读参考（可选）。
         </p>
       </div>
 
@@ -83,7 +83,7 @@ export function CommentThread({ articleId, comments, onAdded }: CommentThreadPro
             checked={requestAiReply}
             onChange={(event) => setRequestAiReply(event.target.checked)}
           />
-          请求 AI 回复
+          请求解读参考
         </label>
         <button
           type="button"

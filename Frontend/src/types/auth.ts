@@ -54,3 +54,10 @@ export interface UserProfile {
   recentHistory: LevelHistoryItem[]
   llmSettings: UserLlmSettings | null
 }
+
+/** T-064：LLM 配置状态——llmMode: user-key（用户已配）/ server（服务端启用）/ mock（无真实 LLM） */
+export interface LlmStatus {
+  llmMode: 'user-key' | 'server' | 'mock'
+  userHasApiKey: boolean
+  serverEnabled: boolean
+}

@@ -1,8 +1,10 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using NextWord.Domain.Entities;
 using NextWord.Domain.Enums;
 using NextWord.Domain.Interfaces;
 using NextWord.Infrastructure.Data;
+using NextWord.Infrastructure.Services;
 
 namespace NextWord.Api.Endpoints;
 
@@ -55,6 +57,17 @@ public static class WordEndpoints
             // T-050：默认每日词量 10→15（上限 20 不变，前端可选 10/15/20）
             var result = await dailyWords.GetDailyAsync(user.Id, Math.Clamp(count ?? 15, 1, 20), ct);
             return Results.Ok(result);
+        });
+
+        // T-061：批量 LLM 难度标注（无 key/Mock 环境 job 空转不落库，幂等按小时）
+        group.MapPost("/annotate-difficulty", async (int? batchSize, IBackgroundJobService backgroundJobs, CancellationToken ct) =>
+        {
+            var jobId = await backgroundJobs.EnqueueAsync(
+                DifficultyAnnotationWorker.JobType,
+                JsonSerializer.Serialize(new { batchSize = Math.Clamp(batchSize ?? 20, 1, 50) }),
+                $"difficulty-annotation:{DateTimeOffset.UtcNow:yyyyMMddHH}",
+                ct);
+            return Results.Ok(new { jobId, message = "难度标注任务已入队" });
         });
 
         group.MapGet("/{id:guid}", async (Guid id, IWordRepository words, CancellationToken ct) =>

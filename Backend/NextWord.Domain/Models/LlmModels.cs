@@ -18,7 +18,9 @@ public sealed record DifficultyRating(
     string Reason,
     RecommendedAction RecommendedAction,
     double Confidence,
-    string ModelProfileId);
+    string ModelProfileId,
+    /// <summary>T-061：真实 LLM 可返回 0–100 内在难度分；Mock/回退为空（调用方回退 CEFR 六档映射）。</summary>
+    int? IntrinsicScore = null);
 
 public sealed record DefinitionRequest(
     string Word,

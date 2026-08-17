@@ -1,9 +1,14 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { api } from '../api/client'
+import { endpoints } from '../api/endpoints'
+import { LlmSettingsDrawer } from '../components/LlmSettingsDrawer'
 import { OptionTags } from '../components/OptionTags'
+import { PlanGuidePanel } from '../components/PlanGuidePanel'
 import { ProficiencyRubric } from '../components/ProficiencyRubric'
 import { Progress } from '../components/ui/Progress'
 import { useAssessmentFlow } from '../hooks/useAssessmentFlow'
 import type { AssessmentAnswerItem } from '../types/assessment'
+import type { LlmStatus } from '../types/auth'
 
 interface InitialAssessmentProps {
   autoStart?: boolean
@@ -12,26 +17,52 @@ interface InitialAssessmentProps {
   hasCompleted?: boolean
   onComplete?: () => void
   onStepChange?: (step: number) => void
+  /** T-066：首次测评完成后「开始今日练习」回调（App 层退出 onboarding 并跳转） */
+  onPractice?: () => void
 }
 
 /**
  * T-004 自适应分块测评：每块 5 题（提示造句 ×2 + 情境表达 ×1 + 词义选择 ×1 + 阅读理解 ×1），
  * 2–3 块收敛。产出题走 LLM 真实评分，识别题仅作参考。
  */
-export function InitialAssessment({ autoStart = false, immersive = false, hasCompleted = false, onComplete, onStepChange }: InitialAssessmentProps) {
+export function InitialAssessment({ autoStart = false, immersive = false, hasCompleted = false, onComplete, onStepChange, onPractice }: InitialAssessmentProps) {
   const flow = useAssessmentFlow()
   const autoStarted = useRef(false)
   const [productionAnswers, setProductionAnswers] = useState<Record<string, string>>({})
   const [choiceAnswers, setChoiceAnswers] = useState<Record<string, number>>({})
   const [localError, setLocalError] = useState<string | null>(null)
+  // T-064：首次测评前检查 LLM 配置——mock 模式下必须先配置 API Key（用户裁定强制配置）
+  const [llmStatus, setLlmStatus] = useState<LlmStatus | null>(null)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+
+  const checkLlmStatus = useCallback(async () => {
+    try {
+      const { data } = await api.get<LlmStatus>(endpoints.llmStatus)
+      setLlmStatus(data)
+      return data
+    } catch {
+      setLlmStatus(null)
+      return null
+    }
+  }, [])
+
+  // T-064：首次测评（未完成过）挂载时检查 LLM 配置
+  useEffect(() => {
+    if (hasCompleted) return
+    void checkLlmStatus()
+  }, [hasCompleted, checkLlmStatus])
 
   useEffect(() => {
     if (!autoStart || autoStarted.current || flow.assessmentId) {
       return
     }
+    // T-064：首次测评 mock 模式下不自动开始，等用户配置 API Key
+    if (!hasCompleted && llmStatus?.llmMode === 'mock') {
+      return
+    }
     autoStarted.current = true
     void flow.start()
-  }, [autoStart, flow.assessmentId, flow.start])
+  }, [autoStart, hasCompleted, llmStatus, flow.assessmentId, flow.start])
 
   // 换块时清空本块作答
   useEffect(() => {
@@ -78,6 +109,8 @@ export function InitialAssessment({ autoStart = false, immersive = false, hasCom
   const sectionClass = immersive ? 'onboarding-card' : 'card'
 
   if (!flow.assessmentId) {
+    // T-064：首次测评且无可用真实 LLM（用户未配 API Key 且服务端未启用）——强制先配置
+    const needsLlmConfig = !hasCompleted && llmStatus?.llmMode === 'mock'
     return (
       <section className={sectionClass}>
         <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-xl)', fontWeight: 700 }}>
@@ -92,7 +125,27 @@ export function InitialAssessment({ autoStart = false, immersive = false, hasCom
           </p>
         )}
         {displayError && <p className="alert alert-error" style={{ marginTop: 'var(--space-3)' }}>{displayError}</p>}
-        {(autoStart || flow.loading) && !displayError ? (
+        {needsLlmConfig ? (
+          <div className="alert alert-warning" style={{ marginTop: 'var(--space-4)' }}>
+            <p style={{ fontWeight: 540 }}>先配置模型服务才能开始测评</p>
+            <p style={{ fontSize: 'var(--text-sm)', marginTop: 'var(--space-2)' }}>
+              测评的造句与情境表达题将逐题获得详细反馈；配置 API Key 后反馈更精准、定级更可靠，未配置时使用简化评分。
+              请先在系统设置中配置你的 API Key（选择你的模型服务提供商）。
+            </p>
+            <div className="stack stack-sm" style={{ marginTop: 'var(--space-4)' }}>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => setSettingsOpen(true)}
+              >
+                配置 API Key
+              </button>
+              <p style={{ fontSize: 'var(--text-xs)', color: 'var(--muted)' }}>
+                没有 API Key？可以跳过测评，以默认等级 A2 开始学习，之后再重新测评。
+              </p>
+            </div>
+          </div>
+        ) : ((autoStart || flow.loading) && !displayError ? (
           <p style={{ marginTop: 'var(--space-4)', fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>{flow.loading ? '正在准备测评...' : '即将开始...'}</p>
         ) : (
           <button
@@ -104,7 +157,15 @@ export function InitialAssessment({ autoStart = false, immersive = false, hasCom
           >
             {flow.loading ? '准备中...' : hasCompleted ? '开始重新测评' : '开始测评'}
           </button>
-        )}
+        ))}
+        {/* T-064：配置抽屉；保存后刷新 LLM 状态，mock 解除后开始按钮可用 */}
+        <LlmSettingsDrawer
+          open={settingsOpen}
+          onClose={() => {
+            setSettingsOpen(false)
+            void checkLlmStatus()
+          }}
+        />
       </section>
     )
   }
@@ -147,6 +208,8 @@ export function InitialAssessment({ autoStart = false, immersive = false, hasCom
             </p>
           )}
         </div>
+        {/* T-066：首次测评完成后立即进入「计划+练习安排」引导（老用户重测不展示） */}
+        {!hasCompleted && <PlanGuidePanel onStart={onPractice} />}
       </section>
     )
   }
@@ -181,7 +244,7 @@ export function InitialAssessment({ autoStart = false, immersive = false, hasCom
               style={{ marginTop: 'var(--space-3)' }}
               rows={item.kind === 'sentence' ? 3 : 4}
               value={productionAnswers[item.id] ?? ''}
-              disabled={flow.submitting}
+              disabled={flow.evaluating}
               onChange={(event) => {
                 setProductionAnswers((current) => ({ ...current, [item.id]: event.target.value }))
               }}
@@ -199,7 +262,7 @@ export function InitialAssessment({ autoStart = false, immersive = false, hasCom
           <OptionTags
             options={item.options}
             selectedIndex={choiceAnswers[item.id]}
-            disabled={flow.submitting}
+            disabled={flow.evaluating}
             onSelect={(optionIndex) => {
               setChoiceAnswers((current) => ({ ...current, [item.id]: optionIndex }))
             }}
@@ -218,7 +281,7 @@ export function InitialAssessment({ autoStart = false, immersive = false, hasCom
               <OptionTags
                 options={block.reading.options}
                 selectedIndex={choiceAnswers[block.reading.id]}
-                disabled={flow.submitting}
+                disabled={flow.evaluating}
                 onSelect={(optionIndex) => {
                   if (!block.reading) return
                   setChoiceAnswers((current) => ({ ...current, [block.reading!.id]: optionIndex }))
@@ -229,14 +292,24 @@ export function InitialAssessment({ autoStart = false, immersive = false, hasCom
         </div>
       )}
 
-      <button
-        type="button"
-        className="btn btn-primary"
-        disabled={flow.submitting || !allAnswered()}
-        onClick={() => void handleSubmit()}
-      >
-        {flow.submitting ? '评分中...' : '提交本块'}
-      </button>
+      {/* T-065：提交后进入「评分中」轮询态（后台评分，不阻塞等待） */}
+      {flow.evaluating ? (
+        <div className="alert alert-info">
+          <p style={{ fontWeight: 540 }}>评分中…</p>
+          <p style={{ fontSize: 'var(--text-sm)', marginTop: 'var(--space-1)' }}>
+            你的答案已提交，正在逐题评分（通常 5–15 秒），完成后自动进入下一块或出结果。
+          </p>
+        </div>
+      ) : (
+        <button
+          type="button"
+          className="btn btn-primary"
+          disabled={!allAnswered()}
+          onClick={() => void handleSubmit()}
+        >
+          提交本块
+        </button>
+      )}
     </section>
   )
 }

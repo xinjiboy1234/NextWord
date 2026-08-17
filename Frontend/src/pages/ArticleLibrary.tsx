@@ -19,7 +19,7 @@ const LEVEL_LABELS: Record<string, string> = {
 /** T-030：文章来源/话题标签 → 中文（避免 Builtin、environment 等内部字段外露） */
 const SOURCE_LABELS: Record<string, string> = {
   Builtin: '内置',
-  Llm: 'AI 生成',
+  Llm: '动态生成',
 }
 const TOPIC_LABELS: Record<string, string> = {
   life: '生活',

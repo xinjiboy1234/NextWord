@@ -57,6 +57,19 @@ public sealed class BackgroundJobWorker(IServiceScopeFactory scopeFactory, ILogg
                             var planner = scope.ServiceProvider.GetRequiredService<PlannerWorker>();
                             await planner.ProcessAsync(job, stoppingToken);
                         }
+                        else if (job.JobType == "AssessmentBlockScoring")
+                        {
+                            var assessment = scope.ServiceProvider.GetRequiredService<IAssessmentService>();
+                            using var payload = JsonDocument.Parse(job.PayloadJson);
+                            var assessmentId = payload.RootElement.GetProperty("assessmentId").GetGuid();
+                            var blockIndex = payload.RootElement.GetProperty("blockIndex").GetInt32();
+                            await assessment.ScoreBlockJobAsync(assessmentId, blockIndex, stoppingToken);
+                        }
+                        else if (job.JobType == DifficultyAnnotationWorker.JobType)
+                        {
+                            var difficultyWorker = scope.ServiceProvider.GetRequiredService<DifficultyAnnotationWorker>();
+                            await difficultyWorker.ProcessAsync(job, stoppingToken);
+                        }
                         else if (job.JobType == BottleneckInsightWorker.JobType)
                         {
                             var insightWorker = scope.ServiceProvider.GetRequiredService<BottleneckInsightWorker>();
