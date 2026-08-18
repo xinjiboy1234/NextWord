@@ -212,6 +212,9 @@ public class AdaptiveAssessmentServiceTests
         Assert.Equal(CefrLevel.B1, listItem.FinalLevel);
         Assert.Equal(76, listItem.ExpressionScore);
         Assert.True(listItem.GuardAdjusted);
+        // T-069：人话总体标签与常见问题同源投影（简要卡数据，旧记录缺字段时优雅降级）
+        Assert.False(string.IsNullOrWhiteSpace(listItem.RubricLabel));
+        Assert.NotNull(listItem.TopErrorTags);
 
         // 矫正传导（qa-t042 P1）：三维分数先验 clamp 到矫正后档内（B1 上限 69），CefrDisplay 取矫正后档
         var progress = await db.UserProgress.SingleAsync(item => item.UserId == user.Id);

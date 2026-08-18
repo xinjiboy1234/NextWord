@@ -105,6 +105,10 @@ export interface AssessmentListItem {
   expressionScore?: number | null
   /** 是否触发识别防伪闸矫正 */
   guardAdjusted: boolean
+  /** T-069：人话总体标签（如「还不错」），旧记录无 rubric 字段为 null，降级不显示 */
+  rubricLabel?: string | null
+  /** T-069：常见问题 Top 错误标签（简要卡数据，同源投影自 FinalLevel 记录） */
+  topErrorTags?: string[]
 }
 
 /** GET /api/assessment/{id} 详情（DTO 投影，无导航回引用；题目/作答/评分在各记录的 JSON 字符串里） */

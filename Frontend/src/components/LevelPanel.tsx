@@ -3,21 +3,8 @@ import { Link } from 'react-router-dom'
 import { api } from '../api/client'
 import { endpoints } from '../api/endpoints'
 import { Badge } from './ui/Badge'
-import { useEvaluationReport } from '../hooks/useProfileScores'
 import { DIMENSION_HINTS, getCefrMeta } from '../lib/cefrMeta'
 import type { LevelDashboard } from '../types/assessment'
-
-/** T-005 画像维度/置信度中文标签 */
-const DIMENSION_LABELS: Record<string, string> = {
-  scenario: '场景',
-  skill: '技能',
-  reading: '阅读',
-}
-const CONFIDENCE_LABELS: Record<string, string> = {
-  high: '高置信',
-  medium: '中置信',
-  low: '低置信',
-}
 
 /** T-030：后端枚举/内部字段 → 中文标签（避免 Overall/Initial/Intermediate 等英文外露） */
 const LEVEL_CHANGE_REASON_LABELS: Record<string, string> = {
@@ -34,7 +21,6 @@ const DIFFICULTY_BUCKET_LABELS: Record<string, string> = {
 export function LevelPanel() {
   const [dashboard, setDashboard] = useState<LevelDashboard | null>(null)
   const [loading, setLoading] = useState(true)
-  const evaluation = useEvaluationReport(dashboard?.scores ? 1 : null)
 
   useEffect(() => {
     async function load() {
@@ -134,54 +120,7 @@ export function LevelPanel() {
         ))}
       </div>
 
-      {evaluation.content && (
-        <section className="card stack stack-sm">
-          <h3>评估报告</h3>
-          <p style={{ fontSize: 'var(--text-sm)' }}>{evaluation.content.summary}</p>
-          {evaluation.content.findings && evaluation.content.findings.length > 0 ? (
-            <div>
-              <p className="mono-label" style={{ marginBottom: 4 }}>能力画像（已交叉验证）</p>
-              <ul className="stack stack-sm" style={{ listStyle: 'none', padding: 0 }}>
-                {evaluation.content.findings.map((finding, index) => (
-                  <li key={index} style={{ fontSize: 'var(--text-sm)' }}>
-                    <span style={{ display: 'inline-flex', gap: 6, marginRight: 6 }}>
-                      <Badge variant={finding.polarity === 'strength' ? 'success' : finding.polarity === 'weakness' ? 'warn' : 'muted'}>
-                        {DIMENSION_LABELS[finding.dimension] ?? finding.dimension}
-                      </Badge>
-                      <Badge variant="muted">{CONFIDENCE_LABELS[finding.confidence] ?? finding.confidence}</Badge>
-                      {finding.confidence === 'low' && <Badge variant="muted">初步</Badge>}
-                    </span>
-                    {finding.statement}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : (
-            <>
-              {evaluation.content.strengths.length > 0 && (
-                <div>
-                  <p className="mono-label" style={{ marginBottom: 4 }}>优势</p>
-                  <ul style={{ fontSize: 'var(--text-sm)', paddingLeft: '1.2em' }}>
-                    {evaluation.content.strengths.map((item) => (
-                      <li key={item}>{item}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {evaluation.content.weaknesses.length > 0 && (
-                <div>
-                  <p className="mono-label" style={{ marginBottom: 4 }}>待提升</p>
-                  <ul style={{ fontSize: 'var(--text-sm)', paddingLeft: '1.2em' }}>
-                    {evaluation.content.weaknesses.map((item) => (
-                      <li key={item}>{item}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </>
-          )}
-        </section>
-      )}
+      {/* T-069：评估报告详情已收拢到「最近测评」简要卡（AssessmentBriefCard）内展开查看 */}
 
       <div className="section-header row-between">
         <h3>等级历史</h3>

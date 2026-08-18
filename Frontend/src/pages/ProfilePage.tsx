@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
 import { endpoints } from '../api/endpoints'
+import { AssessmentBriefCard } from '../components/AssessmentBriefCard'
 import { LevelPanel } from '../components/LevelPanel'
 import { MonthlyTimelinePanel } from '../components/MonthlyTimelinePanel'
 import { ProgressDetail } from '../components/ProgressDetail'
@@ -89,6 +90,12 @@ export function ProfilePage() {
         <h2>等级</h2>
       </div>
       <LevelPanel />
+
+      {/* T-069：测评详情收拢——主页只显示当前测评的简要信息，完整结果由「查看测评结果」打开 */}
+      <div className="section-header" style={{ marginTop: 'var(--space-8)' }}>
+        <h2>最近测评</h2>
+      </div>
+      <AssessmentBriefCard />
 
       <div className="section-header" style={{ marginTop: 'var(--space-8)' }}>
         <h2>我的这个月</h2>

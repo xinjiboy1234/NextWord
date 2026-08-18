@@ -1,6 +1,6 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../api/client'
 import { endpoints } from '../api/endpoints'
 import { AiRevision } from '../components/AiRevision'
@@ -28,6 +28,15 @@ export function AssessmentsPage() {
   const [list, setList] = useState<AssessmentListItem[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [searchParams, setSearchParams] = useSearchParams()
+  // T-069：?detail=<id> 深链——「我的」页最近测评卡的「查看测评结果」直达最新测评详情
+  const detailParam = searchParams.get('detail')
+
+  useEffect(() => {
+    if (detailParam) {
+      setSelectedId(detailParam)
+    }
+  }, [detailParam])
 
   useEffect(() => {
     async function load() {
@@ -42,6 +51,13 @@ export function AssessmentsPage() {
     void load()
   }, [])
 
+  function closeDetail() {
+    setSelectedId(null)
+    if (detailParam) {
+      setSearchParams({}, { replace: true })
+    }
+  }
+
   if (error) {
     return <div className="alert alert-error">{error}</div>
   }
@@ -51,7 +67,7 @@ export function AssessmentsPage() {
   }
 
   if (selectedId) {
-    return <AssessmentDetailView assessmentId={selectedId} onBack={() => setSelectedId(null)} />
+    return <AssessmentDetailView assessmentId={selectedId} onBack={closeDetail} />
   }
 
   return (

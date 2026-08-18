@@ -87,6 +87,8 @@ public sealed record RubricDimensionView(string Name, double Score, string Descr
 /// <summary>
 /// T-054 测评历史列表项（GET /api/assessments）：ExpressionScore 与 GuardAdjusted
 /// 从 FinalLevel 记录的 AssessmentFinalResult JSON 投影；进行中的测评两者为 null/false。
+/// T-069：RubricLabel（人话总体标签）与 TopErrorTags（常见问题）同源投影，
+/// 供「我的」页最近测评简要卡使用——简要但有用（不敷衍）。
 /// </summary>
 public sealed record AssessmentListItem(
     Guid Id,
@@ -96,7 +98,9 @@ public sealed record AssessmentListItem(
     DateTimeOffset? EndAt,
     CefrLevel? FinalLevel,
     int? ExpressionScore,
-    bool GuardAdjusted);
+    bool GuardAdjusted,
+    string? RubricLabel = null,
+    IReadOnlyList<string> TopErrorTags = default!);
 
 /// <summary>
 /// T-054 测评详情视图（GET /api/assessment/{id}）：Assessment + Records 投影，不含导航回引用——

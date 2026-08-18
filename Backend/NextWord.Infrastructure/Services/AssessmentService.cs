@@ -305,7 +305,9 @@ public sealed class AssessmentService(
                 item.EndAt,
                 item.FinalLevel,
                 final?.ExpressionScore,
-                final?.OriginalLevelBeforeGuard is not null);
+                final?.OriginalLevelBeforeGuard is not null,
+                final?.Rubric?.OverallLabel,
+                final?.Dimensions.TopErrorTags ?? []);
         }).ToList();
     }
 
