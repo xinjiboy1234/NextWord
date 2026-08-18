@@ -8,7 +8,21 @@ import { ProficiencyRubric } from '../components/ProficiencyRubric'
 import { Progress } from '../components/ui/Progress'
 import { useAssessmentFlow } from '../hooks/useAssessmentFlow'
 import type { AssessmentAnswerItem } from '../types/assessment'
-import type { LlmStatus } from '../types/auth'
+import type { LlmPreset, LlmStatus } from '../types/auth'
+
+/** T-070：服务商中文名（OpenAI/DeepSeek/通义千问 为厂商品牌名，T-068 允许保留） */
+const PRESET_NAMES: Record<string, string> = {
+  openai: 'OpenAI',
+  deepseek: 'DeepSeek',
+  qwen: '通义千问',
+}
+
+/** T-070：预设接口不可用时的兜底选项（保证欢迎卡永远有可点的服务商） */
+const FALLBACK_PRESETS: LlmPreset[] = [
+  { id: 'openai', name: 'OpenAI', provider: 'OpenAI', baseUrl: '', defaultModel: 'gpt-4o-mini' },
+  { id: 'deepseek', name: 'DeepSeek', provider: 'DeepSeek', baseUrl: '', defaultModel: 'deepseek-chat' },
+  { id: 'qwen', name: '通义千问', provider: 'Qwen', baseUrl: '', defaultModel: 'qwen-plus' },
+]
 
 interface InitialAssessmentProps {
   autoStart?: boolean
@@ -34,6 +48,9 @@ export function InitialAssessment({ autoStart = false, immersive = false, hasCom
   // T-064：首次测评前检查 LLM 配置——mock 模式下必须先配置 API Key（用户裁定强制配置）
   const [llmStatus, setLlmStatus] = useState<LlmStatus | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  // T-070：欢迎卡内的服务商快捷选择（预选后打开抽屉即填好服务商）
+  const [presets, setPresets] = useState<LlmPreset[]>([])
+  const [chosenPresetId, setChosenPresetId] = useState('openai')
 
   const checkLlmStatus = useCallback(async () => {
     try {
@@ -46,6 +63,14 @@ export function InitialAssessment({ autoStart = false, immersive = false, hasCom
     }
   }, [])
 
+  // T-070：加载服务商预设（失败用兜底选项，欢迎卡永远可点）
+  useEffect(() => {
+    void api
+      .get<LlmPreset[]>(endpoints.llmPresets)
+      .then(({ data }) => setPresets(data))
+      .catch(() => setPresets([]))
+  }, [])
+
   // T-064：首次测评（未完成过）挂载时检查 LLM 配置
   useEffect(() => {
     if (hasCompleted) return
@@ -56,8 +81,13 @@ export function InitialAssessment({ autoStart = false, immersive = false, hasCom
     if (!autoStart || autoStarted.current || flow.assessmentId) {
       return
     }
-    // T-064：首次测评 mock 模式下不自动开始，等用户配置 API Key
-    if (!hasCompleted && llmStatus?.llmMode === 'mock') {
+    // T-064/T-070：等 LLM 状态加载完成再决定——状态未返回时不自动开始，
+    // 避免 mock 模式下测评抢先开始、欢迎卡被跳过（修潜在竞态）
+    if (llmStatus === null) {
+      return
+    }
+    // 首次测评且 mock 模式：不自动开始，等用户连接模型服务
+    if (!hasCompleted && llmStatus.llmMode === 'mock') {
       return
     }
     autoStarted.current = true
@@ -126,25 +156,47 @@ export function InitialAssessment({ autoStart = false, immersive = false, hasCom
         )}
         {displayError && <p className="alert alert-error" style={{ marginTop: 'var(--space-3)' }}>{displayError}</p>}
         {needsLlmConfig ? (
-          <div className="alert alert-warning" style={{ marginTop: 'var(--space-4)' }}>
-            <p style={{ fontWeight: 540 }}>先配置模型服务才能开始测评</p>
-            <p style={{ fontSize: 'var(--text-sm)', marginTop: 'var(--space-2)' }}>
-              测评的造句与情境表达题将逐题获得详细反馈；配置 API Key 后反馈更精准、定级更可靠，未配置时使用简化评分。
-              请先在系统设置中配置你的 API Key（选择你的模型服务提供商）。
+          /* T-070：首次测评前「连接模型服务」——欢迎卡而非警告卡，讲清价值、快捷选择、无负面词 */
+          <div className="card" style={{ marginTop: 'var(--space-5)' }}>
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-lg)', fontWeight: 700 }}>
+              连接你的模型服务，让测评更懂你
+            </h3>
+            <p style={{ marginTop: 'var(--space-2)', fontSize: 'var(--text-sm)', lineHeight: 1.7, color: 'var(--muted)' }}>
+              测评中的每一道造句和情境表达题，都会由你连接的模型服务逐题点评——像请了一位懂你的外教。
+              连接一次即可，之后所有练习反馈都会更懂你；Key 只保存在你的账号里。
             </p>
-            <div className="stack stack-sm" style={{ marginTop: 'var(--space-4)' }}>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={() => setSettingsOpen(true)}
-              >
-                配置 API Key
-              </button>
-              <p style={{ fontSize: 'var(--text-xs)', color: 'var(--muted)' }}>
-                没有 API Key？可以跳过测评，以默认等级 A2 开始学习，之后再重新测评。
-              </p>
+            <div style={{ marginTop: 'var(--space-4)' }}>
+              <p className="mono-label" style={{ marginBottom: 6 }}>选择模型服务商</p>
+              <div className="provider-chips">
+                {(presets.length > 0 ? presets : FALLBACK_PRESETS).map((preset) => (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    className={`provider-chip${chosenPresetId === preset.id ? ' active' : ''}`}
+                    onClick={() => setChosenPresetId(preset.id)}
+                  >
+                    <span>{PRESET_NAMES[preset.id] ?? preset.name}</span>
+                    <small>{preset.defaultModel}</small>
+                  </button>
+                ))}
+              </div>
             </div>
+            <button
+              type="button"
+              className="btn btn-primary"
+              style={{ marginTop: 'var(--space-4)' }}
+              onClick={() => setSettingsOpen(true)}
+            >
+              连接并开始测评
+            </button>
+            <p style={{ marginTop: 'var(--space-3)', fontSize: 'var(--text-xs)', color: 'var(--muted)' }}>
+              想先逛逛？可以跳过测评，之后随时在「我的」里重新测评。
+            </p>
           </div>
+        ) : !hasCompleted && llmStatus === null ? (
+          <p style={{ marginTop: 'var(--space-4)', fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>
+            正在检查模型服务…
+          </p>
         ) : ((autoStart || flow.loading) && !displayError ? (
           <p style={{ marginTop: 'var(--space-4)', fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>{flow.loading ? '正在准备测评...' : '即将开始...'}</p>
         ) : (
@@ -158,9 +210,12 @@ export function InitialAssessment({ autoStart = false, immersive = false, hasCom
             {flow.loading ? '准备中...' : hasCompleted ? '开始重新测评' : '开始测评'}
           </button>
         ))}
-        {/* T-064：配置抽屉；保存后刷新 LLM 状态，mock 解除后开始按钮可用 */}
+        {/* T-070：配置抽屉——欢迎卡选中服务商后预选；保存后刷新 LLM 状态，mock 解除即自动开始 */}
         <LlmSettingsDrawer
           open={settingsOpen}
+          title="连接模型服务"
+          initialPresetId={chosenPresetId}
+          intro="连接后，测评与练习的逐题反馈将使用你的模型服务；Key 只保存在你的账号里，可随时在「我的 · 系统设置」中修改。"
           onClose={() => {
             setSettingsOpen(false)
             void checkLlmStatus()

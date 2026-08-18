@@ -31,6 +31,22 @@
 - dotnet test 全绿：单元 301 + 集成 9（基线 296+9）；npm run build 通过；E2E assessment.spec 适配 T-063/T-064（快捷入口 + 假 key 过配置门）。
 - 待周密验收（QA 视角自验已覆盖：拼写三模式配比/带内扩展/空态引导、测评异步链路、计划引导轮询、管理页结构）。
 - **环境词库标注回填（发现并修复）**：docker 库 1523 词 Utility/Role/Scenarios/ScenarioAnnotationVersion 全空（旧镜像种子缺标注）——导致测评块退化为 1 题（BuildBlockAsync 要求 Utility High/Medium）、Planner 场景驱动失效。新增可复用脚本 Backend/Scripts/backfill-wordlist-annotations.py（从内置词表 JSON 按 lemma 回填 utility/role/cefr/scenarios，幂等；枚举字符串按 EF Enum.Parse 大小写敏感存 PascalCase），已对 dev 库执行（1520 词 + 2383 场景关联）；顺手修复 WordlistSeedData.ToWord 的潜藏 bug——词表 JSON 的 snake_case role（core_verb 等）Enum.TryParse 不识别下划线恒落 SceneNoun，改显式映射。修复后测评块恢复 3 产出+1 识别+1 阅读、拼写/每日词正常。
+## 2026-08-17 — I11 T-069/T-070：测评详情收拢到「我的」页简要卡 + 首次测评 API Key 配置交互人性化（程实）
+
+### 需求
+用户两问：①测评显示虽好，但详细信息应放到背后——「我的」主页只显示当前测评的简要信息（不敷衍的简要），点「查看测评结果」再看到完整详情；②首次测评前需配置 API Key，但不想让用户觉得「机器是傻子」，交互由实现方设计。
+
+### 实现（T-069 测评详情收拢）
+- 后端：`AssessmentListItem` 增 `RubricLabel`/`TopErrorTags`（从 FinalLevel 记录的 `AssessmentFinalResult.Rubric/Dimensions` 同源投影，零新增 LLM，旧记录缺字段优雅降级）；`AdaptiveAssessmentServiceTests` 列表投影用例补新字段断言。
+- 前端：新 `useLatestAssessment`（取最新一次已完成的初始测评）+ `AssessmentBriefCard`（最近测评卡：人话标签/定级/表达力综合分/日期/常见问题 Top 3/识别矫正标记；评估报告在卡内展开——LevelPanel 的画像渲染提取为共享 `EvaluationReportView` 复用）；`LevelPanel` 移除原「评估报告」详情区；`/assessments` 支持 `?detail=<id>` 深链，「查看测评结果」直达最新测评完整详情（rubric/四维/逐题评语），返回列表时清除参数。
+
+### 实现（T-070 配置交互人性化）
+- 首次测评 mock 门的警示卡改为温暖欢迎卡「连接你的模型服务，让测评更懂你」：讲清价值（逐题点评像外教、Key 只存自己账号）、无负面词（删「未配置时使用简化评分」）、服务商快捷选择（OpenAI/DeepSeek/通义千问 徽章，预设接口失败有兜底选项）、「连接并开始测评」打开抽屉已预选服务商（`LlmSettingsDrawer` 增 `title`/`initialPresetId`/`intro`），保存后刷新状态自动开始；「想先逛逛？可以跳过测评」诚实不羞辱。
+- 顺带修竞态：autoStart 等 `llmStatus` 加载完成再决定（原实现状态未返回时 guard 放行、mock 模式下测评可能抢先开始、欢迎卡被跳过）；首次测评用户状态加载中显示「正在检查模型服务…」。
+
+### 验证
+- dotnet test 全绿（单元 + 集成）；npm run build 通过；任务按「一个任务一次提交」拆 T-069/T-070 两次提交。
+
 # NextWord 开发日志
 
 按时间倒序记录需求、决策、实现与验收。

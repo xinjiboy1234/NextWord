@@ -8,9 +8,15 @@ import { Drawer } from './ui/Drawer'
 interface LlmSettingsDrawerProps {
   open: boolean
   onClose: () => void
+  /** T-070：配置场景标题（首次测评前置配置为「连接模型服务」，管理页保持「系统设置」） */
+  title?: string
+  /** T-070：打开时预选的服务商（仅用户尚未保存过设置时生效） */
+  initialPresetId?: string
+  /** T-070：配置场景引导语（管理页不传则使用底部默认说明） */
+  intro?: string
 }
 
-export function LlmSettingsDrawer({ open, onClose }: LlmSettingsDrawerProps) {
+export function LlmSettingsDrawer({ open, onClose, title = '系统设置', initialPresetId, intro }: LlmSettingsDrawerProps) {
   const [presets, setPresets] = useState<LlmPreset[]>([])
   const [presetId, setPresetId] = useState('openai')
   const [provider, setProvider] = useState('OpenAI')
@@ -48,6 +54,9 @@ export function LlmSettingsDrawer({ open, onClose }: LlmSettingsDrawerProps) {
           setModel(settings.model)
           setHasApiKey(settings.hasApiKey)
           setMaskedApiKey(settings.maskedApiKey)
+        } else if (initialPresetId) {
+          // T-070：首次配置场景——打开即预选用户在欢迎卡上选中的服务商
+          applyPreset(initialPresetId)
         }
       } catch {
         // 占位：加载失败时保留表单默认值
@@ -94,7 +103,7 @@ export function LlmSettingsDrawer({ open, onClose }: LlmSettingsDrawerProps) {
   return (
     <Drawer
       open={open}
-      title="系统设置"
+      title={title}
       onClose={onClose}
       footer={(
         <button
@@ -111,6 +120,7 @@ export function LlmSettingsDrawer({ open, onClose }: LlmSettingsDrawerProps) {
     >
       <div className="stack stack-md">
         {saveMessage ? <p className="text-sm">{saveMessage}</p> : null}
+        {intro ? <p style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)', lineHeight: 1.6 }}>{intro}</p> : null}
         <div className="field">
           <label htmlFor="llm-preset">预设</label>
           <select

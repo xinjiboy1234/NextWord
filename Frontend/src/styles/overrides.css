@@ -493,6 +493,39 @@
   margin-bottom: var(--space-3);
 }
 
+/* T-070：首次测评前「连接模型服务」服务商快捷选择（欢迎卡内） */
+.provider-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.provider-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  font-weight: 540;
+  color: var(--fg);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.provider-chip small {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  font-weight: 400;
+}
+.provider-chip:hover { border-color: var(--brand); }
+.provider-chip.active {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
 @media (max-width: 900px) {
   .wb-layout { grid-template-columns: 1fr; }
 }
